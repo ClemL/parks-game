@@ -1,0 +1,142 @@
+import type { SiteDef, SiteKind } from '../types';
+
+export const SITES: Record<SiteKind, SiteDef> = {
+  trailhead: {
+    kind: 'trailhead',
+    name: 'Trailhead',
+    icon: '🥾',
+    text: 'Hikers start here. Unlimited room.',
+    capacity: Infinity,
+  },
+  'trail-end': {
+    kind: 'trail-end',
+    name: 'Trail End',
+    icon: '🏕️',
+    text: 'Claim a park, take a photo, or rest for 1 sun. Unlimited room.',
+    choice: 'trail-end',
+    capacity: Infinity,
+  },
+  sun: { kind: 'sun', name: 'Sunny Meadow', icon: '☀️', text: 'Gain 1 sun.', gain: { sun: 1 } },
+  water: { kind: 'water', name: 'Stream', icon: '💧', text: 'Gain 1 water.', gain: { water: 1 } },
+  forest: { kind: 'forest', name: 'Woodland', icon: '🌲', text: 'Gain 1 forest.', gain: { forest: 1 } },
+  mountain: { kind: 'mountain', name: 'Ridge', icon: '⛰️', text: 'Gain 1 mountain.', gain: { mountain: 1 } },
+  animal: { kind: 'animal', name: 'Wildlife Crossing', icon: '🐾', text: 'Gain 1 wildlife.', gain: { animal: 1 } },
+  'double-water': {
+    kind: 'double-water',
+    name: 'Waterfall',
+    icon: '💧💧',
+    text: 'Gain 2 water.',
+    gain: { water: 2 },
+  },
+  'double-forest': {
+    kind: 'double-forest',
+    name: 'Old Growth',
+    icon: '🌲🌲',
+    text: 'Gain 2 forest.',
+    gain: { forest: 2 },
+  },
+  'double-mountain': {
+    kind: 'double-mountain',
+    name: 'Summit Ridge',
+    icon: '⛰️⛰️',
+    text: 'Gain 2 mountain.',
+    gain: { mountain: 2 },
+  },
+  'double-sun': {
+    kind: 'double-sun',
+    name: 'Open Prairie',
+    icon: '☀️☀️',
+    text: 'Gain 2 sun.',
+    gain: { sun: 2 },
+  },
+  'water-forest': {
+    kind: 'water-forest',
+    name: 'Riverbank Grove',
+    icon: '💧🌲',
+    text: 'Gain 1 water and 1 forest.',
+    gain: { water: 1, forest: 1 },
+  },
+  'mountain-sun': {
+    kind: 'mountain-sun',
+    name: 'Alpine Slope',
+    icon: '⛰️☀️',
+    text: 'Gain 1 mountain and 1 sun.',
+    gain: { mountain: 1, sun: 1 },
+  },
+  'animal-forest': {
+    kind: 'animal-forest',
+    name: 'Deer Thicket',
+    icon: '🐾🌲',
+    text: 'Gain 1 wildlife and 1 forest.',
+    gain: { animal: 1, forest: 1 },
+  },
+  vista: {
+    kind: 'vista',
+    name: 'Vista',
+    icon: '🔭',
+    text: 'Gain 1 resource of your choice.',
+    choice: 'vista',
+  },
+  campfire: {
+    kind: 'campfire',
+    name: 'Campfire',
+    icon: '🔥',
+    text: 'Gain 1 campfire token. Spend a token to share an occupied site.',
+  },
+  photo: {
+    kind: 'photo',
+    name: 'Photo Point',
+    icon: '📷',
+    text: 'Pay 1 sun to take a photo (1 VP), or gain 1 sun.',
+    choice: 'photo',
+  },
+  canteen: {
+    kind: 'canteen',
+    name: 'Spring',
+    icon: '🧴',
+    text: 'Refill all canteens and gain 1 water.',
+    gain: { water: 1 },
+  },
+  reservation: {
+    kind: 'reservation',
+    name: 'Reservation Desk',
+    icon: '🎟️',
+    text: 'Reserve a park from the row. Only you may claim it.',
+    choice: 'reservation',
+  },
+};
+
+/** Middle-of-trail tiles, drawn fresh each season. */
+export const TRAIL_TILE_POOL: SiteKind[] = [
+  'sun',
+  'sun',
+  'water',
+  'water',
+  'forest',
+  'forest',
+  'mountain',
+  'mountain',
+  'animal',
+  'animal',
+  'double-water',
+  'double-forest',
+  'double-mountain',
+  'double-sun',
+  'water-forest',
+  'mountain-sun',
+  'animal-forest',
+  'vista',
+  'vista',
+  'campfire',
+  'campfire',
+  'photo',
+  'photo',
+  'canteen',
+  'reservation',
+  'reservation',
+];
+
+/** Number of middle sites for each season: the trail grows as the year goes on. */
+export function trailLength(season: number): number {
+  return 5 + season; // 6, 7, 8, 9 middle sites plus trailhead and trail end
+}
