@@ -87,7 +87,19 @@ export const BONUS_CARDS: BonusCard[] = [
   {
     id: 'firekeeper',
     name: 'Firekeeper',
-    text: '2 VP per unused campfire token.',
-    score: (v) => v.campfires * 2,
+    text: '3 VP if you end the game with an unspent campfire token.',
+    score: (v) => (v.campfires > 0 ? 3 : 0),
+  },
+  {
+    id: 'quartermaster',
+    name: 'Quartermaster',
+    text: '2 VP per bottle card you hold.',
+    score: (v) => v.bottles.length * 2,
+  },
+  {
+    id: 'planner',
+    name: 'Planner',
+    text: '3 VP per park you reserved but never visited, plus 3 VP if you hold the camera.',
+    score: (v) => v.reserved.length * 3 + (v.hasCamera ? 3 : 0),
   },
 ];

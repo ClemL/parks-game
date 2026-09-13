@@ -6,15 +6,15 @@ export const RESOURCE_ICON: Record<Resource, string> = {
   water: '💧',
   forest: '🌲',
   mountain: '⛰️',
-  animal: '🐾',
+  wild: '🐾',
 };
 
 export const RESOURCE_LABEL: Record<Resource, string> = {
   sun: 'Sun',
   water: 'Water',
-  forest: 'Forest',
+  forest: 'Tree',
   mountain: 'Mountain',
-  animal: 'Wildlife',
+  wild: 'Wildcard',
 };
 
 export function ResourceChip({
@@ -26,12 +26,12 @@ export function ResourceChip({
   count: number;
   dim?: boolean;
 }) {
+  const label =
+    resource === 'wild'
+      ? `${count} wildcards (each pays for any resource)`
+      : `${count} ${RESOURCE_LABEL[resource]}`;
   return (
-    <span
-      className={`chip${dim ? ' chip-dim' : ''}`}
-      title={`${count} ${RESOURCE_LABEL[resource]}`}
-      aria-label={`${count} ${RESOURCE_LABEL[resource]}`}
-    >
+    <span className={`chip${dim ? ' chip-dim' : ''}`} title={label} aria-label={label}>
       <span aria-hidden="true">{RESOURCE_ICON[resource]}</span>
       <b>{count}</b>
     </span>

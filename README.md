@@ -45,44 +45,68 @@ There are no environment variables to set.
 
 - **Four seasons.** Each season lays out a fresh trail one site longer than the last — 6 middle
   sites in spring up to 9 in winter, plus the trailhead and the Trail End.
-- Each player has **two hikers** and starts with **one water bottle** and **two hidden bonus
+- Each player has **two hikers**, **one bottle**, **one campfire token**, and **two hidden bonus
   scoring cards**.
 - On your turn you move **one hiker forward** any distance and take that site's action. Hikers
   never move backwards, and a turn always moves a hiker.
+- **Every site except the trailhead starts each season with a sun or water token on it.** The
+  first hiker to reach that site takes the token on top of the site's own payout. Fresh tokens go
+  out every season.
 - **Hikers cannot share a site.** The only way onto an occupied site is to spend a **campfire
-  token**, gained at Campfire sites (the Trail Map gear waives the cost). The trailhead and the
-  Trail End hold everyone.
-- Reaching the **Trail End** retires that hiker for the season. There it takes exactly one action:
-  claim a park by paying its cost, take a photo for 1 sun, or rest for 1 sun.
-- When every hiker is home the season ends: sun is discarded, canteens refill, the first-player
-  marker passes, and a new trail is built.
+  token** — everyone gets one at the start of each season, and there is no campfire location. The
+  Trail Map gear waives the cost. Unspent campfires do not accumulate.
+- Reaching the **Trail End** retires that hiker for the season and gives it exactly one action:
+  visit a park, reserve a park, buy gear, take a photo, or rest for 1 sun.
+- When every hiker is home the season ends: sun is discarded, bottles refill, campfires reset, and
+  a longer trail is built with a fresh set of season tokens.
 
 ### Resources
 
 | Resource | Use |
 | --- | --- |
 | ☀️ Sun | Gear, photos, and some park costs. **Does not carry between seasons.** |
-| 💧 Water, 🌲 Forest, ⛰️ Mountain, 🐾 Wildlife | Park costs. Carry over between seasons. |
-| 🧴 Water bottle | One wild resource per season. Refills at a Spring site or at the season break. |
-| 🔥 Campfire token | Spend to move onto a site another hiker occupies. |
+| 💧 Water, 🌲 Tree, ⛰️ Mountain | Park costs. Carry over between seasons. |
+| 🐾 Wildlife | **Not a cost of its own — a wildcard** that pays for any one resource. |
+| 🔥 Campfire token | Spend to move onto a site another hiker occupies. One per player per season. |
+
+### The camera
+
+One camera exists in the game. A hiker stopping at a **Camera Point** either takes it — and may
+immediately shoot for 1 sun — or leaves it and takes a **bottle** card instead.
+
+- A photo costs **2 sun**, or **1 sun while you hold the camera** (the Tripod gear gives the same
+  price without it).
+- The next hiker to reach a Camera Point takes the camera off whoever is carrying it.
+- Ending your trail lets you take another photo at the Trail End.
+
+### Bottles
+
+A bottle converts **1 water into something else, once per season**, at any point on your turn:
+Sun Flask (1 water → 2 sun), Stone Flask (1 water → 1 mountain), Pine Flask (1 water → 1 tree).
+They refill at the season break, and a **Spring** site refills one on the spot. Everyone starts
+with one; more come from declining the camera.
+
+### Prizes for being first
+
+- The **first player to buy gear each season** pays 1 sun less.
+- The **first player to reserve a park each season** takes the **first player token**: they lead
+  the next season, and whoever holds it at the end of the game scores 1 VP.
 
 ### Scoring
 
 - Park cards score their printed VP (3–6).
 - Photos score 1 VP each, 2 VP with the Photo Album.
 - The two hidden bonus cards score at game end.
+- The first player token scores 1 VP.
 - Leftover resources score 1 VP per 3.
 - Ties break on most parks, then most photos.
 
 ### House rules and interpretations
 
-The published game is the reference, but a few things are our own reading, chosen for a clean
-single-player experience:
-
 - Sun is discarded at the end of each season; every other resource is kept.
 - Leftover resources are worth 1 VP per 3 rather than nothing.
-- Campfires are tokens you collect and spend, rather than a site-sharing state.
-- Gear is bought with sun at the start of your turn, one card per turn.
+- Photos cost 2 sun at full price and 1 sun with the camera, so the camera is worth chasing.
+- Gear is bought only at the Trail End, one card per hiker that arrives there.
 - Two bonus scoring cards per player replace the published year-card bonuses.
 
 ## The CPU opponents
@@ -94,12 +118,14 @@ up by walking past sites.
 | Opponent | Style |
 | --- | --- |
 | **Ranger Ada** | Banks resources, converts them into the highest-value parks in reach. |
-| **Scout Bo** | Builds a gear and photo engine first, then picks off cheap parks. |
-| **Blazer Cy** | Tempo and denial: campfires, contested sites, and the site you wanted. |
+| **Scout Bo** | Chases the camera, builds a photo and gear engine, then picks off cheap parks. |
+| **Blazer Cy** | Tempo and denial: season tokens, the first player token, and the site you wanted. |
 
-The evaluation function values each resource by what the currently reachable park cards need,
-then subtracts the opportunity cost of every stop a move walks past — the season ends when both
-hikers are home, so a long stride is a spent turn. `src/dev/` holds the benchmarks that keep them
+The evaluation function values each resource by what the currently reachable park cards need
+(counting the season token still sitting on a site), then subtracts the opportunity cost of every
+stop a move walks past — the season ends when both hikers are home, so a long stride is a spent
+turn. A site someone is standing on counts as a partial future stop, since it usually clears
+before the season ends. `src/dev/` holds the benchmarks that keep them
 honest:
 
 - `baseline.test.ts` plays them against a shortest-step bot that maximizes turns taken, and fails
@@ -108,8 +134,8 @@ honest:
   than 20% apart in strength.
 - `selfplay.test.ts` checks the park deck stays deep enough for four seasons.
 
-Current results (40 games each): the CPUs average 38–42 points and beat the shortest-step
-baseline, which lands around 36–38.
+Current results (40 games each): the CPUs average 43–45 points against a shortest-step baseline
+that lands around 42–44, and take about 33 stops a game to the baseline's 41.
 
 ## Park artwork
 

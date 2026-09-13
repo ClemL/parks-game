@@ -1,6 +1,7 @@
 import type { GameState } from '../game/types';
 import { occupants, siteDef } from '../game/engine';
 import type { MoveOption } from '../game/engine';
+import { RESOURCE_ICON } from './Bits';
 
 interface Props {
   state: GameState;
@@ -20,6 +21,7 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
       {state.trail.map((kind, index) => {
         const def = siteDef(kind);
         const here = occupants(state, index);
+        const token = state.siteTokens[index];
         const options = interactive ? movesFor(index) : [];
         const target = options[0];
         const needsFire = target?.useCampfire ?? false;
@@ -46,13 +48,20 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
               disabled={!target}
               onClick={() => target && onMove(target)}
               title={target ? `Move here${needsFire ? ' (spends a campfire)' : ''}` : def.text}
-              aria-label={`${def.name}. ${def.text}${target ? ' Move here.' : ''}`}
+              aria-label={`${def.name}. ${def.text}${
+                token ? ` A ${token} season token is still here.` : ''
+              }${target ? ' Move here.' : ''}`}
             >
               <span className="site-index">{index === 0 ? 'start' : isEnd ? 'end' : index}</span>
               <span className="site-icon" aria-hidden="true">
                 {def.icon}
               </span>
               <span className="site-name">{def.name}</span>
+              {token && (
+                <span className="site-token" title={`First hiker here also takes 1 ${token}`}>
+                  <span aria-hidden="true">{RESOURCE_ICON[token]}</span>
+                </span>
+              )}
               {needsFire && <span className="site-fire-badge">🔥 share</span>}
             </button>
 

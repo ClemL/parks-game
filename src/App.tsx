@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGame } from './hooks/useGame';
 import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
-import { GearRow } from './components/GearRow';
 import { ParkCardView } from './components/ParkCardView';
-import { DecisionModal, ScoreboardModal, SeasonEndModal } from './components/Modals';
+import { DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
 import { CreditsModal, RulesModal } from './components/RulesModal';
-import { affordableGear, canClaim, SEASONS, siteDef } from './game/engine';
+import { canClaim, SEASONS, siteDef } from './game/engine';
 import { PARKS } from './game/data/parks';
 import { loadParkArt, type ArtMap } from './art/parkArt';
 
@@ -48,7 +47,6 @@ export default function App() {
   );
 
   const human = state.players[0];
-  const gearOptions = isHumanTurn && !state.pending ? affordableGear(state) : [];
   const activePlayer = state.players[state.current];
   const reservedBy = useMemo(() => {
     const map = new Map<string, string>();
@@ -66,8 +64,8 @@ export default function App() {
     if (moves.length === 0) return 'Both of your hikers are home for the season.';
     const fireOnly = moves.every((m) => m.useCampfire);
     return fireOnly
-      ? 'Every open site is taken — spend a campfire to share one, or walk to the Trail End.'
-      : 'Pick a hiker, then click a highlighted site to move there.';
+      ? 'Every open site is taken — spend your campfire to share one, or walk to the Trail End.'
+      : 'Pick a hiker, then click a highlighted site. Every site holds a season token for whoever gets there first.';
   })();
 
   return (
@@ -85,7 +83,10 @@ export default function App() {
 
         <div className="seasons" aria-label={`Season ${state.season} of ${SEASONS}`}>
           {SEASON_NAMES.map((name, i) => (
-            <span key={name} className={`season-pip${i + 1 === state.season ? ' season-now' : ''}${i + 1 < state.season ? ' season-past' : ''}`}>
+            <span
+              key={name}
+              className={`season-pip${i + 1 === state.season ? ' season-now' : ''}${i + 1 < state.season ? ' season-past' : ''}`}
+            >
               {name}
             </span>
           ))}
@@ -130,7 +131,9 @@ export default function App() {
               moves={moves}
               selectedHiker={selectedHiker}
               onSelectHiker={game.setSelectedHiker}
-              onMove={(option) => dispatch({ type: 'move', hikerId: option.hikerId, to: option.to, useCampfire: option.useCampfire })}
+              onMove={(option) =>
+                dispatch({ type: 'move', hikerId: option.hikerId, to: option.to, useCampfire: option.useCampfire })
+              }
               interactive={isHumanTurn && !state.pending}
             />
           </section>
@@ -160,18 +163,24 @@ export default function App() {
           <section className="panel">
             <div className="panel-head">
               <h2>Gear shop</h2>
-              <span className="muted">Buy with sun before you move</span>
+              <span className="muted">
+                Bought at the Trail End
+                {state.gearDiscountAvailable ? ' · first buyer this season saves 1 ☀️' : ''}
+              </span>
             </div>
-            <GearRow
-              state={state}
-              canBuy={(id) => gearOptions.some((g) => g.id === id)}
-              onBuy={(id) => dispatch({ type: 'buy-gear', gearId: id })}
-            />
+            <GearShelf state={state} />
           </section>
 
           <section className="panel">
             <div className="panel-head">
               <h2>Trail log</h2>
+              <span className="muted">
+                {state.cameraHolder === null
+                  ? 'The camera is still on the trail'
+                  : state.players[state.cameraHolder].isHuman
+                    ? 'You hold the camera 📷'
+                    : `${state.players[state.cameraHolder].name} holds the camera 📷`}
+              </span>
             </div>
             <ol className="log">
               {state.log
@@ -196,7 +205,14 @@ export default function App() {
 
         <aside className="players">
           {state.players.map((player) => (
-            <PlayerPanel key={player.index} player={player} state={state} art={art} revealBonuses={state.phase === 'game-over'} />
+            <PlayerPanel
+              key={player.index}
+              player={player}
+              state={state}
+              art={art}
+              revealBonuses={state.phase === 'game-over'}
+              onUseBottle={player.isHuman ? (bottleId) => dispatch({ type: 'use-bottle', bottleId }) : undefined}
+            />
           ))}
         </aside>
       </main>
@@ -204,8 +220,11 @@ export default function App() {
       <footer className="footer">
         <span>Seed {game.seed}</span>
         <span>
-          Park photographs from Wikipedia / Wikimedia Commons — see <button type="button" className="link" onClick={() => setShowCredits(true)}>credits</button>. Not
-          affiliated with Keymaster Games.
+          Park photographs from Wikipedia / Wikimedia Commons — see{' '}
+          <button type="button" className="link" onClick={() => setShowCredits(true)}>
+            credits
+          </button>
+          . Not affiliated with Keymaster Games.
         </span>
       </footer>
 

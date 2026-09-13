@@ -1,6 +1,6 @@
 import type { GameState, Player } from '../game/types';
 import { RESOURCES } from '../game/types';
-import { bonusCardById, canteensAvailable } from '../game/engine';
+import { bonusCardById, bottleDef, usableBottles } from '../game/engine';
 import { ResourceChip } from './Bits';
 import type { ArtMap } from '../art/parkArt';
 import { ParkCardView } from './ParkCardView';
@@ -10,25 +10,34 @@ export function PlayerPanel({
   state,
   art,
   revealBonuses,
+  onUseBottle,
 }: {
   player: Player;
   state: GameState;
   art: ArtMap;
   revealBonuses: boolean;
+  onUseBottle?: (bottleId: string) => void;
 }) {
   const active = state.current === player.index && state.phase === 'playing';
   const vp = player.parks.reduce((sum, p) => sum + p.vp, 0);
-  const canteens = canteensAvailable(player);
+  const usable = new Set(usableBottles(player).map((b) => b.id));
+  const canUseBottles = !!onUseBottle && active && !state.pending;
 
   return (
     <section className={`player${active ? ' player-active' : ''}`} style={{ borderColor: player.color }}>
       <header className="player-head">
         <span className="player-dot" style={{ background: player.color }} aria-hidden="true" />
-        <h3>
-          {player.name}
-          {player.isHuman ? ' (you)' : ''}
-        </h3>
-        {state.firstPlayer === player.index && <span className="badge" title="First player">1st</span>}
+        <h3>{player.isHuman && player.name !== 'You' ? `${player.name} (you)` : player.name}</h3>
+        {state.firstPlayer === player.index && (
+          <span className="badge" title="First player token — sets turn order and scores 1 VP">
+            1st
+          </span>
+        )}
+        {state.cameraHolder === player.index && (
+          <span className="badge badge-camera" title="Holds the camera — photos cost 1 sun">
+            📷
+          </span>
+        )}
         <span className="player-vp" title="Park points so far">
           {vp} VP
         </span>
@@ -38,18 +47,12 @@ export function PlayerPanel({
         {RESOURCES.map((r) => (
           <ResourceChip key={r} resource={r} count={player.resources[r] ?? 0} dim={(player.resources[r] ?? 0) === 0} />
         ))}
-        <span className="chip" title={`${canteens} of ${player.canteens.total} canteens full (each is one wild resource)`}>
-          <span aria-hidden="true">🧴</span>
-          <b>
-            {canteens}/{player.canteens.total}
-          </b>
-        </span>
         <span className="chip" title="Campfire tokens: spend one to share an occupied site">
           <span aria-hidden="true">🔥</span>
           <b>{player.campfires}</b>
         </span>
         <span className="chip" title="Photos taken">
-          <span aria-hidden="true">📷</span>
+          <span aria-hidden="true">📸</span>
           <b>{player.photos}</b>
         </span>
       </div>
@@ -62,6 +65,44 @@ export function PlayerPanel({
               {h.finished ? '🏕️' : `#${h.position}`}
             </span>
           ))}
+        </span>
+      </div>
+
+      <div className="player-row">
+        <span className="player-label">Bottles</span>
+        <span className="player-bottles">
+          {player.bottles.map((bottle) => {
+            const def = bottleDef(bottle.kind);
+            const ready = !bottle.used && usable.has(bottle.id);
+            const label = `${def.name}: 1 water → ${Object.entries(def.gain)
+              .map(([r, n]) => `${n} ${r === 'forest' ? 'tree' : r}`)
+              .join(' + ')}`;
+            if (canUseBottles) {
+              return (
+                <button
+                  key={bottle.id}
+                  type="button"
+                  className={`bottle${bottle.used ? ' bottle-used' : ''}${ready ? ' bottle-ready' : ''}`}
+                  disabled={!ready}
+                  onClick={() => onUseBottle?.(bottle.id)}
+                  title={bottle.used ? `${def.name} — already used this season` : `Use — ${label}`}
+                >
+                  <span aria-hidden="true">{def.icon}</span> {def.name}
+                  {bottle.used ? ' (used)' : ''}
+                </button>
+              );
+            }
+            return (
+              <span
+                key={bottle.id}
+                className={`bottle${bottle.used ? ' bottle-used' : ''}`}
+                title={bottle.used ? `${def.name} — already used this season` : label}
+              >
+                <span aria-hidden="true">{def.icon}</span> {def.name}
+                {bottle.used ? ' (used)' : ''}
+              </span>
+            );
+          })}
         </span>
       </div>
 

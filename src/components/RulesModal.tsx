@@ -1,29 +1,28 @@
 import { Modal } from './Modals';
 import { GEAR } from '../game/data/gear';
 import { BONUS_CARDS } from '../game/data/bonuses';
-import { SITES } from '../game/data/sites';
-import type { SiteKind } from '../game/types';
+import { BOTTLES, PHOTO_COST, PHOTO_COST_DISCOUNTED, SITES } from '../game/data/sites';
+import type { BottleKind, SiteKind } from '../game/types';
 
 const SITE_ORDER: SiteKind[] = [
   'sun',
   'water',
   'forest',
   'mountain',
-  'animal',
+  'wild',
+  'double-sun',
   'double-water',
   'double-forest',
   'double-mountain',
-  'double-sun',
   'water-forest',
   'mountain-sun',
-  'animal-forest',
-  'vista',
-  'campfire',
-  'photo',
-  'canteen',
-  'reservation',
+  'forest-sun',
+  'spring',
+  'camera',
   'trail-end',
 ];
+
+const BOTTLE_ORDER: BottleKind[] = ['sun-flask', 'stone-flask', 'pine-flask'];
 
 export function RulesModal({ onClose }: { onClose: () => void }) {
   return (
@@ -39,25 +38,79 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           that site&rsquo;s action. Hikers never move backwards.
         </li>
         <li>
-          <b>Hikers cannot share a site.</b> The only way onto an occupied site is to spend a <b>campfire token</b> (gained
-          at Campfire sites) — or to own the Trail Map, which waives the cost. The trailhead and Trail End hold everyone.
+          <b>Every site except the trailhead starts the season with a sun or water token on it.</b> The first hiker to
+          reach that site takes the token on top of the site&rsquo;s own action. Fresh tokens go out every season.
         </li>
         <li>
-          Reaching the <b>Trail End</b> retires that hiker for the season: claim one park by paying its cost, take a photo
-          for 1 sun, or rest for 1 sun. When all hikers are home, the season ends.
+          <b>Hikers cannot share a site.</b> The only way onto an occupied site is to spend a <b>campfire token</b> —
+          everyone starts each season with one — or to own the Trail Map, which waives the cost. There is no campfire
+          site: a token you do not spend is simply gone at the season break.
+        </li>
+        <li>
+          Reaching the <b>Trail End</b> retires that hiker for the season and gives it exactly one action: visit a park,
+          reserve a park, buy gear, take a photo, or rest for 1 sun. When all hikers are home, the season ends.
         </li>
       </ul>
 
       <h3>Resources</h3>
       <ul>
-        <li>Sun ☀️, water 💧, forest 🌲, mountain ⛰️ and wildlife 🐾 are collected along the trail and spent on parks.</li>
+        <li>Sun ☀️, water 💧, trees 🌲 and mountain ⛰️ are collected along the trail and spent on park cards.</li>
         <li>
-          Your <b>water bottle</b> 🧴 is one wild resource per season. It empties when used and refills at a Spring site or
-          at the start of the next season.
+          <b>Wildlife 🐾 is not a resource you spend on a specific cost — it is a wildcard</b> that pays for any one
+          resource. No park asks for it by name.
         </li>
         <li>
           <b>Sun does not keep between seasons.</b> Spend it on gear and photos before the season ends. Everything else
           carries over.
+        </li>
+      </ul>
+
+      <h3>The camera</h3>
+      <ul>
+        <li>
+          One camera exists. A hiker stopping at a <b>Camera Point</b> either takes it — and may immediately shoot for{' '}
+          {PHOTO_COST_DISCOUNTED} sun — or leaves it and takes a <b>bottle</b> instead.
+        </li>
+        <li>
+          A photo costs <b>{PHOTO_COST} sun</b> normally and <b>{PHOTO_COST_DISCOUNTED} sun while you hold the camera</b>.
+          Each photo scores 1 VP, or 2 VP with the Photo Album.
+        </li>
+        <li>The next hiker to visit a Camera Point takes the camera from whoever has it. Ending your trail lets you shoot again.</li>
+      </ul>
+
+      <h3>Bottles</h3>
+      <ul>
+        <li>
+          Everyone starts with one bottle. A bottle converts <b>1 water</b> into something else, <b>once per season</b>,
+          at any point on your turn.
+        </li>
+        <li>Bottles refill at the season break, and a <b>Spring</b> site refills one on the spot.</li>
+      </ul>
+      <table className="rules-table">
+        <tbody>
+          {BOTTLE_ORDER.map((kind) => (
+            <tr key={kind}>
+              <td className="rules-icon">{BOTTLES[kind].icon}</td>
+              <td>
+                <b>{BOTTLES[kind].name}</b>
+              </td>
+              <td>
+                1 water →{' '}
+                {Object.entries(BOTTLES[kind].gain)
+                  .map(([r, n]) => `${n} ${r === 'forest' ? 'tree' : r}`)
+                  .join(' + ')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h3>Prizes for being first</h3>
+      <ul>
+        <li>The <b>first player to buy gear each season</b> pays 1 sun less for it.</li>
+        <li>
+          The <b>first player to reserve a park each season</b> takes the <b>first player token</b>: they lead the next
+          season, and whoever holds it at the end scores 1 VP.
         </li>
       </ul>
 
@@ -66,6 +119,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <li>Each park card scores its printed VP.</li>
         <li>Each photo scores 1 VP, or 2 VP with the Photo Album.</li>
         <li>Your two hidden <b>bonus cards</b> score at the end of the game.</li>
+        <li>The first player token scores 1 VP.</li>
         <li>Leftover resources score 1 VP per 3 (house rule).</li>
         <li>Ties go to the most parks, then the most photos.</li>
       </ul>
@@ -85,7 +139,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         </tbody>
       </table>
 
-      <h3>Gear (bought with sun, before you move)</h3>
+      <h3>Gear (bought with sun at the Trail End)</h3>
       <table className="rules-table">
         <tbody>
           {GEAR.map((g) => (
@@ -121,10 +175,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           <b>Ranger Ada</b> banks resources and converts them into the highest-value parks she can reach.
         </li>
         <li>
-          <b>Scout Bo</b> builds a gear and photo engine, then picks off cheap parks.
+          <b>Scout Bo</b> chases the camera, builds a photo and gear engine, then picks off cheap parks.
         </li>
         <li>
-          <b>Blazer Cy</b> plays for tempo: campfires, contested sites, and the site you were about to take.
+          <b>Blazer Cy</b> plays for tempo: season tokens, the first player token, and the site you were about to take.
         </li>
       </ul>
       <p className="modal-note">

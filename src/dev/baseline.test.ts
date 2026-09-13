@@ -1,27 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, claimableParks, createGame, legalMoves } from '../game/engine';
+import {
+  affordableGear,
+  applyAction,
+  claimableParks,
+  createGame,
+  legalMoves,
+  photoCost,
+  reservableParks,
+} from '../game/engine';
 import { aiAction } from '../game/ai';
 import type { GameAction, GameState } from '../game/types';
-import { RESOURCES } from '../game/types';
 
 /** Deliberately simple opponent: always step to the nearest open site, claim the
  *  best affordable park at the end. Maximizes the number of turns taken. */
 function baselineAction(state: GameState): GameAction {
   if (state.pending) {
     const p = state.pending;
-    if (p.kind === 'vista') {
-      const player = state.players[p.player];
-      const pick = RESOURCES.reduce((a, r) => ((player.resources[r] ?? 0) < (player.resources[a] ?? 0) ? r : a), 'sun' as const);
-      return { type: 'choose-resource', resource: pick };
-    }
-    if (p.kind === 'photo') return { type: 'choose-photo', take: (state.players[p.player].resources.sun ?? 0) >= 2 };
-    if (p.kind === 'reservation') {
-      const best = [...state.parkRow].sort((a, b) => b.vp - a.vp)[0];
-      return { type: 'choose-reservation', parkId: best?.id ?? '' };
-    }
+    if (p.stage === 'take-photo') return { type: 'camera-photo', take: true };
+    if (p.kind === 'camera') return { type: 'camera', option: 'take-camera' };
+    const player = state.players[p.player];
     const best = [...claimableParks(state, p.player)].sort((a, b) => b.vp - a.vp)[0];
     if (best) return { type: 'trail-end', option: 'claim-park', parkId: best.id };
-    return { type: 'trail-end', option: (state.players[p.player].resources.sun ?? 0) >= 1 ? 'photo' : 'sun' };
+    const reserve = [...reservableParks(state)].sort((a, b) => b.vp - a.vp)[0];
+    if (reserve && state.season < 4) {
+      return { type: 'trail-end', option: 'reserve-park', parkId: reserve.id };
+    }
+    const gear = affordableGear(state, p.player)[0];
+    if (gear) return { type: 'trail-end', option: 'buy-gear', gearId: gear.id };
+    if ((player.resources.sun ?? 0) >= photoCost(state, p.player)) {
+      return { type: 'trail-end', option: 'photo' };
+    }
+    return { type: 'trail-end', option: 'rest' };
   }
   const moves = legalMoves(state).filter((m) => !m.useCampfire);
   const pool = moves.length > 0 ? moves : legalMoves(state);

@@ -1,8 +1,18 @@
 import type { ArtMap } from '../art/parkArt';
-import { bonusCardById, canteensAvailable, claimableParks, effectiveCost, reservableParks, SEASONS, siteDef } from '../game/engine';
-import type { GameAction, GameState, Resource } from '../game/types';
-import { RESOURCES } from '../game/types';
-import { RESOURCE_ICON, RESOURCE_LABEL, CostRow } from './Bits';
+import {
+  affordableGear,
+  bonusCardById,
+  canAffordPhoto,
+  claimableParks,
+  effectiveCost,
+  gearCost,
+  photoCost,
+  reservableParks,
+  SEASONS,
+} from '../game/engine';
+import type { GameAction, GameState } from '../game/types';
+import { COST_RESOURCES } from '../game/types';
+import { CostRow } from './Bits';
 import { ParkCardView } from './ParkCardView';
 
 export function Modal({
@@ -45,88 +55,95 @@ export function DecisionModal({
 }) {
   const pending = state.pending!;
   const player = state.players[pending.player];
-  const site = siteDef(state.trail[pending.siteIndex]);
+  const cost = photoCost(state, player.index);
 
-  if (pending.kind === 'vista') {
+  if (pending.stage === 'take-photo') {
     return (
-      <Modal title="Vista — take any one resource">
-        <p className="modal-note">{site.text}</p>
+      <Modal title="Camera in hand">
+        <p className="modal-note">
+          You are holding the camera, so a photo costs {cost} sun and scores 1 VP (2 VP with the Photo Album). You can
+          take another at the Trail End.
+        </p>
         <div className="choice-grid">
-          {RESOURCES.map((r: Resource) => (
-            <button key={r} type="button" className="choice" onClick={() => dispatch({ type: 'choose-resource', resource: r })}>
-              <span className="choice-icon" aria-hidden="true">
-                {RESOURCE_ICON[r]}
-              </span>
-              {RESOURCE_LABEL[r]}
-            </button>
-          ))}
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera-photo', take: true })}>
+            <span className="choice-icon" aria-hidden="true">
+              📸
+            </span>
+            Take the photo (−{cost} ☀️)
+          </button>
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera-photo', take: false })}>
+            <span className="choice-icon" aria-hidden="true">
+              🚶
+            </span>
+            Keep walking
+          </button>
         </div>
       </Modal>
     );
   }
 
-  if (pending.kind === 'photo') {
-    const free = player.gear.some((g) => g.effect.kind === 'free-photos');
-    const canPay = free || (player.resources.sun ?? 0) >= 1;
+  if (pending.kind === 'camera') {
+    const holder = state.cameraHolder;
     return (
-      <Modal title="Photo Point">
+      <Modal title="Camera Point">
         <p className="modal-note">
-          A photo scores 1 VP (2 VP with the Photo Album). {free ? 'Your Camera makes photos free.' : 'It costs 1 ☀️ sun.'}
+          {holder === null
+            ? 'The camera is sitting here.'
+            : holder === player.index
+              ? 'You already hold the camera.'
+              : `${state.players[holder].name} is carrying the camera — take it.`}{' '}
+          The camera makes every photo cost 1 sun instead of 2, and the next hiker here takes it from you.
         </p>
         <div className="choice-grid">
-          <button type="button" className="choice" disabled={!canPay} onClick={() => dispatch({ type: 'choose-photo', take: true })}>
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera', option: 'take-camera' })}>
             <span className="choice-icon" aria-hidden="true">
               📷
             </span>
-            Take the photo{free ? '' : ' (−1 ☀️)'}
+            Take the camera
+            <span className="choice-sub">{canAffordPhoto(state, player.index) ? 'then shoot for 1 sun if you like' : 'no sun for a photo yet'}</span>
           </button>
-          <button type="button" className="choice" onClick={() => dispatch({ type: 'choose-photo', take: false })}>
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera', option: 'take-bottle' })}>
             <span className="choice-icon" aria-hidden="true">
-              ☀️
+              🧴
             </span>
-            Skip it, gain 1 sun
+            Leave it, take a bottle
+            <span className="choice-sub">one extra water conversion each season</span>
           </button>
         </div>
       </Modal>
     );
   }
 
-  if (pending.kind === 'reservation') {
-    const options = reservableParks(state);
-    return (
-      <Modal title="Reservation Desk" wide>
-        <p className="modal-note">Reserve one park. It leaves the row and only you may claim it later.</p>
-        <div className="card-strip">
-          {options.map((park) => (
-            <ParkCardView key={park.id} park={park} art={art} onClick={() => dispatch({ type: 'choose-reservation', parkId: park.id })} />
-          ))}
-          {options.length === 0 && <p className="muted">Nothing left to reserve.</p>}
-        </div>
-      </Modal>
-    );
-  }
-
-  // Trail End
+  // Trail End: exactly one action.
   const claimable = claimableParks(state, player.index);
-  const free = player.gear.some((g) => g.effect.kind === 'free-photos');
-  const canPhoto = free || (player.resources.sun ?? 0) >= 1;
+  const reservable = reservableParks(state);
+  const gear = affordableGear(state, player.index);
   return (
     <Modal title="Trail End — one action" wide>
       <p className="modal-note">
-        Claim a park by paying its cost, take a photo, or rest for 1 sun. Canteens ({canteensAvailable(player)} full) cover
-        any single missing resource.
+        Visit a park, reserve one for later, buy a piece of gear, take a photo, or rest. Wildcards 🐾 pay for any
+        resource.
+        {state.gearDiscountAvailable && ' Nobody has bought gear yet this season — the first buyer saves 1 sun.'}
+        {!state.firstPlayerTokenClaimed && ' The first reservation this season also takes the first player token.'}
       </p>
+
+      <h3>Visit a park</h3>
       {claimable.length > 0 ? (
         <div className="card-strip">
           {claimable.map((park) => {
-            const cost = effectiveCost(player, park);
-            const discounted = RESOURCES.some((r) => (cost[r] ?? 0) !== (park.cost[r] ?? 0));
+            const paid = effectiveCost(player, park);
+            const discounted = COST_RESOURCES.some((r) => (paid[r] ?? 0) !== (park.cost[r] ?? 0));
             return (
               <div key={park.id} className="claim-option">
-                <ParkCardView park={park} art={art} affordable onClick={() => dispatch({ type: 'trail-end', option: 'claim-park', parkId: park.id })} />
+                <ParkCardView
+                  park={park}
+                  art={art}
+                  affordable
+                  onClick={() => dispatch({ type: 'trail-end', option: 'claim-park', parkId: park.id })}
+                />
                 {discounted && (
                   <div className="claim-discount">
-                    pay <CostRow cost={cost} /> with your pass
+                    pay <CostRow cost={paid} /> with your pass
                   </div>
                 )}
               </div>
@@ -136,14 +153,62 @@ export function DecisionModal({
       ) : (
         <p className="muted">No park is within reach of your current resources.</p>
       )}
+
+      <h3>Reserve a park{!state.firstPlayerTokenClaimed ? ' (takes the first player token)' : ''}</h3>
+      {reservable.length > 0 ? (
+        <div className="card-strip">
+          {reservable.map((park) => (
+            <ParkCardView
+              key={park.id}
+              park={park}
+              art={art}
+              onClick={() => dispatch({ type: 'trail-end', option: 'reserve-park', parkId: park.id })}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="muted">Nothing left to reserve.</p>
+      )}
+
+      <h3>Buy gear{state.gearDiscountAvailable ? ' (first buyer saves 1 ☀️)' : ''}</h3>
+      {gear.length > 0 ? (
+        <div className="card-strip gear-strip">
+          {gear.map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              className="gear-card affordable clickable"
+              onClick={() => dispatch({ type: 'trail-end', option: 'buy-gear', gearId: card.id })}
+            >
+              <span className="gear-icon" aria-hidden="true">
+                {card.icon}
+              </span>
+              <span className="gear-name">{card.name}</span>
+              <span className="gear-cost">
+                {gearCost(state, card)} ☀️
+                {gearCost(state, card) !== card.cost && <s> {card.cost}</s>}
+              </span>
+              <span className="gear-text">{card.text}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">No gear in the shop is within your sun.</p>
+      )}
+
       <div className="choice-grid">
-        <button type="button" className="choice" disabled={!canPhoto} onClick={() => dispatch({ type: 'trail-end', option: 'photo' })}>
+        <button
+          type="button"
+          className="choice"
+          disabled={!canAffordPhoto(state, player.index)}
+          onClick={() => dispatch({ type: 'trail-end', option: 'photo' })}
+        >
           <span className="choice-icon" aria-hidden="true">
-            📷
+            📸
           </span>
-          Summit photo{free ? '' : ' (−1 ☀️)'}
+          Take a photo (−{cost} ☀️)
         </button>
-        <button type="button" className="choice" onClick={() => dispatch({ type: 'trail-end', option: 'sun' })}>
+        <button type="button" className="choice" onClick={() => dispatch({ type: 'trail-end', option: 'rest' })}>
           <span className="choice-icon" aria-hidden="true">
             ☀️
           </span>
@@ -155,6 +220,7 @@ export function DecisionModal({
 }
 
 export function SeasonEndModal({ state, onContinue }: { state: GameState; onContinue: () => void }) {
+  const first = state.players[state.firstPlayer];
   return (
     <Modal title={`End of season ${state.season}`}>
       <ul className="season-summary">
@@ -163,12 +229,14 @@ export function SeasonEndModal({ state, onContinue }: { state: GameState; onCont
             <span className="player-dot" style={{ background: p.color }} aria-hidden="true" />
             <b>{p.name}</b>: {p.parks.length} park{p.parks.length === 1 ? '' : 's'} ({p.parks.reduce((s, x) => s + x.vp, 0)} VP),{' '}
             {p.photos} photo{p.photos === 1 ? '' : 's'}
+            {p.reserved.length > 0 ? `, ${p.reserved.length} reserved` : ''}
           </li>
         ))}
       </ul>
       <p className="modal-note">
-        Sun is not kept between seasons. Canteens refill, hikers return to the trailhead, and the next trail is one site
-        longer. First player passes to {state.players[(state.firstPlayer + 1) % state.players.length].name}.
+        Sun is not kept between seasons. Bottles refill, everyone gets a fresh campfire token, hikers return to the
+        trailhead, and a new set of sun and water tokens goes out on a longer trail. {first.name} holds the first player
+        token and leads season {state.season + 1}.
       </p>
       <button type="button" className="primary" onClick={onContinue}>
         Begin season {state.season + 1} of {SEASONS}
@@ -188,6 +256,7 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
             <th>Parks</th>
             <th>Photos</th>
             <th>Bonus</th>
+            <th>1st</th>
             <th>Leftover</th>
             <th>Total</th>
           </tr>
@@ -205,7 +274,9 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
                 <td>
                   {score.parkVp} <span className="muted">({player.parks.length})</span>
                 </td>
-                <td>{score.photoVp}</td>
+                <td>
+                  {score.photoVp} <span className="muted">({player.photos})</span>
+                </td>
                 <td>
                   {score.bonusVp}
                   <div className="bonus-detail">
@@ -216,6 +287,7 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
                     ))}
                   </div>
                 </td>
+                <td>{score.firstPlayerVp}</td>
                 <td>{score.leftoverVp}</td>
                 <td>
                   <b>{score.total}</b>
@@ -228,7 +300,11 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
       <div className="reveal">
         {state.players.map((p) => (
           <div key={p.index} className="reveal-row">
-            <b style={{ color: p.color }}>{p.name}</b>
+            <b style={{ color: p.color }}>
+              {p.name}
+              {state.cameraHolder === p.index ? ' 📷' : ''}
+              {p.bottles.length > 1 ? ` · ${p.bottles.length} bottles` : ''}
+            </b>
             {p.bonusCards.map((id) => {
               const card = bonusCardById(id);
               return (
@@ -244,5 +320,27 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
         New game
       </button>
     </Modal>
+  );
+}
+
+/** Small read-only strip: gear is bought at the Trail End, not from here. */
+export function GearShelf({ state }: { state: GameState }) {
+  return (
+    <div className="card-strip gear-strip">
+      {state.gearRow.map((gear) => (
+        <div key={gear.id} className="gear-card" title={gear.text}>
+          <span className="gear-icon" aria-hidden="true">
+            {gear.icon}
+          </span>
+          <span className="gear-name">{gear.name}</span>
+          <span className="gear-cost">
+            {gearCost(state, gear)} ☀️
+            {gearCost(state, gear) !== gear.cost && <s> {gear.cost}</s>}
+          </span>
+          <span className="gear-text">{gear.text}</span>
+        </div>
+      ))}
+      {state.gearRow.length === 0 && <p className="muted">The gear shop is sold out.</p>}
+    </div>
   );
 }
