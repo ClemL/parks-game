@@ -25,7 +25,12 @@ export type SiteKind =
   | 'adv-wildcard'
   | 'adv-swap'
   | 'adv-park'
-  | 'adv-copy';
+  | 'adv-copy'
+  /* advanced sites from the Wildlife expansion */
+  | 'adv-memory'
+  | 'adv-bison'
+  | 'adv-lookout'
+  | 'adv-talk';
 
 export interface SiteDef {
   kind: SiteKind;
@@ -175,7 +180,11 @@ export type DecisionKind =
   | 'wild-swap'
   | 'token-swap'
   | 'park-or-gear'
-  | 'copy-site';
+  | 'copy-site'
+  /* Nightfall: a tent site offers its own action or a campsite */
+  | 'tent'
+  /* Wildlife: the bison trade when you visit its park */
+  | 'bison';
 
 export interface PendingDecision {
   player: number;
@@ -190,6 +199,66 @@ export interface PendingDecision {
   give?: Resource;
   /** True while resolving a site copied from an Overlook. */
   copied?: boolean;
+  /** Decision to return to once this one resolves (the bison interrupts a stop). */
+  resume?: PendingDecision | null;
+}
+
+/** Nightfall campsites: powerful alternates reached by pitching a tent. */
+export interface CampsiteDef {
+  id: string;
+  name: string;
+  icon: string;
+  text: string;
+  /** What camping here does. */
+  effect: CampsiteEffect;
+}
+
+export type CampsiteEffect =
+  | { kind: 'gain'; gain: ResourceBag }
+  /** Hand over `give` to receive `gain`. */
+  | { kind: 'trade'; give: ResourceBag; gain: ResourceBag }
+  /** Trade any single resource for the gain. */
+  | { kind: 'trade-any'; gain: ResourceBag }
+  /** Take a bottle card, and resources alongside it. */
+  | { kind: 'bottle'; count: number; gain?: ResourceBag }
+  /** Pay, refresh the gear row, then take one gear card for free. */
+  | { kind: 'outfitter'; cost: ResourceBag };
+
+export interface Campsite {
+  id: string;
+  /** Player indexes camped here this season; capacity depends on player count. */
+  tents: number[];
+}
+
+/** Season cards are revealed one per season and run for that whole season. */
+export interface SeasonCardDef {
+  id: string;
+  name: string;
+  /** Which season deck it belongs to. */
+  season: 1 | 2 | 3 | 4;
+  text: string;
+  /** Set on cards that only exist with an expansion. */
+  expansion?: Expansion;
+  effect: SeasonEffect;
+}
+
+export type SeasonEffect =
+  /** Gaining `when` at a site also pays `gain`. */
+  | { kind: 'weather'; when: Resource; gain: ResourceBag }
+  /** Photos cost this much less this season. */
+  | { kind: 'cheap-photos'; amount: number }
+  /** Park costs drop by this much this season. */
+  | { kind: 'park-discount'; amount: number }
+  /** Gear costs this much less this season. */
+  | { kind: 'cheap-gear'; amount: number }
+  /** Wildlife: a park action may take the unseen top card of the park deck. */
+  | { kind: 'chance' };
+
+export type Expansion = 'nightfall' | 'wildlife';
+
+export interface ExpansionFlags {
+  nightfall: boolean;
+  wildlife: boolean;
 }
 
 export interface LogEntry {
@@ -202,7 +271,11 @@ export type GamePhase = 'playing' | 'season-end' | 'game-over';
 
 export interface GameState {
   rng: number;
+  expansions: ExpansionFlags;
   season: number;
+  /** The season card in play, and the decks still to be revealed. */
+  seasonCard: SeasonCardDef | null;
+  seasonDeck: SeasonCardDef[];
   /** The order advanced sites join the trail, one more each season. */
   advancedOrder: SiteKind[];
   trail: SiteKind[];
@@ -216,6 +289,11 @@ export interface GameState {
   cameraHolder: number | null;
   /** Cleared each season: gear discounts and the first player token are prizes. */
   gearDiscountsLeft: number;
+  /** Nightfall: trail indexes carrying a tent, and the three campsites in play. */
+  tentSites: number[];
+  campsites: Campsite[];
+  /** Wildlife: which park in the row the bison is standing on. */
+  bison: number | null;
   firstPlayerTokenClaimed: boolean;
   parkRow: ParkCard[];
   parkDeck: ParkCard[];
@@ -241,6 +319,10 @@ export interface FinalScore {
 
 export type GameAction =
   | { type: 'move'; hikerId: string; to: number; useCampfire?: boolean }
+  /** Nightfall: take the trail site's action, or pitch a tent at a campsite. */
+  | { type: 'tent'; option: 'site' | 'camp'; campsiteId?: string }
+  /** Wildlife: the bison's optional trade. */
+  | { type: 'bison'; give?: Resource }
   | { type: 'use-bottle'; bottleId: string }
   /** Camera site: take the camera, or decline it for a bottle card. */
   | { type: 'camera'; option: 'take-camera' | 'take-bottle' }
@@ -253,10 +335,15 @@ export type GameAction =
   | { type: 'copy-site'; siteIndex: number }
   | { type: 'copy-skip' }
   /** Ranger Station: the park and gear actions without walking to the end. */
-  | { type: 'park-or-gear'; option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'skip'; parkId?: string; gearId?: string }
+  | {
+      type: 'park-or-gear';
+      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park' | 'skip';
+      parkId?: string;
+      gearId?: string;
+    }
   | {
       type: 'trail-end';
-      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'photo' | 'rest';
+      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'photo' | 'rest' | 'chance-park';
       parkId?: string;
       gearId?: string;
     }

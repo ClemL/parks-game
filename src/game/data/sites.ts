@@ -84,13 +84,50 @@ export const SITES: Record<SiteKind, SiteDef> = {
     choice: 'copy-site',
     tier: 'advanced',
   },
+
+  /* ------------------------------------- advanced sites: Wildlife expansion */
+  'adv-memory': {
+    kind: 'adv-memory',
+    name: 'Memory Cliffs',
+    icon: '🖼️',
+    text: 'Give up a photo to gain 1 of each resource.',
+    tier: 'advanced',
+  },
+  'adv-bison': {
+    kind: 'adv-bison',
+    name: 'Bison Meadow',
+    icon: '🦬',
+    text: 'Trade 1 resource for a wildcard, then move the bison on one park.',
+    tier: 'advanced',
+  },
+  'adv-lookout': {
+    kind: 'adv-lookout',
+    name: 'Fire Lookout',
+    icon: '🗼',
+    text: 'Gain 1 sun for every hiker further along the trail than you.',
+    tier: 'advanced',
+  },
+  'adv-talk': {
+    kind: 'adv-talk',
+    name: 'Ranger Talk',
+    icon: '📣',
+    text: 'Reserve the top card of the park deck, sight unseen.',
+    tier: 'advanced',
+  },
 };
 
 /** One of each is on the trail every season. */
 export const BASIC_SITES: SiteKind[] = ['forest', 'mountain', 'valley', 'basin', 'waterfall', 'camera'];
 
-/** Shuffled once per game; season N uses the first N of them. */
+/** Base advanced sites. Season 1 always uses the park/gear site, then the rest
+ *  are shuffled in one per season. */
 export const ADVANCED_SITES: SiteKind[] = ['adv-wildcard', 'adv-swap', 'adv-park', 'adv-copy'];
+
+/** The park/gear site is always the first season's advanced site. */
+export const FIRST_ADVANCED_SITE: SiteKind = 'adv-park';
+
+/** Wildlife adds four more, and only three of the pool are used per game. */
+export const WILDLIFE_SITES: SiteKind[] = ['adv-memory', 'adv-bison', 'adv-lookout', 'adv-talk'];
 
 export const BOTTLES: Record<BottleKind, BottleDef> = {
   'sun-flask': {
@@ -140,3 +177,7 @@ export const FIRST_PLAYER_VP = 1;
 export const CAMPFIRES_PER_SEASON = 1;
 /** Nobody may hold more than this many resource tokens at the end of a turn. */
 export const TOKEN_LIMIT = 12;
+
+/** Nightfall: one wildcard covers this many resources when paying a cost. */
+export const WILD_COVERS_NIGHTFALL = 2;
+export const WILD_COVERS_BASE = 1;

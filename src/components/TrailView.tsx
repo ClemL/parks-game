@@ -1,5 +1,5 @@
 import type { GameState } from '../game/types';
-import { occupants, siteDef } from '../game/engine';
+import { hasTent, occupants, siteDef } from '../game/engine';
 import type { MoveOption } from '../game/engine';
 import { RESOURCE_ICON } from './Bits';
 
@@ -22,6 +22,7 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
         const def = siteDef(kind);
         const here = occupants(state, index);
         const token = state.siteTokens[index];
+        const tent = hasTent(state, index);
         const options = interactive ? movesFor(index) : [];
         const target = options[0];
         const needsFire = target?.useCampfire ?? false;
@@ -38,6 +39,8 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
               isEnd ? 'site-finish' : '',
               target ? 'site-target' : '',
               needsFire ? 'site-target-fire' : '',
+              tent ? 'site-tent' : '',
+              siteDef(kind).tier === 'advanced' ? 'site-advanced' : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -52,7 +55,14 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
                 token ? ` A ${token} season token is still here.` : ''
               }${target ? ' Move here.' : ''}`}
             >
-              <span className="site-index">{index === 0 ? 'start' : isEnd ? 'end' : index}</span>
+              <span className="site-index">
+                {index === 0 ? 'start' : isEnd ? 'end' : index}
+                {tent && (
+                  <span className="site-tent-badge" title="Tent site: camp here instead of taking the site action">
+                    ⛺
+                  </span>
+                )}
+              </span>
               <span className="site-icon" aria-hidden="true">
                 {def.icon}
               </span>

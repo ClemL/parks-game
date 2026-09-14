@@ -141,6 +141,67 @@ Scores here run higher than a published game of PARKS (CPUs average 50–55 rath
 because the season tokens add roughly one extra resource per stop. Everything else — claim
 opportunities, the token cap, cost bands — follows the rulebook.
 
+## Expansions
+
+Both published PARKS expansions are implemented and can be switched on or off in the top bar; the
+choice applies to the next new game. Both are on by default.
+
+### Nightfall
+
+- Everyone starts with a **wildcard** token.
+- A wildcard **covers two resources** when paying a cost, instead of one.
+- **Tents** sit on the site before the Trail End and on every other site back toward the trailhead.
+  A hiker landing on a tent site may take that site's action **or** camp at one of the three
+  campsites — camping skips the site's action and its season token.
+- Each campsite holds two tents at four or five players, one below that, and they empty at the
+  season break.
+- Ten more park cards.
+
+| Campsite | Action |
+| --- | --- |
+| Stargazing Point | Gain a star: 1 wildcard |
+| Nightfall Camp | Trade any 1 resource for a wildcard |
+| Forest Clearing | Take 2 bottle cards |
+| Alpine Bivouac | Turn in 1 mountain for 5 sun |
+| Riverside Camp | Take a bottle card and 2 water |
+| Outfitter Camp | Pay 2 sun to replace the gear row, then take a gear card free |
+
+Three of the six are in play each game.
+
+### Wildlife
+
+- A **bison** stands on one park in the row. Visiting that park lets you trade a resource for a
+  wildcard, then the bison moves one park right; when it loops back to the left it refreshes a gear
+  card.
+- **Four more advanced sites** join the pool. Season 1 always uses the Ranger Station and only
+  three of the remaining seven are drawn per game, so no two games offer the same powers.
+- Extra season cards — including the **Season of Chance**, which lets a park action claim the unseen
+  top card of the park deck — and eight more park cards.
+
+| Wildlife site | Action | Source |
+| --- | --- | --- |
+| Memory Cliffs | Give up a photo to gain 1 of each resource | published |
+| Bison Meadow | Trade 1 resource for a wildcard, then move the bison on | our approximation |
+| Fire Lookout | Gain 1 sun per hiker further along the trail | our approximation |
+| Ranger Talk | Reserve the top card of the park deck, sight unseen | our approximation |
+
+Only Memory Cliffs is taken from the published expansion — the other three card texts are not
+published online, so those are ours, built in the same spirit.
+
+### PARKS Europe
+
+Not implemented: it is a **standalone 2026 game**, not an expansion, with its own systems (Via
+Ferrata, fatigue, the Chalet, Conservation Projects) rather than modules that bolt onto this one.
+
+### Season cards (base game)
+
+Researching the expansions turned up a base-game element that was missing here entirely: one
+**season card** is revealed from that season's own deck at the start of each season, and its effect
+runs all season — weather that pays a bonus resource on top of a site's payout, or a discount on
+parks, photos or gear. It is shown above the trail. The published season card also drops a sun or
+water token onto each available park card; that role is already filled here by the season tokens on
+trail sites, so it is left out.
+
 ## The CPU opponents
 
 All three evaluate every legal move each turn and take the highest-value one, so they are
@@ -170,9 +231,15 @@ honest:
   than 20% apart in strength.
 - `selfplay.test.ts` checks the park deck stays deep enough for four seasons.
 
-Current results (40 games each): the CPUs average 49–51 points against a shortest-step baseline
-that lands around 39–40. The gap widened when the rulebook fixes landed — the token cap punishes
-the baseline's hoarding, and it has no idea what to do with a Trading Post.
+Current results with both expansions on (40 games each): the CPUs average 64 points against a
+shortest-step baseline that lands around 49–50. They price the campsites against the site they are
+standing on, trade with the bison, and take a Season of Chance park when nothing on the board beats
+it. With expansions off they average 49–51 against the baseline's 39–40.
+
+Scores run high with the expansions in play — around 70 in a CPU-only table, with 10–11 parks each.
+That is the expansions' own doing (a wildcard covering two resources is a large discount, and the
+campsites trade at generous rates), amplified by the house rule that puts a token on every trail
+site.
 
 ## Park artwork
 

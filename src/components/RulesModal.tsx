@@ -1,9 +1,12 @@
 import { Modal } from './Modals';
 import { GEAR } from '../game/data/gear';
 import { BONUS_CARDS } from '../game/data/bonuses';
+import { CAMPSITES } from '../game/data/campsites';
+import { SEASON_CARDS } from '../game/data/seasons';
 import {
   ADVANCED_SITES,
   BASIC_SITES,
+  WILDLIFE_SITES,
   BOTTLES,
   PHOTO_COST,
   PHOTO_COST_DISCOUNTED,
@@ -145,7 +148,21 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         </tbody>
       </table>
 
+      <h3>Season cards</h3>
+      <ul>
+        <li>
+          One card from that season&rsquo;s own deck is revealed at the start of each season, and its effect runs all
+          season: weather that pays a bonus resource on top of a site&rsquo;s payout, or a discount on parks, photos or
+          gear.
+        </li>
+        <li>The season card in play is shown above the trail.</li>
+      </ul>
+
       <h3>Advanced sites — one more joins the trail each season</h3>
+      <p className="modal-note">
+        Season 1 always uses the Ranger Station; the rest of the pool is shuffled and only three are drawn, so no two
+        games offer the same set.
+      </p>
       <table className="rules-table">
         <tbody>
           {ADVANCED_SITES.map((kind) => (
@@ -155,6 +172,80 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
                 <b>{SITES[kind].name}</b>
               </td>
               <td>{SITES[kind].text}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h3>Nightfall expansion</h3>
+      <ul>
+        <li>Everyone starts with a <b>wildcard</b> token.</li>
+        <li>
+          A wildcard now <b>covers two resources</b> when paying a cost, rather than one.
+        </li>
+        <li>
+          Tents ⛺ sit on the site before the Trail End and every other site back from there. A hiker landing on a tent
+          site may take that site&rsquo;s action <b>or</b> camp at one of the three campsites instead — camping skips the
+          site&rsquo;s action and its season token.
+        </li>
+        <li>
+          Each campsite holds two tents at four or five players, one below that, and the tents come back at the season
+          break.
+        </li>
+        <li>Nightfall also brings ten more park cards.</li>
+      </ul>
+      <table className="rules-table">
+        <tbody>
+          {CAMPSITES.map((camp) => (
+            <tr key={camp.id}>
+              <td className="rules-icon">{camp.icon}</td>
+              <td>
+                <b>{camp.name}</b>
+              </td>
+              <td>{camp.text}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h3>Wildlife expansion</h3>
+      <ul>
+        <li>
+          A <b>bison</b> 🦬 stands on one park in the row. Visiting that park lets you trade a resource for a wildcard,
+          then the bison moves one park to the right. When it loops back to the left it refreshes a gear card.
+        </li>
+        <li>Four more advanced sites join the pool, so fewer of them appear in any one game.</li>
+        <li>Extra season cards, including the Season of Chance, and eight more park cards.</li>
+      </ul>
+      <table className="rules-table">
+        <tbody>
+          {WILDLIFE_SITES.map((kind) => (
+            <tr key={kind}>
+              <td className="rules-icon">{SITES[kind].icon}</td>
+              <td>
+                <b>{SITES[kind].name}</b>
+              </td>
+              <td>{SITES[kind].text}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="modal-note">
+        Of the four Wildlife sites, only Memory Cliffs is taken from the published expansion; the other three are our own
+        approximations, since the card texts are not published online.
+      </p>
+
+      <h3>Season cards in the decks</h3>
+      <table className="rules-table">
+        <tbody>
+          {SEASON_CARDS.map((card) => (
+            <tr key={card.id}>
+              <td>{['', 'Spring', 'Summer', 'Autumn', 'Winter'][card.season]}</td>
+              <td>
+                <b>{card.name}</b>
+                {card.expansion ? ` (${card.expansion})` : ''}
+              </td>
+              <td>{card.text}</td>
             </tr>
           ))}
         </tbody>

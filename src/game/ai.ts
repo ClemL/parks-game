@@ -1,7 +1,11 @@
 import {
   affordableGear,
+  canClaimChance,
   copyableSites,
+  hasTent,
+  openCampsites,
   tokenCount,
+  wildCoverage,
   bag,
   bagTotal,
   bottleDef,
@@ -19,9 +23,11 @@ import {
 } from './engine';
 import { BONUS_CARDS } from './data/bonuses';
 import { FIRST_PLAYER_VP, TOKEN_LIMIT } from './data/sites';
+import { campsiteCapacity } from './data/campsites';
 import { scoringView } from './scoring';
 import type {
   AiPersonality,
+  CampsiteDef,
   GameAction,
   GameState,
   GearCard,
@@ -126,7 +132,7 @@ function targets(state: GameState, player: Player): ParkTarget[] {
   const pool = [...player.reserved, ...state.parkRow.filter((p) => !reservedElsewhere.has(p.id))];
 
   return pool.map((park) => {
-    const cost = effectiveCost(player, park);
+    const cost = effectiveCost(player, park, state);
     const need = bag({});
     let missing = 0;
     for (const r of COST_RESOURCES) {
@@ -173,8 +179,9 @@ function resourceValues(state: GameState, player: Player): Record<Resource, numb
     const squeeze = Math.max(0.12, room / 4);
     for (const r of RESOURCES) values[r] *= squeeze;
   }
-  // A wildcard pays for whatever is scarcest, so it is worth the best of them.
-  values.wild = Math.max(...COST_RESOURCES.map((r) => values[r])) * 1.05;
+  // A wildcard pays for whatever is scarcest - and covers two resources once
+  // Nightfall is in play, so it is worth roughly twice as much then.
+  values.wild = Math.max(...COST_RESOURCES.map((r) => values[r])) * 1.05 * wildCoverage(state);
   return values;
 }
 
@@ -194,17 +201,77 @@ function opponentAppetite(state: GameState, index: number): number {
 function claimUrgency(state: GameState, player: Player, park: ParkCard): number {
   if (player.reserved.some((p) => p.id === park.id)) return 0.18;
   const contenders = state.players.filter(
-    (other) => other.index !== player.index && canClaimSoon(other, park),
+    (other) => other.index !== player.index && canClaimSoon(state, other, park),
   ).length;
   return Math.min(1, 0.3 + 0.22 * contenders);
 }
 
 /** An opponent is a threat to a park when they are one resource away from it. */
-function canClaimSoon(other: Player, park: ParkCard): boolean {
-  const cost = effectiveCost(other, park);
+function canClaimSoon(state: GameState, other: Player, park: ParkCard): boolean {
+  const cost = effectiveCost(other, park, state);
   let missing = 0;
   for (const r of COST_RESOURCES) missing += Math.max(0, cost[r] - (other.resources[r] ?? 0));
-  return missing - (other.resources.wild ?? 0) <= 1;
+  return missing - (other.resources.wild ?? 0) * wildCoverage(state) <= 1;
+}
+
+/** What a night at each open campsite would be worth, best first. */
+function campsiteValue(
+  player: Player,
+  def: CampsiteDef,
+  values: Record<Resource, number>,
+): number {
+  const w = weightsFor(player);
+  const effect = def.effect;
+  switch (effect.kind) {
+    case 'gain':
+      return RESOURCES.reduce((sum, r) => sum + values[r] * (effect.gain[r] ?? 0), 0);
+    case 'trade': {
+      const affordable = COST_RESOURCES.every(
+        (r) => (player.resources[r] ?? 0) >= (effect.give[r] ?? 0),
+      );
+      if (!affordable) return 0;
+      const out = RESOURCES.reduce((sum, r) => sum + values[r] * (effect.gain[r] ?? 0), 0);
+      const paid = COST_RESOURCES.reduce((sum, r) => sum + values[r] * (effect.give[r] ?? 0), 0);
+      return out - paid;
+    }
+    case 'trade-any': {
+      const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+      if (held.length === 0) return 0;
+      const worst = Math.min(...held.map((r) => values[r]));
+      const out = RESOURCES.reduce((sum, r) => sum + values[r] * (effect.gain[r] ?? 0), 0);
+      return out - worst;
+    }
+    case 'bottle': {
+      const extra = effect.gain
+        ? RESOURCES.reduce((sum, r) => sum + values[r] * (effect.gain![r] ?? 0), 0)
+        : 0;
+      return w.bottle * effect.count * 0.9 + extra;
+    }
+    case 'outfitter': {
+      const cost = (effect.cost.sun ?? 0) * values.sun;
+      if ((player.resources.sun ?? 0) < (effect.cost.sun ?? 0)) return 0;
+      // A free gear card, roughly the value of the best one in the deck.
+      return 2.6 * w.gearAppetite - cost;
+    }
+    default:
+      return 0;
+  }
+}
+
+function bestCampsite(
+  state: GameState,
+  player: Player,
+  values: Record<Resource, number>,
+): { def: CampsiteDef; score: number } | null {
+  const capacity = campsiteCapacity(state.players.length);
+  const ranked = openCampsites(state)
+    .filter((def) => {
+      const slot = state.campsites.find((c) => c.id === def.id);
+      return slot ? slot.tents.length < capacity : false;
+    })
+    .map((def) => ({ def, score: campsiteValue(player, def, values) }))
+    .sort((a, b) => b.score - a.score);
+  return ranked[0] ?? null;
 }
 
 /** Value of the best park or gear action, wherever it is offered. */
@@ -220,6 +287,11 @@ function bestParkOrGearValue(
     .map((p) => (p.vp + bonusSynergy(state, player, p)) * claimUrgency(state, player, p))
     .sort((a, b) => b - a)[0];
   if (claim !== undefined) options.push(claim * w.parkClaim * 0.55);
+
+  if (canClaimChance(state, player.index)) {
+    // An unseen park from the deck, priced at the average card.
+    options.push(3.6 * w.parkClaim * 0.5);
+  }
 
   const reserve = reservableParks(state)
     .map((p) => p.vp + bonusSynergy(state, player, p))
@@ -316,11 +388,42 @@ function siteValue(
       value += best !== undefined ? Math.max(0, best - values.water) : 0;
       break;
     }
+    case 'adv-memory':
+      // Trading a photo for one of everything: only worth it with a photo spare.
+      value +=
+        player.photos > 0
+          ? COST_RESOURCES.reduce((sum, r) => sum + values[r], 0) - photoValue(player) * 1.1
+          : 0;
+      break;
+    case 'adv-bison': {
+      const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+      const worst = held.length > 0 ? Math.min(...held.map((r) => values[r])) : 0;
+      value += held.length > 0 ? Math.max(0, values.wild - worst) + 0.2 : 0.2;
+      break;
+    }
+    case 'adv-lookout': {
+      const ahead = state.players.reduce(
+        (sum, other) => sum + other.hikers.filter((h) => !h.finished && h.position > index).length,
+        0,
+      );
+      value += values.sun * ahead;
+      break;
+    }
+    case 'adv-talk':
+      // An unseen park plus, often, the first player token.
+      value += 2.2 + (state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2);
+      break;
     case 'trail-end':
       value += bestTrailEndValue(state, player, values);
       break;
     default:
       break;
+  }
+
+  // Nightfall: a tent site is worth the better of its own action and a campsite.
+  if (hasTent(state, index) && !noCopy) {
+    const camp = bestCampsite(state, player, values);
+    if (camp && camp.score > value) value = camp.score;
   }
 
   value += opponentAppetite(state, index) * w.block;
@@ -433,6 +536,27 @@ function cameraDecision(state: GameState, player: Player): GameAction {
   return { type: 'camera', option: cameraWorth >= w.bottle ? 'take-camera' : 'take-bottle' };
 }
 
+/** At a tent site, camp only when a campsite beats the site's own action. */
+function tentDecision(state: GameState, player: Player): GameAction {
+  const pending = state.pending!;
+  const values = resourceValues(state, player);
+  const camp = bestCampsite(state, player, values);
+  // Price the site itself without the tent option, so the two can be compared.
+  const own = siteValue(state, player, pending.siteIndex, values, true);
+  return camp && camp.score > own
+    ? { type: 'tent', option: 'camp', campsiteId: camp.def.id }
+    : { type: 'tent', option: 'site' };
+}
+
+/** The bison's trade: hand over the least useful resource for a wildcard. */
+function bisonDecision(state: GameState, player: Player): GameAction {
+  const values = resourceValues(state, player);
+  const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+  if (held.length === 0) return { type: 'bison' };
+  const worst = held.reduce((a, r) => (values[r] < values[a] ? r : a), held[0]);
+  return values.wild > values[worst] ? { type: 'bison', give: worst } : { type: 'bison' };
+}
+
 /** Trade the least useful resource for a wildcard, or pass. */
 function wildSwapDecision(state: GameState, player: Player): GameAction {
   const values = resourceValues(state, player);
@@ -487,17 +611,28 @@ function parkOrGearDecision(state: GameState, player: Player): GameAction {
 function parkOrGearChoice(
   state: GameState,
   player: Player,
-): { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string } | null {
+): {
+  option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
+  parkId?: string;
+  gearId?: string;
+} | null {
   const w = weightsFor(player);
   const values = resourceValues(state, player);
-  const options: { score: number; choice: { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string } }[] = [];
+  const options: {
+    score: number;
+    choice: {
+      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
+      parkId?: string;
+      gearId?: string;
+    };
+  }[] = [];
 
   const claim = claimableParks(state, player.index)
     .map((p) => ({ p, score: p.vp + bonusSynergy(state, player, p) }))
     .sort((a, b) => b.score - a.score)[0];
   if (claim) {
     const lastChance = state.season >= 3;
-    const cost = bagTotal(effectiveCost(player, claim.p));
+    const cost = bagTotal(effectiveCost(player, claim.p, state));
     if (lastChance || claim.score >= 2.5 || claim.score / Math.max(1, cost) >= 0.6) {
       options.push({ score: claim.score * w.parkClaim * 0.5, choice: { option: 'claim-park', parkId: claim.p.id } });
     }
@@ -519,6 +654,11 @@ function parkOrGearChoice(
     .sort((a, b) => b.score - a.score)[0];
   if (gear && gear.score > 0.5) {
     options.push({ score: gear.score, choice: { option: 'buy-gear', gearId: gear.g.id } });
+  }
+
+  // A Season of Chance park is worth taking when nothing on the board is better.
+  if (canClaimChance(state, player.index)) {
+    options.push({ score: 3.6 * w.parkClaim * 0.42, choice: { option: 'chance-park' } });
   }
 
   options.sort((a, b) => b.score - a.score);
@@ -555,13 +695,18 @@ function parkOrGearValueOf(
   state: GameState,
   player: Player,
   values: Record<Resource, number>,
-  choice: { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string },
+  choice: {
+    option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
+    parkId?: string;
+    gearId?: string;
+  },
 ): number {
   const w = weightsFor(player);
   if (choice.option === 'claim-park') {
     const park = claimableParks(state, player.index).find((p) => p.id === choice.parkId);
     return park ? (park.vp + bonusSynergy(state, player, park)) * w.parkClaim * 0.5 : 0;
   }
+  if (choice.option === 'chance-park') return 3.6 * w.parkClaim * 0.42;
   if (choice.option === 'reserve-park') {
     const park = reservableParks(state).find((p) => p.id === choice.parkId);
     const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
@@ -596,6 +741,10 @@ export function aiAction(state: GameState): GameAction | null {
 
   if (state.pending) {
     switch (state.pending.kind) {
+      case 'tent':
+        return tentDecision(state, player);
+      case 'bison':
+        return bisonDecision(state, player);
       case 'wild-swap':
         return wildSwapDecision(state, player);
       case 'token-swap':

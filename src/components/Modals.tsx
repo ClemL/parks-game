@@ -2,11 +2,14 @@ import type { ArtMap } from '../art/parkArt';
 import {
   affordableGear,
   bonusCardById,
+  campsiteDef,
   canAffordPhoto,
+  canClaimChance,
   claimableParks,
   copyableSites,
   effectiveCost,
   gearCost,
+  openCampsites,
   photoCost,
   reservableParks,
   SEASONS,
@@ -91,6 +94,24 @@ function ParkAndGearOptions({
         </div>
       ) : (
         <p className="muted">No park is within reach of your current resources.</p>
+      )}
+
+      {canClaimChance(state, player.index) && (
+        <>
+          <h3>Take a chance</h3>
+          <p className="modal-note">
+            {state.seasonCard?.name}: claim the unseen top card of the park deck, paying whatever it turns out to cost.
+          </p>
+          <div className="choice-grid">
+            <button type="button" className="choice" onClick={() => dispatch({ type: actionType, option: 'chance-park' })}>
+              <span className="choice-icon" aria-hidden="true">
+                🎲
+              </span>
+              Claim the top of the deck
+              <span className="choice-sub">{state.parkDeck.length} cards left</span>
+            </button>
+          </div>
+        </>
       )}
 
       <h3>Reserve a park{!state.firstPlayerTokenClaimed ? ' (takes the first player token)' : ''}</h3>
@@ -203,6 +224,70 @@ export function DecisionModal({
             </span>
             Leave it, take a bottle
             <span className="choice-sub">one extra water conversion each season</span>
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (pending.kind === 'tent') {
+    const site = siteDef(state.trail[pending.siteIndex]);
+    const open = openCampsites(state);
+    return (
+      <Modal title="Pitch a tent?" wide>
+        <p className="modal-note">
+          This site carries a tent. Take its own action, or camp for the night instead — camping skips the site&rsquo;s
+          action and its season token.
+        </p>
+        <div className="choice-grid">
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'tent', option: 'site' })}>
+            <span className="choice-icon" aria-hidden="true">
+              {site.icon}
+            </span>
+            {site.name}
+            <span className="choice-sub">{site.text}</span>
+          </button>
+          {open.map((camp) => (
+            <button
+              key={camp.id}
+              type="button"
+              className="choice choice-camp"
+              onClick={() => dispatch({ type: 'tent', option: 'camp', campsiteId: camp.id })}
+            >
+              <span className="choice-icon" aria-hidden="true">
+                {camp.icon}
+              </span>
+              {camp.name}
+              <span className="choice-sub">{camp.text}</span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+    );
+  }
+
+  if (pending.kind === 'bison') {
+    const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+    return (
+      <Modal title="The bison is here">
+        <p className="modal-note">
+          Trade one resource for a wildcard 🐾, then the bison moves on to the next park. Wildcards pay for any
+          resource — two of them each, with Nightfall in play.
+        </p>
+        <div className="choice-grid">
+          {held.map((r: Resource) => (
+            <button key={r} type="button" className="choice" onClick={() => dispatch({ type: 'bison', give: r })}>
+              <span className="choice-icon" aria-hidden="true">
+                {RESOURCE_ICON[r]}
+              </span>
+              Trade 1 {RESOURCE_LABEL[r]}
+            </button>
+          ))}
+          <button type="button" className="choice" onClick={() => dispatch({ type: 'bison' })}>
+            <span className="choice-icon" aria-hidden="true">
+              🦬
+            </span>
+            Just watch it go
           </button>
         </div>
       </Modal>
@@ -386,6 +471,12 @@ export function SeasonEndModal({ state, onContinue }: { state: GameState; onCont
         and a new set of sun and water tokens goes out on a longer trail with one more advanced site. {first.name} holds
         the first player token and leads season {state.season + 1}.
       </p>
+      {state.seasonDeck.find((c) => c.season === state.season + 1) && (
+        <p className="modal-note">
+          Next up: <b>{state.seasonDeck.find((c) => c.season === state.season + 1)!.name}</b> —{' '}
+          {state.seasonDeck.find((c) => c.season === state.season + 1)!.text}
+        </p>
+      )}
       <button type="button" className="primary" onClick={onContinue}>
         Begin season {state.season + 1} of {SEASONS}
       </button>
@@ -468,6 +559,47 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
         New game
       </button>
     </Modal>
+  );
+}
+
+/** Nightfall's campsite board: three campsites, with the tents pitched on them. */
+export function CampsiteBoard({ state }: { state: GameState }) {
+  const capacity = state.players.length >= 4 ? 2 : 1;
+  return (
+    <div className="card-strip gear-strip">
+      {state.campsites.map((slot) => {
+        const def = campsiteDef(slot.id);
+        const full = slot.tents.length >= capacity;
+        return (
+          <div key={slot.id} className={`gear-card campsite${full ? ' campsite-full' : ''}`} title={def.text}>
+            <span className="gear-icon" aria-hidden="true">
+              {def.icon}
+            </span>
+            <span className="gear-name">{def.name}</span>
+            <span className="gear-text">{def.text}</span>
+            <span className="campsite-tents">
+              {Array.from({ length: capacity }, (_, i) => {
+                const owner = slot.tents[i];
+                return owner === undefined ? (
+                  <span key={i} className="tent-slot" title="Free tent slot">
+                    ⛺
+                  </span>
+                ) : (
+                  <span
+                    key={i}
+                    className="tent-slot tent-taken"
+                    style={{ background: state.players[owner].color }}
+                    title={`${state.players[owner].name} camped here`}
+                  >
+                    ⛺
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

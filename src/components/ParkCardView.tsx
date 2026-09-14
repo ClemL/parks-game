@@ -27,6 +27,7 @@ export function ParkCardView({
   onClick,
   compact,
   selected,
+  bison,
 }: {
   park: ParkCard;
   art: ArtMap;
@@ -35,6 +36,7 @@ export function ParkCardView({
   onClick?: () => void;
   compact?: boolean;
   selected?: boolean;
+  bison?: boolean;
 }) {
   const Tag = onClick ? 'button' : 'div';
   return (
@@ -56,6 +58,11 @@ export function ParkCardView({
         <span className="park-vp" title={`${park.vp} victory points`}>
           {park.vp}
         </span>
+        {bison && (
+          <span className="park-bison" title="The bison is here: visiting this park offers a wildcard trade">
+            🦬
+          </span>
+        )}
       </div>
       <div className="park-body">
         <div className="park-name">{park.name}</div>

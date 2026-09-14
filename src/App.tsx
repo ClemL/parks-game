@@ -3,9 +3,9 @@ import { useGame } from './hooks/useGame';
 import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
 import { ParkCardView } from './components/ParkCardView';
-import { DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
+import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
 import { CreditsModal, RulesModal } from './components/RulesModal';
-import { canClaim, SEASONS, siteDef } from './game/engine';
+import { bisonPark, canClaim, SEASONS, siteDef } from './game/engine';
 import { PARKS } from './game/data/parks';
 import { loadParkArt, type ArtMap } from './art/parkArt';
 
@@ -107,6 +107,24 @@ export default function App() {
           <button type="button" className="ghost" onClick={() => setShowCredits(true)}>
             Credits
           </button>
+          <span className="expansions" role="group" aria-label="Expansions, applied on a new game">
+            <label title="Nightfall: tents and campsites, a starting wildcard, and wildcards that cover two resources">
+              <input
+                type="checkbox"
+                checked={game.expansions.nightfall}
+                onChange={(e) => game.setExpansions({ ...game.expansions, nightfall: e.target.checked })}
+              />
+              Nightfall
+            </label>
+            <label title="Wildlife: four more advanced sites, the wandering bison, and extra season cards">
+              <input
+                type="checkbox"
+                checked={game.expansions.wildlife}
+                onChange={(e) => game.setExpansions({ ...game.expansions, wildlife: e.target.checked })}
+              />
+              Wildlife
+            </label>
+          </span>
           <button type="button" className="primary" onClick={() => game.newGame()}>
             New game
           </button>
@@ -123,6 +141,14 @@ export default function App() {
                 {isHumanTurn ? 'Your turn' : activePlayer.name}
               </span>
             </div>
+            {state.seasonCard && (
+              <p className="season-card" title="Season card: in effect all season">
+                <span className="season-card-icon" aria-hidden="true">
+                  🍃
+                </span>
+                <b>{state.seasonCard.name}</b> — {state.seasonCard.text}
+              </p>
+            )}
             <p className="hint" role="status">
               {hint}
             </p>
@@ -152,13 +178,27 @@ export default function App() {
                   key={park.id}
                   park={park}
                   art={art}
-                  affordable={canClaim(human, park) && !reservedBy.has(park.id)}
+                  affordable={canClaim(state, human, park) && !reservedBy.has(park.id)}
                   reservedBy={reservedBy.get(park.id)}
+                  bison={bisonPark(state)?.id === park.id}
                 />
               ))}
               {state.parkRow.length === 0 && <p className="muted">Every park has been claimed.</p>}
             </div>
           </section>
+
+          {state.campsites.length > 0 && (
+            <section className="panel">
+              <div className="panel-head">
+                <h2>Campsites</h2>
+                <span className="muted">
+                  Nightfall · reachable from any tent site ⛺ ·{' '}
+                  {state.players.length >= 4 ? 'two tents each' : 'one tent each'}
+                </span>
+              </div>
+              <CampsiteBoard state={state} />
+            </section>
+          )}
 
           <section className="panel">
             <div className="panel-head">
@@ -177,6 +217,7 @@ export default function App() {
             <div className="panel-head">
               <h2>Trail log</h2>
               <span className="muted">
+                {state.bison !== null && bisonPark(state) && `🦬 ${bisonPark(state)!.name} · `}
                 {state.cameraHolder === null
                   ? 'The camera is still on the trail'
                   : state.players[state.cameraHolder].isHuman

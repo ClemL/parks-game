@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   affordableGear,
   applyAction,
+  canClaimChance,
   claimableParks,
   copyableSites,
   createGame,
   legalMoves,
+  openCampsites,
   photoCost,
   reservableParks,
 } from '../game/engine';
@@ -20,6 +22,18 @@ function baselineAction(state: GameState): GameAction {
     const p = state.pending;
     if (p.stage === 'take-photo') return { type: 'camera-photo', take: true };
     if (p.kind === 'camera') return { type: 'camera', option: 'take-camera' };
+    if (p.kind === 'tent') {
+      // Always camp when a campsite is open: the greedy reading of Nightfall.
+      const camp = openCampsites(state)[0];
+      return camp ? { type: 'tent', option: 'camp', campsiteId: camp.id } : { type: 'tent', option: 'site' };
+    }
+    if (p.kind === 'bison') {
+      const holder = state.players[p.player];
+      const give = COST_RESOURCES.filter((r) => (holder.resources[r] ?? 0) > 0).sort(
+        (a, b) => (holder.resources[b] ?? 0) - (holder.resources[a] ?? 0),
+      )[0];
+      return give ? { type: 'bison', give } : { type: 'bison' };
+    }
     if (p.kind === 'wild-swap' || p.kind === 'token-swap') {
       const holder = state.players[p.player];
       if (p.stage === 'get') {
@@ -40,6 +54,7 @@ function baselineAction(state: GameState): GameAction {
     if (p.kind === 'park-or-gear') {
       const claim = [...claimableParks(state, p.player)].sort((a, b) => b.vp - a.vp)[0];
       if (claim) return { type: 'park-or-gear', option: 'claim-park', parkId: claim.id };
+      if (canClaimChance(state, p.player)) return { type: 'park-or-gear', option: 'chance-park' };
       const hold = [...reservableParks(state)].sort((a, b) => b.vp - a.vp)[0];
       if (hold && state.season < 4) return { type: 'park-or-gear', option: 'reserve-park', parkId: hold.id };
       const kit = affordableGear(state, p.player)[0];
@@ -48,6 +63,7 @@ function baselineAction(state: GameState): GameAction {
     }
     const best = [...claimableParks(state, p.player)].sort((a, b) => b.vp - a.vp)[0];
     if (best) return { type: 'trail-end', option: 'claim-park', parkId: best.id };
+    if (canClaimChance(state, p.player)) return { type: 'trail-end', option: 'chance-park' };
     const reserve = [...reservableParks(state)].sort((a, b) => b.vp - a.vp)[0];
     if (reserve && state.season < 4) {
       return { type: 'trail-end', option: 'reserve-park', parkId: reserve.id };

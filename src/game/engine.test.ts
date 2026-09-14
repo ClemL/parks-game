@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
+  bagTotal,
+  bisonPark,
   campfireAllowance,
+  canClaimChance,
   claimableParks,
   copyableSites,
   createGame,
   legalMoves,
+  effectiveCost,
+  gearCost,
   occupants,
+  openCampsites,
   PARK_ROW_SIZE,
   photoCost,
+  planPayment,
+  wildCoverage,
   reservableParks,
   SEASONS,
   siteDef,
@@ -19,6 +27,7 @@ import { aiAction } from './ai';
 import {
   ADVANCED_SITES,
   BASIC_SITES,
+  WILDLIFE_SITES,
   PHOTO_COST,
   PHOTO_COST_DISCOUNTED,
   TOKEN_LIMIT,
@@ -46,6 +55,24 @@ function playOut(seed: number): GameState {
     }
   }
   throw new Error('game did not finish within the step budget');
+}
+
+/** A game with no expansions, for testing base-game behaviour in isolation. */
+function baseGame(seed: number): GameState {
+  return createGame({ seed, expansions: { nightfall: false, wildlife: false } });
+}
+
+/**
+ * Drop a specific site onto the trail so its behaviour can be tested without
+ * hunting for a seed that happens to deal it. Clears the tent and season token
+ * there so only the site's own action is in play.
+ */
+function putSite(state: GameState, kind: GameState['trail'][number], index = 1): number {
+  state.trail[index] = kind;
+  state.siteTokens[index] = null;
+  state.tentSites = state.tentSites.filter((i) => i !== index);
+  state.seasonCard = null;
+  return index;
 }
 
 /** Walk a hiker to the Trail End so its decision can be inspected. */
@@ -90,7 +117,8 @@ describe('setup', () => {
           expect(middle.filter((k) => k === basic), `${basic} in season ${season}`).toHaveLength(1);
         }
         // Exactly `season` advanced sites, all different, in a stable order.
-        const advanced = middle.filter((k) => ADVANCED_SITES.includes(k));
+        const advancedPool = [...ADVANCED_SITES, ...WILDLIFE_SITES];
+        const advanced = middle.filter((k) => advancedPool.includes(k));
         expect(advanced).toHaveLength(season);
         expect(new Set(advanced).size).toBe(season);
         expect(new Set(advanced)).toEqual(new Set(state.advancedOrder.slice(0, season)));
@@ -99,8 +127,10 @@ describe('setup', () => {
         if (season < SEASONS) state = applyAction(state, { type: 'end-season' });
       }
       expect(lengths).toEqual([9, 10, 11, 12]);
-      // By winter all four advanced sites are in play.
-      expect(new Set(state.trail.filter((k) => ADVANCED_SITES.includes(k))).size).toBe(4);
+      // By winter four advanced sites are in play, starting with the park site.
+      const pool = [...ADVANCED_SITES, ...WILDLIFE_SITES];
+      expect(new Set(state.trail.filter((k) => pool.includes(k))).size).toBe(4);
+      expect(state.advancedOrder[0]).toBe('adv-park');
     }
   });
 
@@ -121,6 +151,8 @@ describe('season tokens', () => {
 
   it('gives the token to the first hiker there and to nobody after', () => {
     const state = createGame({ seed: 5 });
+    state.seasonCard = null;
+    state.tentSites = [];
     // Pick a plain resource site so only its own payout and the token apply.
     const target = state.trail.findIndex((k) => k === 'forest' || k === 'mountain');
     const token = state.siteTokens[target]!;
@@ -198,7 +230,7 @@ describe('occupancy', () => {
 describe('camera', () => {
   function walkToCamera(seed: number) {
     const state = createGame({ seed });
-    const index = state.trail.indexOf('camera');
+    const index = putSite(state, 'camera');
     state.current = 0;
     return { state, index };
   }
@@ -233,7 +265,8 @@ describe('camera', () => {
   it('lets a later visitor steal the camera', () => {
     const { state, index } = walkToCamera(21);
     state.cameraHolder = 2;
-    state.players[0].resources.sun = 0;
+    // Nothing at all to pay with, so no photo can follow.
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
     let next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
     next = applyAction(next, { type: 'camera', option: 'take-camera' });
     expect(next.cameraHolder).toBe(0);
@@ -284,16 +317,9 @@ describe('bottles', () => {
 
 describe('advanced sites', () => {
   /** Put a hiker on the named advanced site and return the pending state. */
-  function landOn(kind: string, seed = 61, setup?: (s: GameState) => void) {
-    let state = createGame({ seed });
-    // Walk seasons forward until the site is on the trail.
-    let guard = 0;
-    while (!state.trail.includes(kind as never) && guard++ < 4) {
-      state.phase = 'season-end';
-      state = applyAction(state, { type: 'end-season' });
-    }
-    expect(state.trail).toContain(kind as never);
-    const index = state.trail.indexOf(kind as never);
+  function landOn(kind: GameState['trail'][number], seed = 61, setup?: (s: GameState) => void) {
+    const state = createGame({ seed });
+    const index = putSite(state, kind);
     state.current = 0;
     setup?.(state);
     return { state: applyAction(state, { type: 'move', hikerId: 'p0h0', to: index }), index };
@@ -367,19 +393,10 @@ describe('advanced sites', () => {
   it('copies a Ranger Station into a second park visit in one season', () => {
     // The rulebook's own combo: a hiker at an Overlook can copy the Ranger
     // Station, so a season is not capped at two park visits.
-    let state = createGame({ seed: 63 });
-    let guard = 0;
-    while (!(state.trail.includes('adv-copy') && state.trail.includes('adv-park')) && guard++ < 4) {
-      state.phase = 'season-end';
-      state = applyAction(state, { type: 'end-season' });
-    }
-    expect(state.trail).toContain('adv-copy');
-    expect(state.trail).toContain('adv-park');
-
-    const overlook = state.trail.indexOf('adv-copy');
-    const station = state.trail.indexOf('adv-park');
+    const state = createGame({ seed: 63 });
+    const overlook = putSite(state, 'adv-copy', 1);
+    const station = putSite(state, 'adv-park', 2);
     state.players[1].hikers[0].position = station;
-    state.siteTokens[overlook] = null;
     state.current = 0;
     state.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
 
@@ -397,19 +414,11 @@ describe('advanced sites', () => {
   });
 
   it('Overlook pays 1 water to copy an occupied site', () => {
-    let state = createGame({ seed: 62 });
-    let guard = 0;
-    while (!state.trail.includes('adv-copy') && guard++ < 4) {
-      state.phase = 'season-end';
-      state = applyAction(state, { type: 'end-season' });
-    }
-    const overlook = state.trail.indexOf('adv-copy');
-    const valley = state.trail.indexOf('valley');
+    const state = createGame({ seed: 62 });
+    const overlook = putSite(state, 'adv-copy', 1);
+    const valley = putSite(state, 'valley', 2);
     // An opponent is standing on the Valley, so its action can be copied.
     state.players[1].hikers[0].position = valley;
-    state.siteTokens[valley] = null;
-    // Clear the Overlook's own season token so only the copy pays out here.
-    state.siteTokens[overlook] = null;
     state.current = 0;
     state.players[0].resources = { sun: 0, water: 1, forest: 0, mountain: 0, wild: 0 };
 
@@ -424,13 +433,8 @@ describe('advanced sites', () => {
   });
 
   it('offers no copy without water or without an occupied site', () => {
-    let state = createGame({ seed: 62 });
-    let guard = 0;
-    while (!state.trail.includes('adv-copy') && guard++ < 4) {
-      state.phase = 'season-end';
-      state = applyAction(state, { type: 'end-season' });
-    }
-    const overlook = state.trail.indexOf('adv-copy');
+    const state = createGame({ seed: 62 });
+    const overlook = putSite(state, 'adv-copy');
     state.current = 0;
     state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
     const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: overlook });
@@ -459,7 +463,8 @@ describe('the Trail End', () => {
   });
 
   it('allows only one park per Trail End action, however rich the player', () => {
-    const state = createGame({ seed: 46 });
+    // No Wildlife, so a bison trade cannot interrupt the check.
+    const state = baseGame(46);
     state.players[0].resources = { sun: 12, water: 12, forest: 12, mountain: 12, wild: 12 };
     const first = claimableParks(state, 0)[0];
 
@@ -545,7 +550,7 @@ describe('resources', () => {
 
   it('discards down to twelve tokens at the end of a turn, sun first', () => {
     const state = createGame({ seed: 53 });
-    const index = state.trail.indexOf('valley');
+    const index = putSite(state, 'valley');
     state.current = 0;
     state.players[0].resources = { sun: 5, water: 3, forest: 3, mountain: 1, wild: 1 };
     const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
@@ -556,7 +561,8 @@ describe('resources', () => {
   });
 
   it('pays for a photo with a wildcard when sun runs short', () => {
-    const state = createGame({ seed: 54 });
+    const state = baseGame(54);
+    state.seasonCard = null;
     state.cameraHolder = null;
     state.players[0].resources = { sun: 1, water: 0, forest: 0, mountain: 0, wild: 2 };
     let next = arriveAtEnd(state);
@@ -571,6 +577,275 @@ describe('resources', () => {
     for (const park of [...state.parkRow, ...state.parkDeck]) {
       expect(park.cost.wild ?? 0).toBe(0);
     }
+  });
+});
+
+describe('season cards (base game)', () => {
+  it('reveals one card per season, from that season deck', () => {
+    let state = createGame({ seed: 71 });
+    expect(state.seasonDeck).toHaveLength(4);
+    for (let season = 1; season <= SEASONS; season++) {
+      expect(state.seasonCard?.season).toBe(season);
+      state.phase = 'season-end';
+      if (season < SEASONS) state = applyAction(state, { type: 'end-season' });
+    }
+  });
+
+  it('pays the weather bonus on top of a site payout', () => {
+    const state = createGame({ seed: 72 });
+    const index = putSite(state, 'mountain');
+    state.seasonCard = {
+      id: 'test',
+      name: 'Season of Snow',
+      season: 1,
+      text: 'Gaining mountain also pays 1 water.',
+      effect: { kind: 'weather', when: 'mountain', gain: { water: 1 } },
+    };
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
+    const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(next.players[0].resources.mountain).toBe(1);
+    expect(next.players[0].resources.water).toBe(1);
+  });
+
+  it('applies the seasonal park, photo and gear discounts', () => {
+    const state = baseGame(73);
+    const park = state.parkRow[0];
+    const plain = bagTotal(effectiveCost(state.players[0], park, state));
+    state.seasonCard = {
+      id: 'test',
+      name: 'Season of Harvest',
+      season: 1,
+      text: 'Parks cost 1 less.',
+      effect: { kind: 'park-discount', amount: 1 },
+    };
+    expect(bagTotal(effectiveCost(state.players[0], park, state))).toBe(plain - 1);
+
+    state.seasonCard = {
+      id: 'test2',
+      name: 'Season of Long Light',
+      season: 1,
+      text: 'Photos cost 1 less.',
+      effect: { kind: 'cheap-photos', amount: 1 },
+    };
+    expect(photoCost(state, 0)).toBe(PHOTO_COST - 1);
+
+    state.seasonCard = {
+      id: 'test3',
+      name: 'Season of Outfitters',
+      season: 1,
+      text: 'Gear costs 1 less.',
+      effect: { kind: 'cheap-gear', amount: 1 },
+    };
+    state.gearDiscountsLeft = 0;
+    expect(gearCost(state, state.gearRow[0])).toBe(state.gearRow[0].cost - 1);
+  });
+
+  it('lets a Season of Chance claim the unseen top of the deck', () => {
+    const state = baseGame(74);
+    state.seasonCard = {
+      id: 'chance',
+      name: 'Season of Chance',
+      season: 1,
+      text: 'Claim the top of the deck.',
+      effect: { kind: 'chance' },
+    };
+    state.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
+    const top = state.parkDeck[0];
+    expect(canClaimChance(state, 0)).toBe(true);
+
+    let next = arriveAtEnd(state);
+    next = applyAction(next, { type: 'trail-end', option: 'chance-park' });
+    expect(next.players[0].parks.map((p) => p.id)).toContain(top.id);
+    expect(next.parkDeck[0].id).not.toBe(top.id);
+  });
+});
+
+describe('Nightfall expansion', () => {
+  it('starts everyone with a wildcard and lets one cover two resources', () => {
+    const state = createGame({ seed: 81, expansions: { nightfall: true, wildlife: false } });
+    expect(state.players.every((p) => (p.resources.wild ?? 0) === 1)).toBe(true);
+    expect(wildCoverage(state)).toBe(2);
+
+    // A park needing two resources is payable with a single wildcard.
+    const park = state.parkRow.find((p) => bagTotal(p.cost) >= 2)!;
+    const player = state.players[0];
+    player.resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 1 };
+    const cost = effectiveCost(player, park, state);
+    const plan = planPayment(player, cost, wildCoverage(state));
+    if (bagTotal(cost) <= 2) {
+      expect(plan).not.toBeNull();
+      expect(plan!.wild).toBe(1);
+    }
+  });
+
+  it('is off without the expansion', () => {
+    const state = baseGame(82);
+    expect(state.players.every((p) => (p.resources.wild ?? 0) === 0)).toBe(true);
+    expect(wildCoverage(state)).toBe(1);
+    expect(state.tentSites).toHaveLength(0);
+    expect(state.campsites).toHaveLength(0);
+  });
+
+  it('pitches tents before the Trail End and every other site back', () => {
+    const state = createGame({ seed: 83, expansions: { nightfall: true, wildlife: false } });
+    const end = state.trail.length - 1;
+    expect(state.tentSites).toContain(end - 1);
+    expect(state.tentSites).not.toContain(end - 2);
+    expect(state.tentSites).toContain(end - 3);
+    expect(state.tentSites.every((i) => i >= 1 && i < end)).toBe(true);
+  });
+
+  it('offers the site action or a campsite, and camping skips the site', () => {
+    const state = createGame({ seed: 84, expansions: { nightfall: true, wildlife: false } });
+    const index = state.tentSites[state.tentSites.length - 1];
+    state.trail[index] = 'valley';
+    state.siteTokens[index] = null;
+    state.seasonCard = null;
+    state.campsites = [{ id: 'stargazing', tents: [] }];
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
+
+    const arrived = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(arrived.pending?.kind).toBe('tent');
+
+    // Taking the site action pays the Valley's two water.
+    const tookSite = applyAction(arrived, { type: 'tent', option: 'site' });
+    expect(tookSite.players[0].resources.water).toBe(2);
+    expect(tookSite.pending).toBeNull();
+
+    // Camping instead pays the campsite and leaves the site's water behind.
+    const camped = applyAction(arrived, { type: 'tent', option: 'camp', campsiteId: 'stargazing' });
+    expect(camped.players[0].resources.water).toBe(0);
+    expect(camped.players[0].resources.wild).toBe(1);
+    expect(camped.campsites[0].tents).toEqual([0]);
+  });
+
+  it('fills campsite slots and frees them at the season break', () => {
+    let state = createGame({ seed: 85, expansions: { nightfall: true, wildlife: false } });
+    state.campsites = [{ id: 'stargazing', tents: [1, 2] }];
+    // Two tents is the cap at four players, so the campsite is closed.
+    expect(openCampsites(state)).toHaveLength(0);
+
+    state.phase = 'season-end';
+    state = applyAction(state, { type: 'end-season' });
+    expect(state.campsites[0].tents).toEqual([]);
+    expect(openCampsites(state)).toHaveLength(1);
+  });
+
+  it('runs the Alpine Bivouac trade only when it can be paid', () => {
+    const state = createGame({ seed: 86, expansions: { nightfall: true, wildlife: false } });
+    const index = state.tentSites[0];
+    state.campsites = [{ id: 'alpine-bivouac', tents: [] }];
+    state.seasonCard = null;
+    state.siteTokens[index] = null;
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 1, wild: 0 };
+
+    let next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    next = applyAction(next, { type: 'tent', option: 'camp', campsiteId: 'alpine-bivouac' });
+    expect(next.players[0].resources.mountain).toBe(0);
+    expect(next.players[0].resources.sun).toBe(5);
+  });
+});
+
+describe('Wildlife expansion', () => {
+  it('puts the bison on the park row and moves it on when its park is visited', () => {
+    const state = createGame({ seed: 91, expansions: { nightfall: false, wildlife: true } });
+    expect(state.bison).toBe(0);
+    const park = bisonPark(state)!;
+    state.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
+
+    let next = arriveAtEnd(state);
+    next = applyAction(next, { type: 'trail-end', option: 'claim-park', parkId: park.id });
+    // Claiming the bison's park offers its trade before the turn ends.
+    expect(next.pending?.kind).toBe('bison');
+
+    const traded = applyAction(next, { type: 'bison', give: 'sun' });
+    expect(traded.players[0].resources.wild).toBe(1);
+    expect(traded.bison).toBe(1);
+    expect(traded.pending).toBeNull();
+
+    const declined = applyAction(next, { type: 'bison' });
+    expect(declined.players[0].resources.wild).toBe(0);
+    expect(declined.bison).toBe(1);
+  });
+
+  it('refreshes a gear card when the bison loops back around', () => {
+    const state = createGame({ seed: 92, expansions: { nightfall: false, wildlife: true } });
+    state.bison = state.parkRow.length - 1;
+    const park = bisonPark(state)!;
+    const gearBefore = state.gearRow[0].id;
+    state.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
+
+    let next = arriveAtEnd(state);
+    next = applyAction(next, { type: 'trail-end', option: 'claim-park', parkId: park.id });
+    next = applyAction(next, { type: 'bison' });
+    expect(next.bison).toBe(0);
+    expect(next.gearRow[0].id).not.toBe(gearBefore);
+  });
+
+  it('adds its four advanced sites to the pool and none without the expansion', () => {
+    const withWildlife = new Set<string>();
+    for (let seed = 1; seed <= 25; seed++) {
+      const state = createGame({ seed, expansions: { nightfall: false, wildlife: true } });
+      for (const kind of state.advancedOrder) withWildlife.add(kind);
+    }
+    expect(WILDLIFE_SITES.some((k) => withWildlife.has(k))).toBe(true);
+
+    for (let seed = 1; seed <= 10; seed++) {
+      const state = baseGame(seed);
+      expect(state.advancedOrder.some((k) => WILDLIFE_SITES.includes(k))).toBe(false);
+    }
+  });
+
+  it('Memory Cliffs trades a photo for one of each resource', () => {
+    const state = createGame({ seed: 93, expansions: { nightfall: false, wildlife: true } });
+    const index = putSite(state, 'adv-memory');
+    state.current = 0;
+    state.players[0].photos = 1;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
+
+    const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(next.players[0].photos).toBe(0);
+    expect(next.players[0].resources).toMatchObject({ sun: 1, water: 1, forest: 1, mountain: 1 });
+
+    // With no photo to give up, the stop simply passes.
+    state.players[0].photos = 0;
+    const empty = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(empty.players[0].resources.sun).toBe(0);
+  });
+
+  it('Fire Lookout pays a sun per hiker ahead, and Bison Meadow moves the bison', () => {
+    const state = createGame({ seed: 94, expansions: { nightfall: false, wildlife: true } });
+    const lookout = putSite(state, 'adv-lookout', 1);
+    state.players[1].hikers[0].position = lookout + 1;
+    state.players[2].hikers[0].position = lookout + 2;
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
+    const spotted = applyAction(state, { type: 'move', hikerId: 'p0h0', to: lookout });
+    expect(spotted.players[0].resources.sun).toBe(2);
+
+    const meadow = createGame({ seed: 94, expansions: { nightfall: false, wildlife: true } });
+    const index = putSite(meadow, 'adv-bison');
+    meadow.current = 0;
+    meadow.bison = 0;
+    meadow.players[0].resources = { sun: 2, water: 0, forest: 0, mountain: 0, wild: 0 };
+    const next = applyAction(meadow, { type: 'move', hikerId: 'p0h0', to: index });
+    // The trade costs a resource and the bison walks on.
+    expect(next.players[0].resources.wild).toBe(1);
+    expect(next.players[0].resources.sun).toBe(1);
+    expect(next.bison).toBe(1);
+  });
+
+  it('Ranger Talk reserves the top park card unseen', () => {
+    const state = createGame({ seed: 95, expansions: { nightfall: false, wildlife: true } });
+    const index = putSite(state, 'adv-talk');
+    state.current = 0;
+    const top = state.parkDeck[0];
+    const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(next.players[0].reserved.map((p) => p.id)).toContain(top.id);
+    expect(next.firstPlayer).toBe(0);
   });
 });
 

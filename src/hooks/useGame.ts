@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { applyAction, createGame, legalMoves } from '../game/engine';
+import { applyAction, createGame, DEFAULT_EXPANSIONS, legalMoves } from '../game/engine';
 import { aiAction } from '../game/ai';
-import type { GameAction, GameState } from '../game/types';
+import type { ExpansionFlags, GameAction, GameState } from '../game/types';
 
 export type Speed = 'slow' | 'normal' | 'fast';
 
@@ -9,7 +9,9 @@ const DELAY: Record<Speed, number> = { slow: 1100, normal: 550, fast: 120 };
 
 export function useGame(initialSeed?: number) {
   const [seed, setSeed] = useState(() => initialSeed ?? (Date.now() & 0x7fffffff));
-  const [state, setState] = useState<GameState>(() => createGame({ seed }));
+  // Expansion choices take effect on the next new game, as at the table.
+  const [expansions, setExpansions] = useState<ExpansionFlags>(DEFAULT_EXPANSIONS);
+  const [state, setState] = useState<GameState>(() => createGame({ seed, expansions: DEFAULT_EXPANSIONS }));
   const [selectedHiker, setSelectedHiker] = useState<string | null>(null);
   const [speed, setSpeed] = useState<Speed>('normal');
 
@@ -18,12 +20,15 @@ export function useGame(initialSeed?: number) {
     setSelectedHiker(null);
   }, []);
 
-  const newGame = useCallback((nextSeed?: number) => {
-    const value = nextSeed ?? (Date.now() & 0x7fffffff);
-    setSeed(value);
-    setState(createGame({ seed: value }));
-    setSelectedHiker(null);
-  }, []);
+  const newGame = useCallback(
+    (nextSeed?: number) => {
+      const value = nextSeed ?? (Date.now() & 0x7fffffff);
+      setSeed(value);
+      setState(createGame({ seed: value, expansions }));
+      setSelectedHiker(null);
+    },
+    [expansions],
+  );
 
   const human = state.players[0];
   const isHumanTurn = state.phase === 'playing' && state.players[state.current].isHuman;
@@ -58,6 +63,8 @@ export function useGame(initialSeed?: number) {
     setSelectedHiker,
     speed,
     setSpeed,
+    expansions,
+    setExpansions,
     dispatch,
     newGame,
   };
