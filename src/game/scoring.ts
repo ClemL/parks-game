@@ -1,5 +1,5 @@
 import { BONUS_CARDS } from './data/bonuses';
-import { FIRST_PLAYER_VP } from './data/sites';
+import { FIRST_PLAYER_VP, GEAR_VP } from './data/sites';
 import type { FinalScore, GameState, Player, PlayerScoringView } from './types';
 import { RESOURCES } from './types';
 
@@ -27,6 +27,8 @@ export function scoreGame(state: GameState): FinalScore[] {
     const view = scoringView(player, state.cameraHolder === player.index);
     const parkVp = player.parks.reduce((sum, p) => sum + p.vp, 0);
     const photoVp = player.photos * photoVpPer(player);
+    // Gear scores, so building an engine competes with claiming another park.
+    const gearVp = player.gear.length * GEAR_VP;
     const bonusBreakdown = player.bonusCards.map((id) => {
       const card = BONUS_CARDS.find((b) => b.id === id)!;
       return { name: card.name, vp: card.score(view) };
@@ -40,10 +42,11 @@ export function scoreGame(state: GameState): FinalScore[] {
       player: player.index,
       parkVp,
       photoVp,
+      gearVp,
       bonusVp,
       firstPlayerVp,
       leftoverVp,
-      total: parkVp + photoVp + bonusVp + firstPlayerVp + leftoverVp,
+      total: parkVp + photoVp + gearVp + bonusVp + firstPlayerVp + leftoverVp,
       bonusBreakdown,
     };
   });

@@ -21,23 +21,29 @@ npm run build    # type-check and bundle to dist/
 
 ## Deploy to Vercel
 
-The repo is Vercel-ready (`vercel.json` pins the Vite preset, `dist` output, and SPA rewrites).
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FClemL%2Fparks-game)
 
-**Git integration (recommended, no tokens needed):**
+One click on the button above, or:
 
 1. https://vercel.com/new → *Import Git Repository* → pick this repo.
-2. Framework preset is detected as **Vite**; build `npm run build`, output `dist`.
-3. Deploy. Every push to the branch then redeploys automatically.
+2. The preset is detected as **Vite**; build `npm run build`, output `dist`.
+3. Deploy. Every push then redeploys automatically.
 
-**Or from a terminal:**
+Or from a terminal: `npm i -g vercel && vercel login && vercel --prod`.
 
-```bash
-npm i -g vercel
-vercel login
-vercel --prod
-```
+There are no environment variables to set. `vercel.json` pins the Vite preset, the `dist` output
+and the SPA rewrites.
 
-There are no environment variables to set.
+## Playing
+
+- **2 to 5 seats** — you plus one to four CPU hikers, chosen in the top bar and applied on the next
+  new game. The Waterfall site joins the trail at four or more players, and a second early-buyer
+  gear discount opens up, both as published.
+- **Your game is saved** to the browser after every action, so a refresh or a closed tab picks up
+  where you left off. Finishing a game clears the save.
+- **Undo** steps back to just before your last move, CPU replies included.
+- CPU moves flash the site they took, so their turns are readable without reading the log.
+- Modals take keyboard focus when they open, hand it back when they close, and dismiss on Escape.
 
 ## Rules as implemented
 
@@ -85,7 +91,7 @@ deliberate differences).
 
 | Resource | Use |
 | --- | --- |
-| ☀️ Sun | Gear, photos, and park costs |
+| ☀️ Sun | Gear and photos only — no park asks for it |
 | 💧 Water, 🌲 Tree, ⛰️ Mountain | Park costs; water also feeds bottles and the Overlook |
 | 🐾 Wildcard | Pays for any resource, including part of a photo. No park asks for it by name |
 | 🔥 Campfire token | Spend to share an occupied site. One per season, re-lit when your first hiker finishes |
@@ -114,8 +120,9 @@ one; more come from declining the camera.
 
 ### Scoring
 
-- Park cards cost 2–7 resources and score 2–5 VP.
+- Park cards cost 2–7 resources (water, trees, mountain) and score 2–5 VP.
 - Photos score 1 VP each, 2 VP with the Photo Album.
+- **Each gear card scores 2 VP**, so building an engine competes with claiming another park.
 - The two hidden bonus cards score at game end.
 - The first player token scores 1 VP.
 - Leftover resources score 1 VP per 3.
@@ -135,6 +142,9 @@ Where this build knowingly differs from the published game, and why:
 | Each player drafts 1 of 2 dealt Year cards | Each player keeps **two** bonus cards, both scoring | Requested house rule |
 | A canteen is filled with water **gained that turn** | A bottle spends any water on your turn | Simpler to play solo; same once-per-season limit |
 | Leftover resources score nothing | 1 VP per 3 | House rule, kept from the first build |
+| Park costs include sun | Park costs are water, trees and mountain only | Sun had three uses and gear lost every contest; now sun means gear and photos |
+| Gear scores no points | Each gear card scores 2 VP | Without it the CPUs bought 0.6 gear cards a game out of 13 |
+| Three park cards face up | Four when either expansion is on | The expansions add so many park actions that a three-card row churns |
 | 2nd edition: 3 seasons, fixed trail length | 4 seasons, growing trail (1st edition) | Matches the original request |
 
 Scores here run higher than a published game of PARKS (CPUs average 50–55 rather than 30–40),
@@ -243,26 +253,51 @@ site.
 
 ## Park artwork
 
-The English Wikipedia API is called once at load to resolve each park's lead photograph
-(`prop=pageimages`, CORS-enabled), together with the artist and license from Wikimedia Commons.
-The answer is cached in `localStorage` for 30 days and every image used is listed under
-**Credits** in the app. Many of the photographs are works of the U.S. National Park Service and
-are in the public domain; others carry the Creative Commons license shown in the credits table.
+Art is resolved in three steps, best first:
 
-Any park whose photograph cannot be resolved — offline, blocked network, or an article with no
-lead image — falls back to generated vector scenery keyed to that park's palette and terrain
-tags, so the board is always complete.
+1. **Self-hosted.** Run `npm run art` and commit what it writes: `public/parks/<id>.jpg` plus a
+   `credits.json` carrying each image's artist and license. The app then serves its own images and
+   works offline. The script needs access to Wikipedia, so run it on your own machine or in CI —
+   the container this was built in cannot reach Wikimedia.
+2. **Wikipedia at runtime.** Without those files the browser asks the English Wikipedia API for
+   each park's lead image (CORS-enabled) and caches the answer in `localStorage` for 30 days.
+3. **Generated scenery.** Any park that resolves to nothing draws vector artwork keyed to its
+   palette and terrain tags, so the board is never incomplete.
+
+Either way the artist and license of every photograph shown is listed under **Credits** in the app.
+Many are works of the U.S. National Park Service and in the public domain; others are Creative
+Commons.
 
 ## Project layout
 
 ```
-src/game/        rules engine, data tables, scoring, CPU logic (pure TypeScript, no React)
-src/game/engine.test.ts   rules tests
-src/dev/         CPU strength benchmarks
-src/components/  board, trail, player panels, modals
-src/art/         Wikipedia art resolution and generated fallback artwork
-src/hooks/       game state and the CPU turn driver
+src/game/engine.ts          the transition layer: every action that advances the game
+src/game/engine/primitives  resource bags, logging, spending
+src/game/engine/rules       costs, payment, discounts, season effects, the token limit
+src/game/engine/queries     legal moves, claimable parks, open campsites
+src/game/engine/setup       new games, trail building, season and campsite decks
+src/game/data/              parks, gear, bonuses, sites, campsites, season cards
+src/game/ai.ts              the three CPU personalities
+src/game/engine.test.ts     rules tests (62)
+src/dev/                    CPU strength benchmarks, run by npm test
+src/components/             board, trail, player panels, modals
+src/art/                    local art, Wikipedia fallback, generated scenery
+src/hooks/useGame.ts        game state, save/undo, the CPU turn driver
+tests/game.spec.ts          browser tests (Playwright)
+scripts/fetch-park-art.mjs  downloads park photographs for self-hosting
 ```
+
+## Commands
+
+```bash
+npm run dev        # http://localhost:5173
+npm test           # 62 rules tests plus the CPU benchmarks
+npm run test:e2e   # browser tests against the production bundle
+npm run build      # type-check and bundle to dist/
+npm run art        # download park photographs into public/parks/ (needs Wikipedia access)
+```
+
+CI runs the build, the unit tests and the browser tests on every push.
 
 The engine is a pure reducer: `applyAction(state, action)` returns a new state, and the CPU and
 the UI both drive it through the same action list, so a game is fully replayable from its seed.

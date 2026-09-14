@@ -15,17 +15,20 @@ export default function App() {
   const game = useGame();
   const { state, moves, isHumanTurn, selectedHiker, dispatch } = game;
   const [art, setArt] = useState<ArtMap>({});
-  const [artState, setArtState] = useState<'loading' | 'ready' | 'offline'>('loading');
+  const [artState, setArtState] = useState<'loading' | 'ready' | 'local' | 'offline'>('loading');
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    loadParkArt(PARKS.map((p) => p.wikiTitle))
+    loadParkArt(PARKS.map((p) => ({ id: p.id, wikiTitle: p.wikiTitle })))
       .then((result) => {
         if (!alive) return;
         setArt(result);
-        setArtState(Object.keys(result).length > 0 ? 'ready' : 'offline');
+        const entries = Object.values(result);
+        setArtState(
+          entries.length === 0 ? 'offline' : entries.some((e) => e.local) ? 'local' : 'ready',
+        );
       })
       .catch(() => alive && setArtState('offline'));
     return () => {
@@ -107,6 +110,16 @@ export default function App() {
           <button type="button" className="ghost" onClick={() => setShowCredits(true)}>
             Credits
           </button>
+          <label className="speed" title="Seats at the table: you plus CPU hikers. Applied on a new game.">
+            Players
+            <select value={game.seats} onChange={(e) => game.setSeats(Number(e.target.value))}>
+              {[2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="expansions" role="group" aria-label="Expansions, applied on a new game">
             <label title="Nightfall: tents and campsites, a starting wildcard, and wildcards that cover two resources">
               <input
@@ -125,6 +138,15 @@ export default function App() {
               Wildlife
             </label>
           </span>
+          <button
+            type="button"
+            className="ghost"
+            onClick={game.undo}
+            disabled={!game.canUndo}
+            title="Step back to before your last move"
+          >
+            Undo
+          </button>
           <button type="button" className="primary" onClick={() => game.newGame()}>
             New game
           </button>
@@ -149,6 +171,14 @@ export default function App() {
                 <b>{state.seasonCard.name}</b> — {state.seasonCard.text}
               </p>
             )}
+            {game.resumed && (
+              <p className="resumed">
+                Picked up where you left off — season {state.season}.{' '}
+                <button type="button" className="link" onClick={game.dismissResumed}>
+                  dismiss
+                </button>
+              </p>
+            )}
             <p className="hint" role="status">
               {hint}
             </p>
@@ -161,6 +191,7 @@ export default function App() {
                 dispatch({ type: 'move', hikerId: option.hikerId, to: option.to, useCampfire: option.useCampfire })
               }
               interactive={isHumanTurn && !state.pending}
+              lastCpuMove={game.lastCpuMove}
             />
           </section>
 
@@ -169,7 +200,13 @@ export default function App() {
               <h2>Park row</h2>
               <span className="muted">
                 {state.parkDeck.length} in the deck
-                {artState === 'loading' ? ' · loading photos…' : artState === 'offline' ? ' · generated artwork' : ''}
+                {artState === 'loading'
+                  ? ' · loading photos…'
+                  : artState === 'offline'
+                    ? ' · generated artwork'
+                    : artState === 'local'
+                      ? ' · bundled photos'
+                      : ''}
               </span>
             </div>
             <div className="card-strip">

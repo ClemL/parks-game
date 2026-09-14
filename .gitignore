@@ -5,3 +5,5 @@ dist/
 *.local
 .vite/
 *.tsbuildinfo
+playwright-report/
+test-results/

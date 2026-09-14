@@ -3,7 +3,7 @@ import {
   canClaimChance,
   copyableSites,
   hasTent,
-  openCampsites,
+  usableCampsites,
   tokenCount,
   wildCoverage,
   bag,
@@ -22,8 +22,7 @@ import {
   usableBottles,
 } from './engine';
 import { BONUS_CARDS } from './data/bonuses';
-import { FIRST_PLAYER_VP, TOKEN_LIMIT } from './data/sites';
-import { campsiteCapacity } from './data/campsites';
+import { FIRST_PLAYER_VP, GEAR_VP, TOKEN_LIMIT } from './data/sites';
 import { scoringView } from './scoring';
 import type {
   AiPersonality,
@@ -263,12 +262,7 @@ function bestCampsite(
   player: Player,
   values: Record<Resource, number>,
 ): { def: CampsiteDef; score: number } | null {
-  const capacity = campsiteCapacity(state.players.length);
-  const ranked = openCampsites(state)
-    .filter((def) => {
-      const slot = state.campsites.find((c) => c.id === def.id);
-      return slot ? slot.tents.length < capacity : false;
-    })
+  const ranked = usableCampsites(state, player.index)
     .map((def) => ({ def, score: campsiteValue(player, def, values) }))
     .sort((a, b) => b.score - a.score);
   return ranked[0] ?? null;
@@ -503,25 +497,27 @@ function gearValue(
 ): number {
   const w = weightsFor(player);
   const seasonsLeft = 5 - state.season;
+  // Every gear card is worth points on its own now, on top of its effect.
+  const keepValue = GEAR_VP * 0.55;
   switch (card.effect.kind) {
     case 'bonus-on-gain':
-      return values[card.effect.resource] * 0.9 * seasonsLeft * 0.45;
+      return keepValue + values[card.effect.resource] * 0.9 * seasonsLeft * 0.45;
     case 'season-income':
-      return bagTotal(card.effect.gain) * 0.8 * seasonsLeft * 0.4;
+      return keepValue + bagTotal(card.effect.gain) * 0.8 * seasonsLeft * 0.4;
     case 'season-campfire':
-      return seasonsLeft * 0.4;
+      return keepValue + seasonsLeft * 0.4;
     case 'cheap-photos':
-      return w.photo * seasonsLeft * 0.45;
+      return keepValue + w.photo * seasonsLeft * 0.45;
     case 'photo-value':
-      return (player.photos + seasonsLeft) * 0.55 * (w.photo / 1.2);
+      return keepValue + (player.photos + seasonsLeft) * 0.55 * (w.photo / 1.2);
     case 'ignore-occupancy':
-      return (1.0 + w.block) * seasonsLeft * 0.42;
+      return keepValue + (1.0 + w.block) * seasonsLeft * 0.42;
     case 'extra-bottle':
-      return w.bottle * seasonsLeft * 0.45;
+      return keepValue + w.bottle * seasonsLeft * 0.45;
     case 'park-discount':
-      return card.effect.amount * seasonsLeft * 0.7;
+      return keepValue + card.effect.amount * seasonsLeft * 0.7;
     default:
-      return 0;
+      return keepValue;
   }
 }
 

@@ -13,7 +13,6 @@ import {
   gearCost,
   occupants,
   openCampsites,
-  PARK_ROW_SIZE,
   photoCost,
   planPayment,
   wildCoverage,
@@ -24,9 +23,14 @@ import {
   usableBottles,
 } from './engine';
 import { aiAction } from './ai';
+import { GEAR_VP } from './data/sites';
+import { scoreGame } from './scoring';
 import {
   ADVANCED_SITES,
-  BASIC_SITES,
+  basicSitesFor,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  parkRowSizeFor,
   WILDLIFE_SITES,
   PHOTO_COST,
   PHOTO_COST_DISCOUNTED,
@@ -96,8 +100,10 @@ describe('setup', () => {
     expect(new Set(state.players.flatMap((p) => p.bonusCards)).size).toBe(8);
     expect(state.players.filter((p) => !p.isHuman)).toHaveLength(3);
     expect(state.cameraHolder).toBeNull();
-    expect(state.parkRow).toHaveLength(PARK_ROW_SIZE);
-    expect(PARK_ROW_SIZE).toBe(3);
+    // Expansions open a fourth park slot; the base game shows three.
+    expect(state.parkRow).toHaveLength(parkRowSizeFor(state.expansions));
+    expect(parkRowSizeFor({ nightfall: false, wildlife: false })).toBe(3);
+    expect(parkRowSizeFor({ nightfall: true, wildlife: false })).toBe(4);
     // Four players means two early-buyer gear discounts.
     expect(state.gearDiscountsLeft).toBe(2);
   });
@@ -113,7 +119,7 @@ describe('setup', () => {
 
         const middle = state.trail.slice(1, -1);
         // One of each basic site, every season.
-        for (const basic of BASIC_SITES) {
+        for (const basic of basicSitesFor(state.players.length)) {
           expect(middle.filter((k) => k === basic), `${basic} in season ${season}`).toHaveLength(1);
         }
         // Exactly `season` advanced sites, all different, in a stable order.
@@ -580,6 +586,79 @@ describe('resources', () => {
   });
 });
 
+describe('table size', () => {
+  it('seats two to five players, and clamps anything else', () => {
+    for (let seats = MIN_PLAYERS; seats <= MAX_PLAYERS; seats++) {
+      const state = createGame({ seed: 101, players: seats });
+      expect(state.players).toHaveLength(seats);
+      expect(state.players.filter((p) => p.isHuman)).toHaveLength(1);
+      expect(state.players.filter((p) => !p.isHuman)).toHaveLength(seats - 1);
+      expect(state.players.every((p) => p.isHuman || p.personality)).toBe(true);
+      // Every seat gets its own colour and its own hikers.
+      expect(new Set(state.players.map((p) => p.color)).size).toBe(seats);
+      expect(new Set(state.players.flatMap((p) => p.hikers.map((h) => h.id))).size).toBe(seats * 2);
+    }
+    expect(createGame({ seed: 101, players: 9 }).players).toHaveLength(MAX_PLAYERS);
+    expect(createGame({ seed: 101, players: 1 }).players).toHaveLength(MIN_PLAYERS);
+  });
+
+  it('adds the Waterfall only at four or more players', () => {
+    const small = createGame({ seed: 102, players: 3 });
+    const big = createGame({ seed: 102, players: 4 });
+    expect(small.trail).not.toContain('waterfall');
+    expect(big.trail).toContain('waterfall');
+    expect(big.trail.length).toBe(small.trail.length + 1);
+    expect(basicSitesFor(3)).toHaveLength(5);
+    expect(basicSitesFor(5)).toHaveLength(6);
+  });
+
+  it('scales the campsite slots and gear discounts with the table', () => {
+    const small = createGame({ seed: 103, players: 3, expansions: { nightfall: true, wildlife: false } });
+    const big = createGame({ seed: 103, players: 5, expansions: { nightfall: true, wildlife: false } });
+    expect(small.gearDiscountsLeft).toBe(1);
+    expect(big.gearDiscountsLeft).toBe(2);
+    small.campsites[0].tents = [1];
+    expect(openCampsites(small).some((c) => c.id === small.campsites[0].id)).toBe(false);
+    big.campsites[0].tents = [1];
+    expect(openCampsites(big).some((c) => c.id === big.campsites[0].id)).toBe(true);
+  });
+
+  it('plays a full game at every table size', () => {
+    for (let seats = MIN_PLAYERS; seats <= MAX_PLAYERS; seats++) {
+      let state = createGame({ seed: 104 + seats, players: seats });
+      for (const p of state.players) p.isHuman = false;
+      state.players[0].personality = 'collector';
+      for (let i = 0; i < 9000 && state.phase !== 'game-over'; i++) {
+        state = applyAction(state, aiAction(state)!);
+      }
+      expect(state.phase, `seats ${seats}`).toBe('game-over');
+      expect(state.finalScores).toHaveLength(seats);
+    }
+  });
+});
+
+describe('scoring', () => {
+  it('scores gear cards as well as parks, photos and bonuses', () => {
+    let state = createGame({ seed: 105, expansions: { nightfall: false, wildlife: false } });
+    state.players[0].gear = [state.gearRow[0], state.gearRow[1]];
+    state.phase = 'game-over';
+    state = applyAction(state, { type: 'end-season' });
+    const scores = scoreGame(state);
+    const mine = scores.find((s) => s.player === 0)!;
+    expect(mine.gearVp).toBe(2 * GEAR_VP);
+    expect(mine.total).toBe(
+      mine.parkVp + mine.photoVp + mine.gearVp + mine.bonusVp + mine.firstPlayerVp + mine.leftoverVp,
+    );
+  });
+
+  it('never asks a park for sun, which now only buys gear and photos', () => {
+    const state = createGame({ seed: 106 });
+    for (const park of [...state.parkRow, ...state.parkDeck]) {
+      expect(park.cost.sun ?? 0, park.name).toBe(0);
+    }
+  });
+});
+
 describe('season cards (base game)', () => {
   it('reveals one card per season, from that season deck', () => {
     let state = createGame({ seed: 71 });
@@ -858,7 +937,12 @@ describe('full games driven by the CPU logic', () => {
       expect(state.finalScores).toHaveLength(4);
       for (const score of state.finalScores!) {
         expect(score.total).toBe(
-          score.parkVp + score.photoVp + score.bonusVp + score.firstPlayerVp + score.leftoverVp,
+          score.parkVp +
+            score.photoVp +
+            score.gearVp +
+            score.bonusVp +
+            score.firstPlayerVp +
+            score.leftoverVp,
         );
         expect(score.total).toBeGreaterThan(0);
       }

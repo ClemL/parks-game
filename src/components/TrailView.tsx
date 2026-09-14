@@ -10,9 +10,19 @@ interface Props {
   onSelectHiker: (id: string) => void;
   onMove: (option: MoveOption) => void;
   interactive: boolean;
+  /** The site a CPU just stepped onto, highlighted briefly. */
+  lastCpuMove?: { index: number; player: number } | null;
 }
 
-export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, interactive }: Props) {
+export function TrailView({
+  state,
+  moves,
+  selectedHiker,
+  onSelectHiker,
+  onMove,
+  interactive,
+  lastCpuMove,
+}: Props) {
   const movesFor = (index: number) =>
     moves.filter((m) => m.to === index && (!selectedHiker || m.hikerId === selectedHiker));
 
@@ -40,6 +50,7 @@ export function TrailView({ state, moves, selectedHiker, onSelectHiker, onMove, 
               target ? 'site-target' : '',
               needsFire ? 'site-target-fire' : '',
               tent ? 'site-tent' : '',
+              lastCpuMove?.index === index ? 'site-just-taken' : '',
               siteDef(kind).tier === 'advanced' ? 'site-advanced' : '',
             ]
               .filter(Boolean)

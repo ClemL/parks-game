@@ -310,6 +310,7 @@ export interface FinalScore {
   player: number;
   parkVp: number;
   photoVp: number;
+  gearVp: number;
   bonusVp: number;
   firstPlayerVp: number;
   leftoverVp: number;

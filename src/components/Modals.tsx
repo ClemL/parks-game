@@ -1,4 +1,5 @@
 import type { ArtMap } from '../art/parkArt';
+import { useEffect, useRef } from 'react';
 import {
   affordableGear,
   bonusCardById,
@@ -9,12 +10,12 @@ import {
   copyableSites,
   effectiveCost,
   gearCost,
-  openCampsites,
   photoCost,
   reservableParks,
   SEASONS,
   siteDef,
   tokenCount,
+  usableCampsites,
 } from '../game/engine';
 import { TOKEN_LIMIT } from '../game/data/sites';
 import type { GameAction, GameState, Resource } from '../game/types';
@@ -33,9 +34,31 @@ export function Modal({
   onClose?: () => void;
   wide?: boolean;
 }) {
+  const panel = useRef<HTMLDivElement>(null);
+
+  // Move keyboard focus into the dialog, and hand it back when it closes.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const first = panel.current?.querySelector<HTMLElement>(
+      'button:not([disabled]), [href], select, input, [tabindex]:not([tabindex="-1"])',
+    );
+    first?.focus();
+    return () => previous?.focus?.();
+  }, []);
+
+  // Escape closes anything that can be dismissed.
+  useEffect(() => {
+    if (!onClose) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div className="scrim" role="dialog" aria-modal="true" aria-label={title}>
-      <div className={`modal${wide ? ' modal-wide' : ''}`}>
+      <div className={`modal${wide ? ' modal-wide' : ''}`} ref={panel}>
         <header className="modal-head">
           <h2>{title}</h2>
           {onClose && (
@@ -232,7 +255,7 @@ export function DecisionModal({
 
   if (pending.kind === 'tent') {
     const site = siteDef(state.trail[pending.siteIndex]);
-    const open = openCampsites(state);
+    const open = usableCampsites(state, player.index);
     return (
       <Modal title="Pitch a tent?" wide>
         <p className="modal-note">
@@ -494,6 +517,7 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
             <th>Player</th>
             <th>Parks</th>
             <th>Photos</th>
+            <th>Gear</th>
             <th>Bonus</th>
             <th>1st</th>
             <th>Leftover</th>
@@ -515,6 +539,9 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
                 </td>
                 <td>
                   {score.photoVp} <span className="muted">({player.photos})</span>
+                </td>
+                <td>
+                  {score.gearVp} <span className="muted">({player.gear.length})</span>
                 </td>
                 <td>
                   {score.bonusVp}

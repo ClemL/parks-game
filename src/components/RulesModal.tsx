@@ -52,7 +52,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
 
       <h3>Resources</h3>
       <ul>
-        <li>Sun ☀️, water 💧, trees 🌲 and mountain ⛰️ are collected along the trail and spent on park cards.</li>
+        <li>
+          Water 💧, trees 🌲 and mountain ⛰️ pay for park cards. <b>Sun ☀️ buys gear and photos</b> and
+          is never part of a park&rsquo;s cost.
+        </li>
         <li>
           <b>Wildlife 🐾 is not a resource you spend on a specific cost — it is a wildcard</b> that pays for any one
           resource. No park asks for it by name.
@@ -121,8 +124,12 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <li>Each photo scores 1 VP, or 2 VP with the Photo Album.</li>
         <li>Your two hidden <b>bonus cards</b> score at the end of the game.</li>
         <li>The first player token scores 1 VP.</li>
+        <li>Each gear card you own scores 2 VP.</li>
         <li>Leftover resources score 1 VP per 3 (house rule).</li>
-        <li>Park cards cost 2–7 resources and score 2–5 VP.</li>
+        <li>
+          Park cards cost 2–7 resources and score 2–5 VP. <b>No park asks for sun</b> — sun buys gear
+          and photos.
+        </li>
         <li>Ties go to the most parks, then the most photos.</li>
       </ul>
 

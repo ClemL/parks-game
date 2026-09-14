@@ -116,8 +116,17 @@ export const SITES: Record<SiteKind, SiteDef> = {
   },
 };
 
-/** One of each is on the trail every season. */
-export const BASIC_SITES: SiteKind[] = ['forest', 'mountain', 'valley', 'basin', 'waterfall', 'camera'];
+/** One of each is on the trail every season. The Waterfall joins at four or
+ *  more players, as in the published game. */
+export const CORE_BASIC_SITES: SiteKind[] = ['forest', 'mountain', 'valley', 'basin', 'camera'];
+export const CROWDED_BASIC_SITE: SiteKind = 'waterfall';
+
+export function basicSitesFor(players: number): SiteKind[] {
+  return players >= 4 ? [...CORE_BASIC_SITES, CROWDED_BASIC_SITE] : [...CORE_BASIC_SITES];
+}
+
+/** Every basic site, for rules text and tests. */
+export const BASIC_SITES: SiteKind[] = [...CORE_BASIC_SITES, CROWDED_BASIC_SITE];
 
 /** Base advanced sites. Season 1 always uses the park/gear site, then the rest
  *  are shuffled in one per season. */
@@ -158,8 +167,21 @@ export const BOTTLE_POOL: BottleKind[] = Array.from({ length: 18 }, (_, i) =>
 );
 
 /** Middle sites for a season: every basic site plus one advanced site per season. */
-export function trailLength(season: number): number {
-  return BASIC_SITES.length + season;
+export function trailLength(season: number, players = 4): number {
+  return basicSitesFor(players).length + season;
+}
+
+/** Players supported: one human plus one to four CPU hikers. */
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 5;
+
+/**
+ * Park cards face up. The published game shows three; the expansions add so
+ * many more park actions that the row churns, so a fourth slot is opened when
+ * either expansion is on (a house rule).
+ */
+export function parkRowSizeFor(expansions: { nightfall: boolean; wildlife: boolean }): number {
+  return expansions.nightfall || expansions.wildlife ? 4 : 3;
 }
 
 /** Photos cost this much; the camera (or a Tripod) discounts it. */
@@ -171,6 +193,8 @@ export const FIRST_GEAR_DISCOUNT = 1;
 export function gearDiscountsForPlayers(players: number): number {
   return players >= 4 ? 2 : 1;
 }
+/** Each gear card kept to the end of the game scores this. */
+export const GEAR_VP = 2;
 /** The first player token is worth this at the end of the game. */
 export const FIRST_PLAYER_VP = 1;
 /** Campfire tokens each player has alight at the start of a season. */

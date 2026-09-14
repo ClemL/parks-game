@@ -353,6 +353,35 @@ button.link {
   box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.32);
 }
 
+.resumed {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  background: rgba(224, 182, 84, 0.14);
+  border: 1px solid #6b5a2c;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+@keyframes just-taken {
+  0% {
+    box-shadow: 0 0 0 4px rgba(224, 182, 84, 0.75);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(224, 182, 84, 0);
+  }
+}
+
+.site-just-taken .site-hit {
+  animation: just-taken 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-just-taken .site-hit {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(224, 182, 84, 0.5);
+  }
+}
+
 .season-card {
   margin: 0 0 10px;
   padding: 8px 11px;
