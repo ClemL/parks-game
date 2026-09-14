@@ -364,6 +364,38 @@ describe('advanced sites', () => {
     expect(next.firstPlayerTokenClaimed).toBe(true);
   });
 
+  it('copies a Ranger Station into a second park visit in one season', () => {
+    // The rulebook's own combo: a hiker at an Overlook can copy the Ranger
+    // Station, so a season is not capped at two park visits.
+    let state = createGame({ seed: 63 });
+    let guard = 0;
+    while (!(state.trail.includes('adv-copy') && state.trail.includes('adv-park')) && guard++ < 4) {
+      state.phase = 'season-end';
+      state = applyAction(state, { type: 'end-season' });
+    }
+    expect(state.trail).toContain('adv-copy');
+    expect(state.trail).toContain('adv-park');
+
+    const overlook = state.trail.indexOf('adv-copy');
+    const station = state.trail.indexOf('adv-park');
+    state.players[1].hikers[0].position = station;
+    state.siteTokens[overlook] = null;
+    state.current = 0;
+    state.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
+
+    let next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: overlook });
+    expect(next.pending?.kind).toBe('copy-site');
+    next = applyAction(next, { type: 'copy-site', siteIndex: station });
+    // The copied site opens the Ranger Station's own menu.
+    expect(next.pending?.kind).toBe('park-or-gear');
+    expect(next.pending?.copied).toBe(true);
+
+    const park = claimableParks(next, 0)[0];
+    next = applyAction(next, { type: 'park-or-gear', option: 'claim-park', parkId: park.id });
+    expect(next.players[0].parks).toHaveLength(1);
+    expect(next.players[0].hikers[0].finished).toBe(false);
+  });
+
   it('Overlook pays 1 water to copy an occupied site', () => {
     let state = createGame({ seed: 62 });
     let guard = 0;
@@ -424,6 +456,21 @@ describe('the Trail End', () => {
     expect(next.players[0].parks.map((p) => p.id)).toContain(park.id);
     expect(next.players[0].resources.wild).toBe(0);
     expect(next.parkRow.some((p) => p.id === park.id)).toBe(false);
+  });
+
+  it('allows only one park per Trail End action, however rich the player', () => {
+    const state = createGame({ seed: 46 });
+    state.players[0].resources = { sun: 12, water: 12, forest: 12, mountain: 12, wild: 12 };
+    const first = claimableParks(state, 0)[0];
+
+    let next = arriveAtEnd(state);
+    next = applyAction(next, { type: 'trail-end', option: 'claim-park', parkId: first.id });
+    expect(next.players[0].parks).toHaveLength(1);
+    // The action is spent: the decision is closed and a second claim is ignored.
+    expect(next.pending).toBeNull();
+    const second = claimableParks(next, 0)[0];
+    const again = applyAction(next, { type: 'trail-end', option: 'claim-park', parkId: second.id });
+    expect(again.players[0].parks).toHaveLength(1);
   });
 
   it('hands the first player token to the first reservation of the season', () => {
