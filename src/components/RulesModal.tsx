@@ -1,26 +1,16 @@
 import { Modal } from './Modals';
 import { GEAR } from '../game/data/gear';
 import { BONUS_CARDS } from '../game/data/bonuses';
-import { BOTTLES, PHOTO_COST, PHOTO_COST_DISCOUNTED, SITES } from '../game/data/sites';
-import type { BottleKind, SiteKind } from '../game/types';
-
-const SITE_ORDER: SiteKind[] = [
-  'sun',
-  'water',
-  'forest',
-  'mountain',
-  'wild',
-  'double-sun',
-  'double-water',
-  'double-forest',
-  'double-mountain',
-  'water-forest',
-  'mountain-sun',
-  'forest-sun',
-  'spring',
-  'camera',
-  'trail-end',
-];
+import {
+  ADVANCED_SITES,
+  BASIC_SITES,
+  BOTTLES,
+  PHOTO_COST,
+  PHOTO_COST_DISCOUNTED,
+  SITES,
+  TOKEN_LIMIT,
+} from '../game/data/sites';
+import type { BottleKind } from '../game/types';
 
 const BOTTLE_ORDER: BottleKind[] = ['sun-flask', 'stone-flask', 'pine-flask'];
 
@@ -30,8 +20,9 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
       <h3>The hike</h3>
       <ul>
         <li>
-          Four seasons. Each season a fresh trail is laid out, one site longer than the last (6 sites in spring, 9 in
-          winter, plus the trailhead and the Trail End).
+          Four seasons. Each season the trail holds <b>one of every basic site</b> plus <b>one advanced site per
+          season</b>, shuffled — so the trail grows from 7 sites in spring to 10 in winter, and all four advanced sites
+          are in play by the end.
         </li>
         <li>
           You have <b>two hikers</b>. On your turn you move <b>one hiker forward</b> any distance along the trail and take
@@ -44,7 +35,11 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <li>
           <b>Hikers cannot share a site.</b> The only way onto an occupied site is to spend a <b>campfire token</b> —
           everyone starts each season with one — or to own the Trail Map, which waives the cost. There is no campfire
-          site: a token you do not spend is simply gone at the season break.
+          site.
+        </li>
+        <li>
+          Your campfire <b>re-lights when your first hiker reaches the Trail End</b>, so a season can hold two shared
+          sites if you time them.
         </li>
         <li>
           Reaching the <b>Trail End</b> retires that hiker for the season and gives it exactly one action: visit a park,
@@ -60,8 +55,8 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           resource. No park asks for it by name.
         </li>
         <li>
-          <b>Sun does not keep between seasons.</b> Spend it on gear and photos before the season ends. Everything else
-          carries over.
+          Resources <b>carry over between seasons</b>, but nobody may finish a turn holding more than{' '}
+          <b>{TOKEN_LIMIT} tokens</b> — the overflow is returned, sun first.
         </li>
       </ul>
 
@@ -72,8 +67,8 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           {PHOTO_COST_DISCOUNTED} sun — or leaves it and takes a <b>bottle</b> instead.
         </li>
         <li>
-          A photo costs <b>{PHOTO_COST} sun</b> normally and <b>{PHOTO_COST_DISCOUNTED} sun while you hold the camera</b>.
-          Each photo scores 1 VP, or 2 VP with the Photo Album.
+          A photo costs <b>{PHOTO_COST} sun</b> normally and <b>{PHOTO_COST_DISCOUNTED} sun while you hold the camera</b>,
+          and wildcards can cover part of the price. Each photo scores 1 VP, or 2 VP with the Photo Album.
         </li>
         <li>The next hiker to visit a Camera Point takes the camera from whoever has it. Ending your trail lets you shoot again.</li>
       </ul>
@@ -107,7 +102,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
 
       <h3>Prizes for being first</h3>
       <ul>
-        <li>The <b>first player to buy gear each season</b> pays 1 sun less for it.</li>
+        <li>
+          The <b>first two players to buy gear each season</b> pay 1 sun less (two discounts at four or five players,
+          one at three or fewer).
+        </li>
         <li>
           The <b>first player to reserve a park each season</b> takes the <b>first player token</b>: they lead the next
           season, and whoever holds it at the end scores 1 VP.
@@ -121,13 +119,36 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <li>Your two hidden <b>bonus cards</b> score at the end of the game.</li>
         <li>The first player token scores 1 VP.</li>
         <li>Leftover resources score 1 VP per 3 (house rule).</li>
+        <li>Park cards cost 2–7 resources and score 2–5 VP.</li>
         <li>Ties go to the most parks, then the most photos.</li>
       </ul>
 
-      <h3>Trail sites</h3>
+      <h3>Basic sites — one of each, every season</h3>
       <table className="rules-table">
         <tbody>
-          {SITE_ORDER.map((kind) => (
+          {BASIC_SITES.map((kind) => (
+            <tr key={kind}>
+              <td className="rules-icon">{SITES[kind].icon}</td>
+              <td>
+                <b>{SITES[kind].name}</b>
+              </td>
+              <td>{SITES[kind].text}</td>
+            </tr>
+          ))}
+          <tr>
+            <td className="rules-icon">{SITES['trail-end'].icon}</td>
+            <td>
+              <b>Trail End</b>
+            </td>
+            <td>{SITES['trail-end'].text}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Advanced sites — one more joins the trail each season</h3>
+      <table className="rules-table">
+        <tbody>
+          {ADVANCED_SITES.map((kind) => (
             <tr key={kind}>
               <td className="rules-icon">{SITES[kind].icon}</td>
               <td>

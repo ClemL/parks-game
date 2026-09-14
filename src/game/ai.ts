@@ -1,5 +1,7 @@
 import {
   affordableGear,
+  copyableSites,
+  tokenCount,
   bag,
   bagTotal,
   bottleDef,
@@ -16,7 +18,7 @@ import {
   usableBottles,
 } from './engine';
 import { BONUS_CARDS } from './data/bonuses';
-import { FIRST_PLAYER_VP } from './data/sites';
+import { FIRST_PLAYER_VP, TOKEN_LIMIT } from './data/sites';
 import { scoringView } from './scoring';
 import type {
   AiPersonality,
@@ -36,6 +38,7 @@ interface Weights {
   photo: number;
   camera: number;
   bottle: number;
+  trade: number;
   campfireCost: number;
   block: number;
   finishPenalty: number;
@@ -52,6 +55,7 @@ const PROFILES: Record<AiPersonality, Weights> = {
     photo: 1.2,
     camera: 0.8,
     bottle: 1.0,
+    trade: 1.0,
     campfireCost: 1.1,
     block: 0.15,
     finishPenalty: 0.7,
@@ -66,6 +70,7 @@ const PROFILES: Record<AiPersonality, Weights> = {
     photo: 2.1,
     camera: 2.2,
     bottle: 1.1,
+    trade: 0.9,
     campfireCost: 1.0,
     block: 0.2,
     finishPenalty: 0.6,
@@ -80,6 +85,7 @@ const PROFILES: Record<AiPersonality, Weights> = {
     photo: 1.3,
     camera: 1.3,
     bottle: 0.9,
+    trade: 1.1,
     campfireCost: 0.5,
     block: 0.4,
     finishPenalty: 0.55,
@@ -157,9 +163,16 @@ function resourceValues(state: GameState, player: Player): Record<Resource, numb
   for (const r of RESOURCES) {
     values[r] += 0.45; // a spare resource is never dead weight
   }
-  // Sun is wiped at every season break, so it is only worth what it can buy
-  // before then: park costs, gear and photos.
-  values.sun = values.sun * 0.75 + w.sunBias * 0.85;
+  // Sun keeps between seasons now, so it is worth what it can buy - gear,
+  // photos and park costs - with no expiry discount.
+  values.sun = values.sun * 0.9 + w.sunBias * 0.8;
+  // Near the twelve-token limit, another token is worth little: it will be
+  // discarded at the end of the turn.
+  const room = TOKEN_LIMIT - tokenCount(player);
+  if (room <= 3) {
+    const squeeze = Math.max(0.12, room / 4);
+    for (const r of RESOURCES) values[r] *= squeeze;
+  }
   // A wildcard pays for whatever is scarcest, so it is worth the best of them.
   values.wild = Math.max(...COST_RESOURCES.map((r) => values[r])) * 1.05;
   return values;
@@ -194,9 +207,14 @@ function canClaimSoon(other: Player, park: ParkCard): boolean {
   return missing - (other.resources.wild ?? 0) <= 1;
 }
 
-function bestTrailEndValue(state: GameState, player: Player, values: Record<Resource, number>): number {
+/** Value of the best park or gear action, wherever it is offered. */
+function bestParkOrGearValue(
+  state: GameState,
+  player: Player,
+  values: Record<Resource, number>,
+): number {
   const w = weightsFor(player);
-  const options: number[] = [];
+  const options: number[] = [0];
 
   const claim = claimableParks(state, player.index)
     .map((p) => (p.vp + bonusSynergy(state, player, p)) * claimUrgency(state, player, p))
@@ -217,9 +235,13 @@ function bestTrailEndValue(state: GameState, player: Player, values: Record<Reso
     .sort((a, b) => b - a)[0];
   if (gear !== undefined) options.push(gear);
 
-  if (canAffordPhoto(state, player.index)) {
-    options.push(w.photo * photoValue(player) * 0.6);
-  }
+  return Math.max(...options);
+}
+
+function bestTrailEndValue(state: GameState, player: Player, values: Record<Resource, number>): number {
+  const w = weightsFor(player);
+  const options: number[] = [bestParkOrGearValue(state, player, values)];
+  if (canAffordPhoto(state, player.index)) options.push(w.photo * photoValue(player) * 0.6);
   options.push(values.sun * 0.5);
   return Math.max(...options);
 }
@@ -229,8 +251,11 @@ function siteValue(
   player: Player,
   index: number,
   values: Record<Resource, number>,
+  /** Set while pricing a copy, so an Overlook never prices itself. */
+  noCopy = false,
 ): number {
   const kind = state.trail[index];
+  if (noCopy && (kind === 'adv-copy' || kind === 'trail-end')) return 0;
   const def = siteDef(kind);
   const w = weightsFor(player);
   let value = 0;
@@ -253,15 +278,42 @@ function siteValue(
   if (token) value += values[token];
 
   switch (kind) {
-    case 'spring':
-      value += player.bottles.some((b) => b.used) ? w.bottle * 0.9 : 0.2;
-      break;
     case 'camera': {
       const holdsCamera = state.cameraHolder === player.index;
       const photoNow = canAffordPhoto(state, player.index) ? w.photo * photoValue(player) * 0.8 : 0;
       // Taking the camera is worth more when someone else is holding it.
       const grab = w.camera * (state.cameraHolder === null ? 0.7 : holdsCamera ? 0.25 : 1);
       value += Math.max(grab + photoNow, w.bottle);
+      break;
+    }
+    case 'adv-wildcard': {
+      // Trade the least useful resource for a wildcard.
+      const worst = Math.min(
+        ...COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0).map((r) => values[r]),
+      );
+      value += Number.isFinite(worst) ? Math.max(0, values.wild - worst) * w.trade : 0;
+      break;
+    }
+    case 'adv-swap': {
+      const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+      if (held.length > 0) {
+        const worst = Math.min(...held.map((r) => values[r]));
+        const best = Math.max(...COST_RESOURCES.map((r) => values[r]));
+        // Two trades, and the second is usually worth less than the first.
+        value += Math.max(0, best - worst) * 1.6 * w.trade;
+      }
+      break;
+    }
+    case 'adv-park':
+      // The Ranger Station is the Trail End's park and gear menu, mid-trail,
+      // and it does not retire the hiker.
+      value += bestParkOrGearValue(state, player, values);
+      break;
+    case 'adv-copy': {
+      const best = copyableSites(state, player.index)
+        .map((i) => siteValue(state, player, i, values, true))
+        .sort((a, b) => b - a)[0];
+      value += best !== undefined ? Math.max(0, best - values.water) : 0;
       break;
     }
     case 'trail-end':
@@ -319,7 +371,10 @@ export function bestMove(state: GameState): GameAction | null {
       .filter((s) => s.index < option.to)
       .reduce((sum, s) => sum + s.weight, 0);
     score -= skipped * meanAhead * w.skipPenalty;
-    if (option.useCampfire) score -= w.campfireCost;
+    if (option.useCampfire) {
+      // A campfire spent before your first hiker comes home is refunded then.
+      score -= w.campfireCost * (player.campfireRelit ? 1 : 0.45);
+    }
     if (option.to === end) {
       const lost = Math.min(weightTotal, 4);
       score -= lost * meanAhead * w.finishPenalty * (state.season === 4 ? 0.75 : 1);
@@ -378,58 +433,142 @@ function cameraDecision(state: GameState, player: Player): GameAction {
   return { type: 'camera', option: cameraWorth >= w.bottle ? 'take-camera' : 'take-bottle' };
 }
 
-function trailEndDecision(state: GameState, player: Player): GameAction {
+/** Trade the least useful resource for a wildcard, or pass. */
+function wildSwapDecision(state: GameState, player: Player): GameAction {
+  const values = resourceValues(state, player);
+  const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+  if (held.length === 0) return { type: 'swap-done' };
+  const worst = held.reduce((a, r) => (values[r] < values[a] ? r : a), held[0]);
+  return values.wild > values[worst] ? { type: 'swap-give', resource: worst } : { type: 'swap-done' };
+}
+
+/** At a Trading Post, hand over the least useful resource for the most useful. */
+function tokenSwapDecision(state: GameState, player: Player): GameAction {
+  const pending = state.pending!;
+  const values = resourceValues(state, player);
+
+  if (pending.stage === 'get') {
+    const give = pending.give!;
+    const best = COST_RESOURCES.filter((r) => r !== give).reduce(
+      (a, r) => (values[r] > values[a] ? r : a),
+      COST_RESOURCES.find((r) => r !== give)!,
+    );
+    return { type: 'swap-get', resource: best };
+  }
+
+  const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
+  if (held.length === 0) return { type: 'swap-done' };
+  const worst = held.reduce((a, r) => (values[r] < values[a] ? r : a), held[0]);
+  const best = Math.max(...COST_RESOURCES.filter((r) => r !== worst).map((r) => values[r]));
+  return best > values[worst] * 1.1
+    ? { type: 'swap-give', resource: worst }
+    : { type: 'swap-done' };
+}
+
+/** At an Overlook, copy the most valuable occupied site if it beats the water. */
+function copyDecision(state: GameState, player: Player): GameAction {
+  const values = resourceValues(state, player);
+  const ranked = copyableSites(state, player.index)
+    .map((index) => ({ index, score: siteValue(state, player, index, values, true) }))
+    .sort((a, b) => b.score - a.score);
+  const top = ranked[0];
+  return top && top.score > values.water
+    ? { type: 'copy-site', siteIndex: top.index }
+    : { type: 'copy-skip' };
+}
+
+/** The Ranger Station: the Trail End's park and gear menu, mid-trail. */
+function parkOrGearDecision(state: GameState, player: Player): GameAction {
+  const choice = parkOrGearChoice(state, player);
+  return choice ? { ...choice, type: 'park-or-gear' } : { type: 'park-or-gear', option: 'skip' };
+}
+
+/** Shared ranking of the claim / reserve / buy options. */
+function parkOrGearChoice(
+  state: GameState,
+  player: Player,
+): { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string } | null {
   const w = weightsFor(player);
   const values = resourceValues(state, player);
+  const options: { score: number; choice: { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string } }[] = [];
 
   const claim = claimableParks(state, player.index)
     .map((p) => ({ p, score: p.vp + bonusSynergy(state, player, p) }))
     .sort((a, b) => b.score - a.score)[0];
-  const reserve = reservableParks(state)
-    .map((p) => ({ p, score: p.vp + bonusSynergy(state, player, p) }))
-    .sort((a, b) => b.score - a.score)[0];
-  const gear = affordableGear(state, player.index)
-    .map((g) => ({ g, score: gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5 }))
-    .sort((a, b) => b.score - a.score)[0];
-
-  const options: { action: GameAction; score: number }[] = [];
-
   if (claim) {
     const lastChance = state.season >= 3;
     const cost = bagTotal(effectiveCost(player, claim.p));
-    const worthIt = lastChance || claim.score >= 2.5 || claim.score / Math.max(1, cost) >= 0.6;
-    if (worthIt) {
-      options.push({
-        action: { type: 'trail-end', option: 'claim-park', parkId: claim.p.id },
-        score: claim.score * w.parkClaim * 0.5,
-      });
+    if (lastChance || claim.score >= 2.5 || claim.score / Math.max(1, cost) >= 0.6) {
+      options.push({ score: claim.score * w.parkClaim * 0.5, choice: { option: 'claim-park', parkId: claim.p.id } });
     }
   }
 
+  const reserve = reservableParks(state)
+    .map((p) => ({ p, score: p.vp + bonusSynergy(state, player, p) }))
+    .sort((a, b) => b.score - a.score)[0];
   if (reserve && player.reserved.length < 2 && state.season < 4) {
     const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
     options.push({
-      action: { type: 'trail-end', option: 'reserve-park', parkId: reserve.p.id },
       score: (reserve.score * 0.42 + prize) * (w.reserve / 2.3),
+      choice: { option: 'reserve-park', parkId: reserve.p.id },
     });
   }
 
+  const gear = affordableGear(state, player.index)
+    .map((g) => ({ g, score: gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5 }))
+    .sort((a, b) => b.score - a.score)[0];
   if (gear && gear.score > 0.5) {
-    options.push({ action: { type: 'trail-end', option: 'buy-gear', gearId: gear.g.id }, score: gear.score });
+    options.push({ score: gear.score, choice: { option: 'buy-gear', gearId: gear.g.id } });
+  }
+
+  options.sort((a, b) => b.score - a.score);
+  return options[0]?.choice ?? null;
+}
+
+function trailEndDecision(state: GameState, player: Player): GameAction {
+  const w = weightsFor(player);
+  const values = resourceValues(state, player);
+  const options: { action: GameAction; score: number }[] = [];
+
+  const parkOrGear = parkOrGearChoice(state, player);
+  if (parkOrGear) {
+    options.push({
+      action: { ...parkOrGear, type: 'trail-end' },
+      score: parkOrGearValueOf(state, player, values, parkOrGear),
+    });
   }
 
   if (canAffordPhoto(state, player.index)) {
-    const surplus = (player.resources.sun ?? 0) - photoCost(state, player.index);
     options.push({
       action: { type: 'trail-end', option: 'photo' },
-      // Sun left at the season break is wasted, so a photo is close to free then.
-      score: w.photo * photoValue(player) * 0.6 + (surplus >= 0 ? 0.4 : 0),
+      score: w.photo * photoValue(player) * 0.6,
     });
   }
 
   options.push({ action: { type: 'trail-end', option: 'rest' }, score: values.sun * 0.5 });
   options.sort((a, b) => b.score - a.score);
   return options[0].action;
+}
+
+/** Score a specific park/gear choice so it can compete with photo and rest. */
+function parkOrGearValueOf(
+  state: GameState,
+  player: Player,
+  values: Record<Resource, number>,
+  choice: { option: 'claim-park' | 'reserve-park' | 'buy-gear'; parkId?: string; gearId?: string },
+): number {
+  const w = weightsFor(player);
+  if (choice.option === 'claim-park') {
+    const park = claimableParks(state, player.index).find((p) => p.id === choice.parkId);
+    return park ? (park.vp + bonusSynergy(state, player, park)) * w.parkClaim * 0.5 : 0;
+  }
+  if (choice.option === 'reserve-park') {
+    const park = reservableParks(state).find((p) => p.id === choice.parkId);
+    const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
+    return park ? ((park.vp + bonusSynergy(state, player, park)) * 0.42 + prize) * (w.reserve / 2.3) : 0;
+  }
+  const card = affordableGear(state, player.index).find((g) => g.id === choice.gearId);
+  return card ? gearValue(state, player, card, values) * w.gearAppetite - gearCost(state, card) * 0.5 : 0;
 }
 
 /** Bottles convert spare water; use one when the output is worth more. */
@@ -456,8 +595,21 @@ export function aiAction(state: GameState): GameAction | null {
   if (player.isHuman) return null;
 
   if (state.pending) {
+    switch (state.pending.kind) {
+      case 'wild-swap':
+        return wildSwapDecision(state, player);
+      case 'token-swap':
+        return tokenSwapDecision(state, player);
+      case 'copy-site':
+        return copyDecision(state, player);
+      case 'park-or-gear':
+        return parkOrGearDecision(state, player);
+      default:
+        break;
+    }
     if (state.pending.stage === 'take-photo') {
-      // Only shoot if the sun is not already spoken for by a park in reach.
+      // Shoot unless the sun is spoken for by a park in reach; a full pack is
+      // a reason to shoot, since the overflow would be discarded anyway.
       const w = weightsFor(player);
       const earmark = Math.max(
         0,
@@ -467,7 +619,8 @@ export function aiAction(state: GameState): GameAction | null {
           .map((t) => t.need.sun),
       );
       const left = (player.resources.sun ?? 0) - photoCost(state, player.index);
-      return { type: 'camera-photo', take: left >= earmark || w.photo >= 2 };
+      const full = tokenCount(player) >= TOKEN_LIMIT - 1;
+      return { type: 'camera-photo', take: left >= earmark || full || w.photo >= 2 };
     }
     if (state.pending.kind === 'camera') return cameraDecision(state, player);
     return trailEndDecision(state, player);

@@ -1,5 +1,10 @@
 import type { BottleDef, BottleKind, SiteDef, SiteKind } from '../types';
 
+/**
+ * Trail sites follow the published structure: one of each basic site is on the
+ * trail every season, and the advanced sites are added one per season so all
+ * four are in play by winter.
+ */
 export const SITES: Record<SiteKind, SiteDef> = {
   trailhead: {
     kind: 'trailhead',
@@ -16,72 +21,26 @@ export const SITES: Record<SiteKind, SiteDef> = {
     choice: 'trail-end',
     capacity: Infinity,
   },
-  sun: { kind: 'sun', name: 'Sunny Meadow', icon: '☀️', text: 'Gain 1 sun.', gain: { sun: 1 } },
-  water: { kind: 'water', name: 'Stream', icon: '💧', text: 'Gain 1 water.', gain: { water: 1 } },
-  forest: { kind: 'forest', name: 'Woodland', icon: '🌲', text: 'Gain 1 tree.', gain: { forest: 1 } },
-  mountain: { kind: 'mountain', name: 'Ridge', icon: '⛰️', text: 'Gain 1 mountain.', gain: { mountain: 1 } },
-  wild: {
-    kind: 'wild',
-    name: 'Wildlife Crossing',
-    icon: '🐾',
-    text: 'Gain 1 wildcard, which pays for any resource.',
-    gain: { wild: 1 },
+
+  /* ---------------------------------------------------------- basic sites */
+  forest: { kind: 'forest', name: 'Woodland', icon: '🌲', text: 'Gain 1 tree.', gain: { forest: 1 }, tier: 'basic' },
+  mountain: {
+    kind: 'mountain',
+    name: 'Ridge',
+    icon: '⛰️',
+    text: 'Gain 1 mountain.',
+    gain: { mountain: 1 },
+    tier: 'basic',
   },
-  'double-sun': {
-    kind: 'double-sun',
-    name: 'Open Prairie',
-    icon: '☀️☀️',
-    text: 'Gain 2 sun.',
-    gain: { sun: 2 },
-  },
-  'double-water': {
-    kind: 'double-water',
+  valley: { kind: 'valley', name: 'Valley', icon: '💧💧', text: 'Gain 2 water.', gain: { water: 2 }, tier: 'basic' },
+  basin: { kind: 'basin', name: 'Sunlit Basin', icon: '☀️☀️', text: 'Gain 2 sun.', gain: { sun: 2 }, tier: 'basic' },
+  waterfall: {
+    kind: 'waterfall',
     name: 'Waterfall',
-    icon: '💧💧',
-    text: 'Gain 2 water.',
-    gain: { water: 2 },
-  },
-  'double-forest': {
-    kind: 'double-forest',
-    name: 'Old Growth',
-    icon: '🌲🌲',
-    text: 'Gain 2 trees.',
-    gain: { forest: 2 },
-  },
-  'double-mountain': {
-    kind: 'double-mountain',
-    name: 'Summit Ridge',
-    icon: '⛰️⛰️',
-    text: 'Gain 2 mountain.',
-    gain: { mountain: 2 },
-  },
-  'water-forest': {
-    kind: 'water-forest',
-    name: 'Riverbank Grove',
-    icon: '💧🌲',
-    text: 'Gain 1 water and 1 tree.',
-    gain: { water: 1, forest: 1 },
-  },
-  'mountain-sun': {
-    kind: 'mountain-sun',
-    name: 'Alpine Slope',
-    icon: '⛰️☀️',
-    text: 'Gain 1 mountain and 1 sun.',
-    gain: { mountain: 1, sun: 1 },
-  },
-  'forest-sun': {
-    kind: 'forest-sun',
-    name: 'Sunlit Clearing',
-    icon: '🌲☀️',
-    text: 'Gain 1 tree and 1 sun.',
-    gain: { forest: 1, sun: 1 },
-  },
-  spring: {
-    kind: 'spring',
-    name: 'Spring',
-    icon: '⛲',
-    text: 'Gain 1 water and refill one used bottle.',
-    gain: { water: 1 },
+    icon: '💧☀️',
+    text: 'Gain 1 water and 1 sun.',
+    gain: { water: 1, sun: 1 },
+    tier: 'basic',
   },
   camera: {
     kind: 'camera',
@@ -89,37 +48,49 @@ export const SITES: Record<SiteKind, SiteDef> = {
     icon: '📷',
     text: 'Take the camera (and a photo for 1 sun if you like) or leave it and take a bottle.',
     choice: 'camera',
+    tier: 'basic',
+  },
+
+  /* ------------------------------------------------------- advanced sites */
+  'adv-wildcard': {
+    kind: 'adv-wildcard',
+    name: 'Wildlife Hide',
+    icon: '🐾',
+    text: 'Trade 1 resource for a wildcard.',
+    choice: 'wild-swap',
+    tier: 'advanced',
+  },
+  'adv-swap': {
+    kind: 'adv-swap',
+    name: 'Trading Post',
+    icon: '🔄',
+    text: 'Trade a resource for a different one, up to twice.',
+    choice: 'token-swap',
+    tier: 'advanced',
+  },
+  'adv-park': {
+    kind: 'adv-park',
+    name: 'Ranger Station',
+    icon: '🏛️',
+    text: 'Visit a park, reserve a park, or buy gear — without walking to the end.',
+    choice: 'park-or-gear',
+    tier: 'advanced',
+  },
+  'adv-copy': {
+    kind: 'adv-copy',
+    name: 'Overlook',
+    icon: '🔭',
+    text: 'Pay 1 water to copy the action of any site holding another hiker.',
+    choice: 'copy-site',
+    tier: 'advanced',
   },
 };
 
-/** Middle-of-trail tiles, drawn fresh each season. */
-export const TRAIL_TILE_POOL: SiteKind[] = [
-  'sun',
-  'sun',
-  'sun',
-  'water',
-  'water',
-  'water',
-  'forest',
-  'forest',
-  'forest',
-  'mountain',
-  'mountain',
-  'mountain',
-  'wild',
-  'wild',
-  'double-sun',
-  'double-water',
-  'double-forest',
-  'double-mountain',
-  'water-forest',
-  'mountain-sun',
-  'forest-sun',
-  'spring',
-  'spring',
-  'camera',
-  'camera',
-];
+/** One of each is on the trail every season. */
+export const BASIC_SITES: SiteKind[] = ['forest', 'mountain', 'valley', 'basin', 'waterfall', 'camera'];
+
+/** Shuffled once per game; season N uses the first N of them. */
+export const ADVANCED_SITES: SiteKind[] = ['adv-wildcard', 'adv-swap', 'adv-park', 'adv-copy'];
 
 export const BOTTLES: Record<BottleKind, BottleDef> = {
   'sun-flask': {
@@ -145,38 +116,27 @@ export const BOTTLES: Record<BottleKind, BottleDef> = {
   },
 };
 
-export const BOTTLE_POOL: BottleKind[] = [
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-  'sun-flask',
-  'stone-flask',
-  'pine-flask',
-];
+export const BOTTLE_POOL: BottleKind[] = Array.from({ length: 18 }, (_, i) =>
+  (['sun-flask', 'stone-flask', 'pine-flask'] as BottleKind[])[i % 3],
+);
 
-/** Number of middle sites for each season: the trail grows as the year goes on. */
+/** Middle sites for a season: every basic site plus one advanced site per season. */
 export function trailLength(season: number): number {
-  return 5 + season; // 6, 7, 8, 9 middle sites plus trailhead and trail end
+  return BASIC_SITES.length + season;
 }
 
-/** Photos cost this much sun; the camera (or a Tripod) halves it. */
+/** Photos cost this much; the camera (or a Tripod) discounts it. */
 export const PHOTO_COST = 2;
 export const PHOTO_COST_DISCOUNTED = 1;
 /** The first player to buy gear in a season pays this much less sun. */
 export const FIRST_GEAR_DISCOUNT = 1;
+/** How many players get that discount (two at 4-5 players, one otherwise). */
+export function gearDiscountsForPlayers(players: number): number {
+  return players >= 4 ? 2 : 1;
+}
 /** The first player token is worth this at the end of the game. */
 export const FIRST_PLAYER_VP = 1;
-/** Everyone starts each season with this many campfire tokens. */
+/** Campfire tokens each player has alight at the start of a season. */
 export const CAMPFIRES_PER_SEASON = 1;
+/** Nobody may hold more than this many resource tokens at the end of a turn. */
+export const TOKEN_LIMIT = 12;

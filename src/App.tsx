@@ -164,8 +164,10 @@ export default function App() {
             <div className="panel-head">
               <h2>Gear shop</h2>
               <span className="muted">
-                Bought at the Trail End
-                {state.gearDiscountAvailable ? ' · first buyer this season saves 1 ☀️' : ''}
+                Bought at the Trail End or a Ranger Station
+                {state.gearDiscountsLeft > 0
+                  ? ` · ${state.gearDiscountsLeft} early-buyer discount${state.gearDiscountsLeft === 1 ? '' : 's'} left`
+                  : ''}
               </span>
             </div>
             <GearShelf state={state} />

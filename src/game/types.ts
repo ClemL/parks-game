@@ -14,20 +14,18 @@ export type ResourceBag = Partial<Record<Resource, number>>;
 export type SiteKind =
   | 'trailhead'
   | 'trail-end'
-  | 'sun'
-  | 'water'
+  /* basic sites: one of each is on the trail every season */
   | 'forest'
   | 'mountain'
-  | 'wild'
-  | 'double-sun'
-  | 'double-water'
-  | 'double-forest'
-  | 'double-mountain'
-  | 'water-forest'
-  | 'mountain-sun'
-  | 'forest-sun'
-  | 'spring'
-  | 'camera';
+  | 'valley'
+  | 'basin'
+  | 'waterfall'
+  | 'camera'
+  /* advanced sites: one more joins the trail each season */
+  | 'adv-wildcard'
+  | 'adv-swap'
+  | 'adv-park'
+  | 'adv-copy';
 
 export interface SiteDef {
   kind: SiteKind;
@@ -38,7 +36,8 @@ export interface SiteDef {
   /** Resources handed out on arrival. */
   gain?: ResourceBag;
   /** True when arrival opens a decision. */
-  choice?: 'camera' | 'trail-end';
+  choice?: DecisionKind;
+  tier?: 'basic' | 'advanced';
   /** Number of hikers that may stand here at once (trailhead and end are open). */
   capacity?: number;
 }
@@ -156,6 +155,8 @@ export interface Player {
   resources: ResourceBag;
   bottles: Bottle[];
   campfires: number;
+  /** True once this season's first hiker came home and re-lit the campfire. */
+  campfireRelit: boolean;
   photos: number;
   hikers: Hiker[];
   parks: ParkCard[];
@@ -168,13 +169,27 @@ export interface Player {
 
 export type AiPersonality = 'collector' | 'photographer' | 'blazer';
 
+export type DecisionKind =
+  | 'camera'
+  | 'trail-end'
+  | 'wild-swap'
+  | 'token-swap'
+  | 'park-or-gear'
+  | 'copy-site';
+
 export interface PendingDecision {
   player: number;
   hikerId: string;
   siteIndex: number;
-  kind: 'camera' | 'trail-end';
-  /** Set once a camera stop resolves into an optional photo. */
-  stage?: 'take-photo';
+  kind: DecisionKind;
+  /** 'take-photo' follows picking up the camera; swaps run give then get. */
+  stage?: 'take-photo' | 'give' | 'get';
+  /** Trades left at a Trading Post. */
+  swapsLeft?: number;
+  /** The resource handed over, waiting on what it becomes. */
+  give?: Resource;
+  /** True while resolving a site copied from an Overlook. */
+  copied?: boolean;
 }
 
 export interface LogEntry {
@@ -188,6 +203,8 @@ export type GamePhase = 'playing' | 'season-end' | 'game-over';
 export interface GameState {
   rng: number;
   season: number;
+  /** The order advanced sites join the trail, one more each season. */
+  advancedOrder: SiteKind[];
   trail: SiteKind[];
   /** Season bonus token still sitting on each trail site, by index. */
   siteTokens: SiteToken[];
@@ -197,8 +214,8 @@ export interface GameState {
   firstPlayer: number;
   /** The camera token's holder, or null while it is on the trail. */
   cameraHolder: number | null;
-  /** Cleared each season: the gear discount and the first player token are prizes. */
-  gearDiscountAvailable: boolean;
+  /** Cleared each season: gear discounts and the first player token are prizes. */
+  gearDiscountsLeft: number;
   firstPlayerTokenClaimed: boolean;
   parkRow: ParkCard[];
   parkDeck: ParkCard[];
@@ -228,6 +245,15 @@ export type GameAction =
   /** Camera site: take the camera, or decline it for a bottle card. */
   | { type: 'camera'; option: 'take-camera' | 'take-bottle' }
   | { type: 'camera-photo'; take: boolean }
+  /** Wildlife Hide and Trading Post trades. */
+  | { type: 'swap-give'; resource: Resource }
+  | { type: 'swap-get'; resource: Resource }
+  | { type: 'swap-done' }
+  /** Overlook: copy the action of an occupied site. */
+  | { type: 'copy-site'; siteIndex: number }
+  | { type: 'copy-skip' }
+  /** Ranger Station: the park and gear actions without walking to the end. */
+  | { type: 'park-or-gear'; option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'skip'; parkId?: string; gearId?: string }
   | {
       type: 'trail-end';
       option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'photo' | 'rest';

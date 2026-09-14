@@ -13,6 +13,8 @@ import {
   type SiteToken,
 } from './types';
 import {
+  ADVANCED_SITES,
+  BASIC_SITES,
   BOTTLE_POOL,
   BOTTLES,
   CAMPFIRES_PER_SEASON,
@@ -20,7 +22,8 @@ import {
   PHOTO_COST,
   PHOTO_COST_DISCOUNTED,
   SITES,
-  TRAIL_TILE_POOL,
+  TOKEN_LIMIT,
+  gearDiscountsForPlayers,
   trailLength,
 } from './data/sites';
 import { PARKS } from './data/parks';
@@ -29,7 +32,7 @@ import { BONUS_CARDS } from './data/bonuses';
 import { shuffle } from './rng';
 import { scoreGame } from './scoring';
 
-export const PARK_ROW_SIZE = 4;
+export const PARK_ROW_SIZE = 3;
 export const GEAR_ROW_SIZE = 3;
 export const SEASONS = 4;
 
@@ -47,6 +50,10 @@ export function bag(b: ResourceBag): Required<ResourceBag> {
 
 export function bagTotal(b: ResourceBag): number {
   return RESOURCES.reduce((sum, r) => sum + (b[r] ?? 0), 0);
+}
+
+export function tokenCount(player: Player): number {
+  return bagTotal(player.resources);
 }
 
 function clone<T>(value: T): T {
@@ -72,6 +79,9 @@ export function createGame(options: NewGameOptions = {}): GameState {
   rng = r3;
   const [bottleDeck, r4] = shuffle(BOTTLE_POOL, rng);
   rng = r4;
+  // The advanced sites enter the trail one per season, in a random order.
+  const [advancedOrder, r5] = shuffle(ADVANCED_SITES, rng);
+  rng = r5;
 
   const names = [options.humanName?.trim() || 'You', 'Ranger Ada', 'Scout Bo', 'Blazer Cy'];
   const personalities = [undefined, 'collector', 'photographer', 'blazer'] as const;
@@ -83,9 +93,9 @@ export function createGame(options: NewGameOptions = {}): GameState {
     personality: personalities[index],
     color: PLAYER_COLORS[index],
     resources: { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 },
-    // Everyone starts with one bottle and one campfire token.
     bottles: [{ id: `p${index}b0`, kind: bottleDeck[index] ?? 'sun-flask', used: false }],
     campfires: CAMPFIRES_PER_SEASON,
+    campfireRelit: false,
     photos: 0,
     hikers: [0, 1].map((h) => ({
       id: `p${index}h${h}`,
@@ -100,21 +110,22 @@ export function createGame(options: NewGameOptions = {}): GameState {
     reserved: [],
   }));
 
-  const [trail, r5] = buildTrail(1, rng);
-  rng = r5;
-  const [siteTokens, r6] = seedSiteTokens(trail, rng);
+  const [trail, r6] = buildTrail(1, advancedOrder, rng);
   rng = r6;
+  const [siteTokens, r7] = seedSiteTokens(trail, rng);
+  rng = r7;
 
   return {
     rng,
     season: 1,
+    advancedOrder,
     trail,
     siteTokens,
     players,
     current: 0,
     firstPlayer: 0,
     cameraHolder: null,
-    gearDiscountAvailable: true,
+    gearDiscountsLeft: gearDiscountsForPlayers(players.length),
     firstPlayerTokenClaimed: false,
     parkRow: parkDeck.slice(0, PARK_ROW_SIZE),
     parkDeck: parkDeck.slice(PARK_ROW_SIZE),
@@ -133,18 +144,14 @@ export function createGame(options: NewGameOptions = {}): GameState {
   };
 }
 
-function buildTrail(season: number, rng: number): [SiteKind[], number] {
-  const [pool, next] = shuffle(TRAIL_TILE_POOL, rng);
-  const middle = pool.slice(0, trailLength(season));
-
-  // Every trail needs a camera point, since it is the only source of photos
-  // and spare bottles.
-  if (!middle.includes('camera')) middle[middle.length - 1] = 'camera';
-
-  return [['trailhead', ...middle, 'trail-end'], next];
+/** One of every basic site, plus one advanced site per season, shuffled. */
+function buildTrail(season: number, advancedOrder: SiteKind[], rng: number): [SiteKind[], number] {
+  const middle = [...BASIC_SITES, ...advancedOrder.slice(0, season)];
+  const [shuffled, next] = shuffle(middle, rng);
+  return [['trailhead', ...shuffled, 'trail-end'], next];
 }
 
-/** One sun or water token per site, everywhere but the trailhead. */
+/** One sun or water token per site, everywhere but the trailhead and the end. */
 function seedSiteTokens(trail: SiteKind[], rng: number): [SiteToken[], number] {
   const tokens: SiteToken[] = [];
   let state = rng;
@@ -184,6 +191,11 @@ export function photoValue(player: Player): number {
   return card && card.effect.kind === 'photo-value' ? card.effect.vp : 1;
 }
 
+/** Campfires a player has alight at the start of a season, gear included. */
+export function campfireAllowance(player: Player): number {
+  return CAMPFIRES_PER_SEASON + player.gear.filter((g) => g.effect.kind === 'season-campfire').length;
+}
+
 /** Photos cost less while you hold the camera, or if you own a Tripod. */
 export function photoCost(state: GameState, playerIndex: number): number {
   const player = state.players[playerIndex];
@@ -192,12 +204,15 @@ export function photoCost(state: GameState, playerIndex: number): number {
     : PHOTO_COST;
 }
 
+/** Photos are paid in sun, and wildcards may cover the rest. */
 export function canAffordPhoto(state: GameState, playerIndex: number): boolean {
-  return (state.players[playerIndex].resources.sun ?? 0) >= photoCost(state, playerIndex);
+  const player = state.players[playerIndex];
+  const cost = photoCost(state, playerIndex);
+  return (player.resources.sun ?? 0) + (player.resources.wild ?? 0) >= cost;
 }
 
 export function gearCost(state: GameState, card: GearCard): number {
-  return Math.max(0, card.cost - (state.gearDiscountAvailable ? FIRST_GEAR_DISCOUNT : 0));
+  return Math.max(0, card.cost - (state.gearDiscountsLeft > 0 ? FIRST_GEAR_DISCOUNT : 0));
 }
 
 export function usableBottles(player: Player) {
@@ -264,8 +279,18 @@ function gainResources(player: Player, gain: ResourceBag, log: string[]): void {
     if (base === 0) continue;
     const total = base + bonusGainFor(player, r);
     player.resources[r] = (player.resources[r] ?? 0) + total;
-    log.push(`${total} ${r === 'forest' ? 'tree' : r}`);
+    log.push(`${total} ${label(r)}`);
   }
+}
+
+function label(r: Resource): string {
+  return r === 'forest' ? 'tree' : r === 'wild' ? 'wildcard' : r;
+}
+
+function spend(player: Player, resource: Resource, count = 1): boolean {
+  if ((player.resources[resource] ?? 0) < count) return false;
+  player.resources[resource] = (player.resources[resource] ?? 0) - count;
+  return true;
 }
 
 /* ------------------------------------------------------------ legal actions */
@@ -308,7 +333,7 @@ export function legalMoves(state: GameState): MoveOption[] {
   return options;
 }
 
-/** Gear the arriving hiker could pay for right now. */
+/** Gear the player could pay for right now. */
 export function affordableGear(state: GameState, playerIndex: number): GearCard[] {
   const player = state.players[playerIndex];
   return state.gearRow.filter(
@@ -337,6 +362,18 @@ export function reservableParks(state: GameState): ParkCard[] {
   return state.parkRow.filter((p) => !reserved.has(p.id));
 }
 
+/** Sites an Overlook could copy: any basic or advanced site holding a hiker. */
+export function copyableSites(state: GameState, playerIndex: number): number[] {
+  const player = state.players[playerIndex];
+  if ((player.resources.water ?? 0) < 1) return [];
+  const out: number[] = [];
+  for (let i = 1; i < state.trail.length - 1; i++) {
+    if (state.trail[i] === 'adv-copy') continue;
+    if (occupants(state, i).length > 0) out.push(i);
+  }
+  return out;
+}
+
 /* -------------------------------------------------------------- transitions */
 
 export function applyAction(state: GameState, action: GameAction): GameState {
@@ -353,6 +390,24 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       break;
     case 'camera-photo':
       resolveCameraPhoto(next, action.take);
+      break;
+    case 'swap-give':
+      resolveSwapGive(next, action.resource);
+      break;
+    case 'swap-get':
+      resolveSwapGet(next, action.resource);
+      break;
+    case 'swap-done':
+      finishDecision(next);
+      break;
+    case 'copy-site':
+      resolveCopySite(next, action.siteIndex);
+      break;
+    case 'copy-skip':
+      finishDecision(next);
+      break;
+    case 'park-or-gear':
+      resolveParkOrGear(next, action);
       break;
     case 'trail-end':
       resolveTrailEnd(next, action);
@@ -375,13 +430,13 @@ function useBottle(state: GameState, bottleId: string): void {
   const bottle = player.bottles.find((b) => b.id === bottleId);
   if (!bottle || bottle.used) return;
   const def = BOTTLES[bottle.kind];
-  if ((player.resources.water ?? 0) < (def.cost.water ?? 0)) return;
+  if (!spend(player, 'water', def.cost.water ?? 0)) return;
 
-  player.resources.water = (player.resources.water ?? 0) - (def.cost.water ?? 0);
   const gained: string[] = [];
   gainResources(player, def.gain, gained);
   bottle.used = true;
   log(state, player.index, `emptied a ${def.name}: 1 water became ${gained.join(', ')}`);
+  enforceTokenLimit(state, player);
 }
 
 function move(state: GameState, hikerId: string, to: number, useCampfire: boolean): void {
@@ -400,45 +455,104 @@ function move(state: GameState, hikerId: string, to: number, useCampfire: boolea
   }
 
   hiker.position = to;
-  const kind = state.trail[to];
-  const site = SITES[kind];
 
   if (to === state.trail.length - 1) {
     hiker.finished = true;
+    // A player's first hiker home re-lights their campfire for the rest of the season.
+    if (!player.campfireRelit) {
+      player.campfireRelit = true;
+      if (player.campfires < campfireAllowance(player)) {
+        player.campfires = campfireAllowance(player);
+        log(state, player.index, 'reached the Trail End and re-lit their campfire');
+      }
+    }
     state.pending = { player: player.index, hikerId, siteIndex: to, kind: 'trail-end' };
     log(state, player.index, 'reached the Trail End');
     return;
   }
 
+  resolveSite(state, player, to, hikerId, false);
+}
+
+/** Resolve arriving at (or copying) a site. */
+function resolveSite(
+  state: GameState,
+  player: Player,
+  index: number,
+  hikerId: string,
+  copied: boolean,
+): void {
+  const kind = state.trail[index];
+  const site = SITES[kind];
   const gained: string[] = [];
   if (site.gain) gainResources(player, site.gain, gained);
 
-  // The season token waiting on this site goes to whoever arrives first.
-  const token = state.siteTokens[to];
-  if (token) {
-    gainResources(player, { [token]: 1 }, gained);
-    state.siteTokens[to] = null;
-    gained.push('(season token)');
-  }
-
-  if (kind === 'spring') {
-    const used = player.bottles.find((b) => b.used);
-    if (used) {
-      used.used = false;
-      gained.push(`refilled a ${BOTTLES[used.kind].name}`);
+  // The season token waiting on this site goes to whoever arrives first. A
+  // copied action does not reach for it.
+  if (!copied) {
+    const token = state.siteTokens[index];
+    if (token) {
+      gainResources(player, { [token]: 1 }, gained);
+      state.siteTokens[index] = null;
+      gained.push('(season token)');
     }
   }
 
   log(
     state,
     player.index,
-    `moved to ${site.name}${gained.length ? ` and gained ${gained.join(', ')}` : ''}`,
+    `${copied ? 'copied' : 'moved to'} ${site.name}${gained.length ? ` and gained ${gained.join(', ')}` : ''}`,
   );
 
-  if (site.choice === 'camera') {
-    state.pending = { player: player.index, hikerId, siteIndex: to, kind: 'camera' };
+  if (site.choice) {
+    state.pending = {
+      player: player.index,
+      hikerId,
+      siteIndex: index,
+      kind: site.choice,
+      ...(site.choice === 'token-swap' ? { swapsLeft: 2, stage: 'give' as const } : {}),
+      ...(site.choice === 'wild-swap' ? { stage: 'give' as const } : {}),
+      ...(copied ? { copied: true } : {}),
+    };
+    // Nothing to decide? Then the stop is simply spent.
+    if (!decisionHasOptions(state)) {
+      state.pending = null;
+      endTurn(state);
+    }
     return;
   }
+
+  enforceTokenLimit(state, player);
+  endTurn(state);
+}
+
+/** False when a pending decision offers the player nothing at all. */
+function decisionHasOptions(state: GameState): boolean {
+  const pending = state.pending;
+  if (!pending) return false;
+  const player = state.players[pending.player];
+  switch (pending.kind) {
+    case 'wild-swap':
+    case 'token-swap':
+      return COST_RESOURCES.some((r) => (player.resources[r] ?? 0) > 0);
+    case 'copy-site':
+      return copyableSites(state, player.index).length > 0;
+    case 'park-or-gear':
+      return (
+        claimableParks(state, player.index).length > 0 ||
+        reservableParks(state).length > 0 ||
+        affordableGear(state, player.index).length > 0
+      );
+    default:
+      return true;
+  }
+}
+
+function finishDecision(state: GameState): void {
+  if (!state.pending) return;
+  const player = state.players[state.pending.player];
+  state.pending = null;
+  enforceTokenLimit(state, player);
   endTurn(state);
 }
 
@@ -456,37 +570,188 @@ function resolveCamera(state: GameState, option: 'take-camera' | 'take-bottle'):
         ? `took the camera from ${state.players[previous].name}`
         : 'picked up the camera',
     );
-    // Holding the camera, a photo may be taken on the spot for 1 sun.
     if (canAffordPhoto(state, player.index)) {
       state.pending = { ...state.pending, stage: 'take-photo' };
       return;
     }
-    state.pending = null;
-    endTurn(state);
+    finishDecision(state);
     return;
   }
 
   const kind: BottleKind = state.bottleDeck.shift() ?? 'sun-flask';
-  player.bottles.push({ id: `p${player.index}b${player.bottles.length}s${state.season}`, kind, used: false });
+  player.bottles.push({
+    id: `p${player.index}b${player.bottles.length}s${state.season}`,
+    kind,
+    used: false,
+  });
   log(state, player.index, `left the camera and took a ${BOTTLES[kind].name}`);
-  state.pending = null;
-  endTurn(state);
+  finishDecision(state);
 }
 
 function resolveCameraPhoto(state: GameState, take: boolean): void {
   if (!state.pending || state.pending.stage !== 'take-photo') return;
   const player = state.players[state.pending.player];
   if (take) takePhoto(state, player);
-  state.pending = null;
-  endTurn(state);
+  finishDecision(state);
 }
 
 function takePhoto(state: GameState, player: Player): boolean {
   const cost = photoCost(state, player.index);
-  if ((player.resources.sun ?? 0) < cost) return false;
-  player.resources.sun = (player.resources.sun ?? 0) - cost;
+  const sun = Math.min(player.resources.sun ?? 0, cost);
+  const wild = cost - sun;
+  if ((player.resources.wild ?? 0) < wild) return false;
+  player.resources.sun = (player.resources.sun ?? 0) - sun;
+  player.resources.wild = (player.resources.wild ?? 0) - wild;
   player.photos += 1;
-  log(state, player.index, `took a photo for ${cost} sun`);
+  log(
+    state,
+    player.index,
+    `took a photo for ${sun} sun${wild > 0 ? ` and ${wild} wildcard` : ''}`,
+  );
+  return true;
+}
+
+/* ------------------------------------------------------------ advanced sites */
+
+function resolveSwapGive(state: GameState, resource: Resource): void {
+  const pending = state.pending;
+  if (!pending || (pending.kind !== 'wild-swap' && pending.kind !== 'token-swap')) return;
+  const player = state.players[pending.player];
+  if (!COST_RESOURCES.includes(resource) || (player.resources[resource] ?? 0) < 1) return;
+
+  if (pending.kind === 'wild-swap') {
+    spend(player, resource);
+    const gained: string[] = [];
+    gainResources(player, { wild: 1 }, gained);
+    log(state, player.index, `traded 1 ${label(resource)} for ${gained.join(', ')}`);
+    finishDecision(state);
+    return;
+  }
+
+  spend(player, resource);
+  state.pending = { ...pending, give: resource, stage: 'get' };
+}
+
+function resolveSwapGet(state: GameState, resource: Resource): void {
+  const pending = state.pending;
+  if (!pending || pending.kind !== 'token-swap' || pending.stage !== 'get' || !pending.give) return;
+  if (!COST_RESOURCES.includes(resource) || resource === pending.give) return;
+  const player = state.players[pending.player];
+
+  gainResources(player, { [resource]: 1 }, []);
+  log(state, player.index, `traded 1 ${label(pending.give)} for 1 ${label(resource)}`);
+
+  const swapsLeft = (pending.swapsLeft ?? 1) - 1;
+  if (swapsLeft > 0 && COST_RESOURCES.some((r) => (player.resources[r] ?? 0) > 0)) {
+    state.pending = { ...pending, swapsLeft, stage: 'give', give: undefined };
+    return;
+  }
+  finishDecision(state);
+}
+
+function resolveCopySite(state: GameState, siteIndex: number): void {
+  const pending = state.pending;
+  if (!pending || pending.kind !== 'copy-site') return;
+  const player = state.players[pending.player];
+  if (!copyableSites(state, player.index).includes(siteIndex)) return;
+  if (!spend(player, 'water')) return;
+
+  log(state, player.index, `paid 1 water at the Overlook to copy ${SITES[state.trail[siteIndex]].name}`);
+  state.pending = null;
+  resolveSite(state, player, siteIndex, pending.hikerId, true);
+}
+
+function resolveParkOrGear(
+  state: GameState,
+  action: Extract<GameAction, { type: 'park-or-gear' }>,
+): void {
+  const pending = state.pending;
+  if (!pending || pending.kind !== 'park-or-gear') return;
+  const player = state.players[pending.player];
+
+  switch (action.option) {
+    case 'claim-park':
+      claimPark(state, player, action.parkId);
+      break;
+    case 'reserve-park':
+      reservePark(state, player, action.parkId);
+      break;
+    case 'buy-gear':
+      buyGear(state, player, action.gearId);
+      break;
+    default:
+      log(state, player.index, 'passed at the Ranger Station');
+      break;
+  }
+  finishDecision(state);
+}
+
+/* --------------------------------------------------------------- trail end */
+
+function claimPark(state: GameState, player: Player, parkId?: string): boolean {
+  const park = claimableParks(state, player.index).find((p) => p.id === parkId);
+  if (!park) return false;
+  const plan = planPayment(player, effectiveCost(player, park));
+  if (!plan) return false;
+
+  applyPayment(player, plan);
+  player.parks.push(park);
+  player.claimedInSeason.push(state.season);
+
+  const reservedIndex = player.reserved.findIndex((p) => p.id === park.id);
+  if (reservedIndex >= 0) player.reserved.splice(reservedIndex, 1);
+  else removeFromRow(state, park.id);
+
+  const wild = plan.wild > 0 ? ` (${plan.wild} wildcard)` : '';
+  log(state, player.index, `visited ${park.name} for ${park.vp} VP${wild}`);
+  return true;
+}
+
+function reservePark(state: GameState, player: Player, parkId?: string): boolean {
+  const park = reservableParks(state).find((p) => p.id === parkId);
+  if (!park) return false;
+  player.reserved.push(park);
+  removeFromRow(state, park.id);
+
+  let note = '';
+  // The first reservation of the season also takes the first player token.
+  if (!state.firstPlayerTokenClaimed) {
+    state.firstPlayerTokenClaimed = true;
+    state.firstPlayer = player.index;
+    note = ' and took the first player token';
+  }
+  log(state, player.index, `reserved ${park.name}${note}`);
+  return true;
+}
+
+function buyGear(state: GameState, player: Player, gearId?: string): boolean {
+  const card = state.gearRow.find((g) => g.id === gearId);
+  if (!card || !affordableGear(state, player.index).some((g) => g.id === card.id)) return false;
+
+  const cost = gearCost(state, card);
+  const discounted = state.gearDiscountsLeft > 0;
+  spend(player, 'sun', cost);
+  player.gear.push(card);
+  if (card.effect.kind === 'extra-bottle') {
+    player.bottles.push({
+      id: `p${player.index}g${player.bottles.length}`,
+      kind: card.effect.bottle,
+      used: false,
+    });
+  }
+  if (card.effect.kind === 'season-campfire') player.campfires += 1;
+  if (discounted) state.gearDiscountsLeft -= 1;
+
+  const index = state.gearRow.findIndex((g) => g.id === card.id);
+  const replacement = state.gearDeck.shift();
+  if (replacement) state.gearRow[index] = replacement;
+  else state.gearRow.splice(index, 1);
+
+  log(
+    state,
+    player.index,
+    `bought ${card.name} for ${cost} sun${discounted ? ' (early buyer discount)' : ''}`,
+  );
   return true;
 }
 
@@ -495,81 +760,25 @@ function resolveTrailEnd(state: GameState, action: Extract<GameAction, { type: '
   const player = state.players[state.pending.player];
 
   switch (action.option) {
-    case 'claim-park': {
-      const park = claimableParks(state, player.index).find((p) => p.id === action.parkId);
-      if (park) {
-        const plan = planPayment(player, effectiveCost(player, park));
-        if (plan) {
-          applyPayment(player, plan);
-          player.parks.push(park);
-          player.claimedInSeason.push(state.season);
-
-          const reservedIndex = player.reserved.findIndex((p) => p.id === park.id);
-          if (reservedIndex >= 0) {
-            player.reserved.splice(reservedIndex, 1);
-          } else {
-            removeFromRow(state, park.id);
-          }
-          const wild = plan.wild > 0 ? ` (${plan.wild} wildcard)` : '';
-          log(state, player.index, `visited ${park.name} for ${park.vp} VP${wild}`);
-        }
-      }
+    case 'claim-park':
+      claimPark(state, player, action.parkId);
       break;
-    }
-    case 'reserve-park': {
-      const park = reservableParks(state).find((p) => p.id === action.parkId);
-      if (park) {
-        player.reserved.push(park);
-        removeFromRow(state, park.id);
-        let note = '';
-        // The first reservation of the season also takes the first player token.
-        if (!state.firstPlayerTokenClaimed) {
-          state.firstPlayerTokenClaimed = true;
-          state.firstPlayer = player.index;
-          note = ' and took the first player token';
-        }
-        log(state, player.index, `reserved ${park.name}${note}`);
-      }
+    case 'reserve-park':
+      reservePark(state, player, action.parkId);
       break;
-    }
-    case 'buy-gear': {
-      const card = state.gearRow.find((g) => g.id === action.gearId);
-      if (card && affordableGear(state, player.index).some((g) => g.id === card.id)) {
-        const cost = gearCost(state, card);
-        player.resources.sun = (player.resources.sun ?? 0) - cost;
-        player.gear.push(card);
-        if (card.effect.kind === 'extra-bottle') {
-          player.bottles.push({
-            id: `p${player.index}g${player.bottles.length}`,
-            kind: card.effect.bottle,
-            used: false,
-          });
-        }
-        const discounted = state.gearDiscountAvailable;
-        state.gearDiscountAvailable = false;
-        const index = state.gearRow.findIndex((g) => g.id === card.id);
-        const replacement = state.gearDeck.shift();
-        if (replacement) state.gearRow[index] = replacement;
-        else state.gearRow.splice(index, 1);
-        log(
-          state,
-          player.index,
-          `bought ${card.name} for ${cost} sun${discounted ? ' (first buyer discount)' : ''}`,
-        );
-      }
+    case 'buy-gear':
+      buyGear(state, player, action.gearId);
       break;
-    }
     case 'photo':
       takePhoto(state, player);
       break;
     default:
-      player.resources.sun = (player.resources.sun ?? 0) + 1;
+      gainResources(player, { sun: 1 }, []);
       log(state, player.index, 'rested at the Trail End and gained 1 sun');
       break;
   }
 
-  state.pending = null;
-  endTurn(state);
+  finishDecision(state);
 }
 
 function removeFromRow(state: GameState, parkId: string): void {
@@ -578,6 +787,32 @@ function removeFromRow(state: GameState, parkId: string): void {
   const replacement = state.parkDeck.shift();
   if (replacement) state.parkRow[index] = replacement;
   else state.parkRow.splice(index, 1);
+}
+
+/** Nobody may end a turn holding more than twelve tokens. */
+function enforceTokenLimit(state: GameState, player: Player): void {
+  const discarded: Resource[] = [];
+  while (tokenCount(player) > TOKEN_LIMIT) {
+    // Shed sun first, then whichever plain resource is most plentiful, and
+    // never a wildcard while anything else is on hand.
+    const order = [...COST_RESOURCES]
+      .filter((r) => (player.resources[r] ?? 0) > 0)
+      .sort((a, b) => {
+        if (a === 'sun') return -1;
+        if (b === 'sun') return 1;
+        return (player.resources[b] ?? 0) - (player.resources[a] ?? 0);
+      });
+    const pick = order[0] ?? 'wild';
+    player.resources[pick] = (player.resources[pick] ?? 0) - 1;
+    discarded.push(pick);
+  }
+  if (discarded.length > 0) {
+    log(
+      state,
+      player.index,
+      `was over the ${TOKEN_LIMIT}-token limit and returned ${discarded.map(label).join(', ')}`,
+    );
+  }
 }
 
 function playerDone(player: Player): boolean {
@@ -608,30 +843,27 @@ function startNextSeason(state: GameState): void {
   if (state.phase !== 'season-end') return;
   state.season += 1;
 
-  const [trail, rng] = buildTrail(state.season, state.rng);
+  const [trail, rng] = buildTrail(state.season, state.advancedOrder, state.rng);
   const [tokens, rng2] = seedSiteTokens(trail, rng);
   state.trail = trail;
   state.siteTokens = tokens;
   state.rng = rng2;
-  state.gearDiscountAvailable = true;
+  state.gearDiscountsLeft = gearDiscountsForPlayers(state.players.length);
   state.firstPlayerTokenClaimed = false;
 
   for (const player of state.players) {
-    // Sun does not keep between seasons; the other resources do.
-    player.resources.sun = 0;
-    player.campfires = CAMPFIRES_PER_SEASON;
+    // Resources carry over between seasons, subject to the token limit.
+    player.campfires = campfireAllowance(player);
+    player.campfireRelit = false;
     for (const bottle of player.bottles) bottle.used = false;
     for (const hiker of player.hikers) {
       hiker.position = 0;
       hiker.finished = false;
     }
     for (const gear of player.gear) {
-      if (gear.effect.kind === 'season-income') {
-        gainResources(player, gear.effect.gain, []);
-      } else if (gear.effect.kind === 'season-campfire') {
-        player.campfires += 1;
-      }
+      if (gear.effect.kind === 'season-income') gainResources(player, gear.effect.gain, []);
     }
+    enforceTokenLimit(state, player);
   }
 
   state.current = state.firstPlayer;
@@ -639,9 +871,9 @@ function startNextSeason(state: GameState): void {
   log(
     state,
     -1,
-    `Season ${state.season} begins with ${trailLength(state.season)} trail sites. ${
-      state.players[state.firstPlayer].name
-    } leads.`,
+    `Season ${state.season} begins: ${trailLength(state.season)} sites, now with ${state.season} advanced site${
+      state.season === 1 ? '' : 's'
+    }. ${state.players[state.firstPlayer].name} leads.`,
   );
 }
 

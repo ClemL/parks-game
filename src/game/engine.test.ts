@@ -1,17 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
+  campfireAllowance,
   claimableParks,
+  copyableSites,
   createGame,
   legalMoves,
   occupants,
+  PARK_ROW_SIZE,
   photoCost,
   reservableParks,
   SEASONS,
+  siteDef,
+  tokenCount,
   usableBottles,
 } from './engine';
 import { aiAction } from './ai';
-import { PHOTO_COST, PHOTO_COST_DISCOUNTED } from './data/sites';
+import {
+  ADVANCED_SITES,
+  BASIC_SITES,
+  PHOTO_COST,
+  PHOTO_COST_DISCOUNTED,
+  TOKEN_LIMIT,
+} from './data/sites';
 import type { GameState } from './types';
 
 function allCpu(seed: number): GameState {
@@ -58,24 +69,39 @@ describe('setup', () => {
     expect(new Set(state.players.flatMap((p) => p.bonusCards)).size).toBe(8);
     expect(state.players.filter((p) => !p.isHuman)).toHaveLength(3);
     expect(state.cameraHolder).toBeNull();
+    expect(state.parkRow).toHaveLength(PARK_ROW_SIZE);
+    expect(PARK_ROW_SIZE).toBe(3);
+    // Four players means two early-buyer gear discounts.
+    expect(state.gearDiscountsLeft).toBe(2);
   });
 
-  it('builds a trail that grows each season and always has a camera point', () => {
-    let state = createGame({ seed: 7 });
-    const lengths: number[] = [];
-    for (let season = 1; season <= SEASONS; season++) {
-      lengths.push(state.trail.length);
-      expect(state.trail[0]).toBe('trailhead');
-      expect(state.trail[state.trail.length - 1]).toBe('trail-end');
-      expect(state.trail).toContain('camera');
-      // Removed locations stay removed.
-      expect(state.trail).not.toContain('vista');
-      expect(state.trail).not.toContain('campfire');
-      expect(state.trail).not.toContain('reservation');
-      state.phase = 'season-end';
-      if (season < SEASONS) state = applyAction(state, { type: 'end-season' });
+  it('puts every basic site on the trail and adds one advanced site per season', () => {
+    for (const seed of [7, 8, 9]) {
+      let state = createGame({ seed });
+      const lengths: number[] = [];
+      for (let season = 1; season <= SEASONS; season++) {
+        lengths.push(state.trail.length);
+        expect(state.trail[0]).toBe('trailhead');
+        expect(state.trail[state.trail.length - 1]).toBe('trail-end');
+
+        const middle = state.trail.slice(1, -1);
+        // One of each basic site, every season.
+        for (const basic of BASIC_SITES) {
+          expect(middle.filter((k) => k === basic), `${basic} in season ${season}`).toHaveLength(1);
+        }
+        // Exactly `season` advanced sites, all different, in a stable order.
+        const advanced = middle.filter((k) => ADVANCED_SITES.includes(k));
+        expect(advanced).toHaveLength(season);
+        expect(new Set(advanced).size).toBe(season);
+        expect(new Set(advanced)).toEqual(new Set(state.advancedOrder.slice(0, season)));
+
+        state.phase = 'season-end';
+        if (season < SEASONS) state = applyAction(state, { type: 'end-season' });
+      }
+      expect(lengths).toEqual([9, 10, 11, 12]);
+      // By winter all four advanced sites are in play.
+      expect(new Set(state.trail.filter((k) => ADVANCED_SITES.includes(k))).size).toBe(4);
     }
-    expect(lengths).toEqual([8, 9, 10, 11]);
   });
 
   it('is deterministic for a given seed', () => {
@@ -95,22 +121,21 @@ describe('season tokens', () => {
 
   it('gives the token to the first hiker there and to nobody after', () => {
     const state = createGame({ seed: 5 });
-    const target = 2;
+    // Pick a plain resource site so only its own payout and the token apply.
+    const target = state.trail.findIndex((k) => k === 'forest' || k === 'mountain');
     const token = state.siteTokens[target]!;
+    const sitePays = siteDef(state.trail[target]).gain?.[token] ?? 0;
     state.current = 0;
 
     const first = applyAction(state, { type: 'move', hikerId: 'p0h0', to: target });
-    expect(first.players[0].resources[token]).toBe(
-      (state.players[0].resources[token] ?? 0) + (first.trail[target] === token ? 2 : 1),
-    );
+    expect(first.players[0].resources[token]).toBe(sitePays + 1);
     expect(first.siteTokens[target]).toBeNull();
 
     // A second hiker sharing the site with a campfire gets the site, not the token.
     first.current = 1;
     const before = first.players[1].resources[token] ?? 0;
     const second = applyAction(first, { type: 'move', hikerId: 'p1h0', to: target, useCampfire: true });
-    const siteAlsoPays = second.trail[target] === token ? 1 : 0;
-    expect(second.players[1].resources[token] ?? 0).toBe(before + siteAlsoPays);
+    expect(second.players[1].resources[token] ?? 0).toBe(before + sitePays);
   });
 
   it('lays fresh tokens out for the next season', () => {
@@ -140,6 +165,24 @@ describe('occupancy', () => {
     const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: target, useCampfire: true });
     expect(next.players[0].campfires).toBe(0);
     expect(occupants(next, target)).toHaveLength(2);
+  });
+
+  it('re-lights the campfire when a player first hiker comes home', () => {
+    const state = createGame({ seed: 14 });
+    state.current = 0;
+    state.players[0].campfires = 0;
+    expect(campfireAllowance(state.players[0])).toBe(1);
+
+    let next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: state.trail.length - 1 });
+    expect(next.players[0].campfires).toBe(1);
+    expect(next.players[0].campfireRelit).toBe(true);
+
+    // Only once per season: the second hiker home does not add another.
+    next = applyAction(next, { type: 'trail-end', option: 'rest' });
+    next.current = 0;
+    next.players[0].campfires = 0;
+    next = applyAction(next, { type: 'move', hikerId: 'p0h1', to: next.trail.length - 1 });
+    expect(next.players[0].campfires).toBe(0);
   });
 
   it('refills each player to one campfire every season', () => {
@@ -230,21 +273,138 @@ describe('bottles', () => {
     expect(usableBottles(state.players[0])).toHaveLength(0);
   });
 
-  it('refills every bottle at the season break and at a Spring', () => {
+  it('refills every bottle at the season break', () => {
     let state = createGame({ seed: 33 });
     state.players[0].bottles = [{ id: 'b', kind: 'pine-flask', used: true }];
     state.phase = 'season-end';
     state = applyAction(state, { type: 'end-season' });
     expect(state.players[0].bottles[0].used).toBe(false);
+  });
+});
 
-    const spring = createGame({ seed: 34 });
-    const index = spring.trail.indexOf('spring');
-    if (index > 0) {
-      spring.players[0].bottles = [{ id: 'b', kind: 'pine-flask', used: true }];
-      spring.current = 0;
-      const next = applyAction(spring, { type: 'move', hikerId: 'p0h0', to: index });
-      expect(next.players[0].bottles[0].used).toBe(false);
+describe('advanced sites', () => {
+  /** Put a hiker on the named advanced site and return the pending state. */
+  function landOn(kind: string, seed = 61, setup?: (s: GameState) => void) {
+    let state = createGame({ seed });
+    // Walk seasons forward until the site is on the trail.
+    let guard = 0;
+    while (!state.trail.includes(kind as never) && guard++ < 4) {
+      state.phase = 'season-end';
+      state = applyAction(state, { type: 'end-season' });
     }
+    expect(state.trail).toContain(kind as never);
+    const index = state.trail.indexOf(kind as never);
+    state.current = 0;
+    setup?.(state);
+    return { state: applyAction(state, { type: 'move', hikerId: 'p0h0', to: index }), index };
+  }
+
+  it('Wildlife Hide trades a resource for a wildcard', () => {
+    const { state } = landOn('adv-wildcard', 61, (s) => {
+      s.players[0].resources = { sun: 2, water: 0, forest: 0, mountain: 0, wild: 0 };
+    });
+    expect(state.pending?.kind).toBe('wild-swap');
+    const next = applyAction(state, { type: 'swap-give', resource: 'sun' });
+    expect(next.players[0].resources.wild).toBe(1);
+    expect(next.players[0].resources.sun).toBeLessThan(3);
+    expect(next.pending).toBeNull();
+  });
+
+  it('Trading Post swaps a resource for a different one, twice', () => {
+    const { state } = landOn('adv-swap', 61, (s) => {
+      s.players[0].resources = { sun: 3, water: 0, forest: 0, mountain: 0, wild: 0 };
+    });
+    expect(state.pending?.kind).toBe('token-swap');
+    expect(state.pending?.swapsLeft).toBe(2);
+    const sunBefore = state.players[0].resources.sun ?? 0;
+
+    let next = applyAction(state, { type: 'swap-give', resource: 'sun' });
+    expect(next.pending?.stage).toBe('get');
+    next = applyAction(next, { type: 'swap-get', resource: 'mountain' });
+    expect(next.players[0].resources.mountain).toBe(1);
+    expect(next.pending?.swapsLeft).toBe(1);
+    expect(next.pending?.stage).toBe('give');
+
+    next = applyAction(next, { type: 'swap-give', resource: 'sun' });
+    next = applyAction(next, { type: 'swap-get', resource: 'forest' });
+    expect(next.players[0].resources.forest).toBe(1);
+    expect(next.players[0].resources.sun).toBe(sunBefore - 2);
+    expect(next.pending).toBeNull();
+
+    // A swap may not hand back the same resource it took.
+    const again = applyAction(state, { type: 'swap-give', resource: 'sun' });
+    const rejected = applyAction(again, { type: 'swap-get', resource: 'sun' });
+    expect(rejected.pending?.stage).toBe('get');
+  });
+
+  it('lets a player stop a Trading Post early', () => {
+    const { state } = landOn('adv-swap', 61);
+    const next = applyAction(state, { type: 'swap-done' });
+    expect(next.pending).toBeNull();
+  });
+
+  it('Ranger Station offers parks and gear without retiring the hiker', () => {
+    const { state, index } = landOn('adv-park', 61, (s) => {
+      s.players[0].resources = { sun: 9, water: 9, forest: 9, mountain: 9, wild: 0 };
+    });
+    expect(state.pending?.kind).toBe('park-or-gear');
+    const park = claimableParks(state, 0)[0];
+    const next = applyAction(state, { type: 'park-or-gear', option: 'claim-park', parkId: park.id });
+    expect(next.players[0].parks.map((p) => p.id)).toContain(park.id);
+    // The hiker is still on the trail, not finished.
+    expect(next.players[0].hikers[0].finished).toBe(false);
+    expect(next.players[0].hikers[0].position).toBe(index);
+  });
+
+  it('Ranger Station reservation also takes the first player token', () => {
+    const { state } = landOn('adv-park', 61);
+    const park = reservableParks(state)[0];
+    const next = applyAction(state, { type: 'park-or-gear', option: 'reserve-park', parkId: park.id });
+    expect(next.firstPlayer).toBe(0);
+    expect(next.firstPlayerTokenClaimed).toBe(true);
+  });
+
+  it('Overlook pays 1 water to copy an occupied site', () => {
+    let state = createGame({ seed: 62 });
+    let guard = 0;
+    while (!state.trail.includes('adv-copy') && guard++ < 4) {
+      state.phase = 'season-end';
+      state = applyAction(state, { type: 'end-season' });
+    }
+    const overlook = state.trail.indexOf('adv-copy');
+    const valley = state.trail.indexOf('valley');
+    // An opponent is standing on the Valley, so its action can be copied.
+    state.players[1].hikers[0].position = valley;
+    state.siteTokens[valley] = null;
+    // Clear the Overlook's own season token so only the copy pays out here.
+    state.siteTokens[overlook] = null;
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 1, forest: 0, mountain: 0, wild: 0 };
+
+    let next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: overlook });
+    expect(next.pending?.kind).toBe('copy-site');
+    expect(copyableSites(next, 0)).toContain(valley);
+
+    next = applyAction(next, { type: 'copy-site', siteIndex: valley });
+    // Paid 1 water, gained 2 from the copied Valley.
+    expect(next.players[0].resources.water).toBe(2);
+    expect(next.pending).toBeNull();
+  });
+
+  it('offers no copy without water or without an occupied site', () => {
+    let state = createGame({ seed: 62 });
+    let guard = 0;
+    while (!state.trail.includes('adv-copy') && guard++ < 4) {
+      state.phase = 'season-end';
+      state = applyAction(state, { type: 'end-season' });
+    }
+    const overlook = state.trail.indexOf('adv-copy');
+    state.current = 0;
+    state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
+    const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: overlook });
+    // Nothing to decide, so the stop simply passes.
+    expect(next.pending).toBeNull();
+    expect(copyableSites(next, 0)).toHaveLength(0);
   });
 });
 
@@ -284,31 +444,32 @@ describe('the Trail End', () => {
     expect(later.firstPlayer).toBe(0);
   });
 
-  it('discounts the first gear purchase of each season only', () => {
-    const state = createGame({ seed: 43 });
-    const card = state.gearRow[0];
-    state.players[0].resources.sun = 9;
-    state.players[1].resources.sun = 9;
+  it('gives the first two gear buyers a discount at four players, then nobody', () => {
+    let state = createGame({ seed: 43 });
+    for (const player of state.players) player.resources.sun = 9;
 
-    let next = arriveAtEnd(state);
-    next = applyAction(next, { type: 'trail-end', option: 'buy-gear', gearId: card.id });
-    expect(next.players[0].gear.map((g) => g.id)).toContain(card.id);
-    expect(next.players[0].resources.sun).toBe(9 - (card.cost - 1));
-    expect(next.gearDiscountAvailable).toBe(false);
+    const buy = (seat: number) => {
+      const card = state.gearRow.find((g) => !state.players[seat].gear.some((o) => o.id === g.id))!;
+      const before = state.players[seat].resources.sun ?? 0;
+      state.current = seat;
+      state = applyAction(state, { type: 'move', hikerId: `p${seat}h0`, to: state.trail.length - 1 });
+      state = applyAction(state, { type: 'trail-end', option: 'buy-gear', gearId: card.id });
+      return before - (state.players[seat].resources.sun ?? 0) === card.cost - 1;
+    };
 
-    const second = next.gearRow[0];
-    next.current = 1;
-    let other = applyAction(next, { type: 'move', hikerId: 'p1h0', to: next.trail.length - 1 });
-    other = applyAction(other, { type: 'trail-end', option: 'buy-gear', gearId: second.id });
-    expect(other.players[1].resources.sun).toBe(9 - second.cost);
+    expect(buy(0)).toBe(true);
+    expect(state.gearDiscountsLeft).toBe(1);
+    expect(buy(1)).toBe(true);
+    expect(state.gearDiscountsLeft).toBe(0);
+    expect(buy(2)).toBe(false);
   });
 
-  it('offers the discount again in the next season', () => {
+  it('offers the discounts again in the next season', () => {
     let state = createGame({ seed: 44 });
-    state.gearDiscountAvailable = false;
+    state.gearDiscountsLeft = 0;
     state.phase = 'season-end';
     state = applyAction(state, { type: 'end-season' });
-    expect(state.gearDiscountAvailable).toBe(true);
+    expect(state.gearDiscountsLeft).toBe(2);
     expect(state.firstPlayerTokenClaimed).toBe(false);
   });
 
@@ -326,15 +487,36 @@ describe('the Trail End', () => {
 });
 
 describe('resources', () => {
-  it('clears sun but keeps everything else between seasons', () => {
+  it('keeps every resource between seasons, sun included', () => {
     let state = createGame({ seed: 51 });
     state.players[0].resources = { sun: 4, water: 2, forest: 1, mountain: 0, wild: 3 };
     state.phase = 'season-end';
     state = applyAction(state, { type: 'end-season' });
-    expect(state.players[0].resources.sun).toBe(0);
-    expect(state.players[0].resources.water).toBe(2);
-    expect(state.players[0].resources.wild).toBe(3);
+    expect(state.players[0].resources).toMatchObject({ sun: 4, water: 2, forest: 1, wild: 3 });
     expect(state.season).toBe(2);
+  });
+
+  it('discards down to twelve tokens at the end of a turn, sun first', () => {
+    const state = createGame({ seed: 53 });
+    const index = state.trail.indexOf('valley');
+    state.current = 0;
+    state.players[0].resources = { sun: 5, water: 3, forest: 3, mountain: 1, wild: 1 };
+    const next = applyAction(state, { type: 'move', hikerId: 'p0h0', to: index });
+    expect(tokenCount(next.players[0])).toBe(TOKEN_LIMIT);
+    // Sun is shed before anything else, and wildcards are kept.
+    expect(next.players[0].resources.wild).toBe(1);
+    expect(next.players[0].resources.sun).toBeLessThan(5);
+  });
+
+  it('pays for a photo with a wildcard when sun runs short', () => {
+    const state = createGame({ seed: 54 });
+    state.cameraHolder = null;
+    state.players[0].resources = { sun: 1, water: 0, forest: 0, mountain: 0, wild: 2 };
+    let next = arriveAtEnd(state);
+    next = applyAction(next, { type: 'trail-end', option: 'photo' });
+    expect(next.players[0].photos).toBe(1);
+    expect(next.players[0].resources.sun).toBe(0);
+    expect(next.players[0].resources.wild).toBe(1);
   });
 
   it('never asks a park for wildlife, which is a wildcard now', () => {

@@ -3,6 +3,7 @@ import {
   affordableGear,
   applyAction,
   claimableParks,
+  copyableSites,
   createGame,
   legalMoves,
   photoCost,
@@ -10,6 +11,7 @@ import {
 } from '../game/engine';
 import { aiAction } from '../game/ai';
 import type { GameAction, GameState } from '../game/types';
+import { COST_RESOURCES } from '../game/types';
 
 /** Deliberately simple opponent: always step to the nearest open site, claim the
  *  best affordable park at the end. Maximizes the number of turns taken. */
@@ -18,7 +20,32 @@ function baselineAction(state: GameState): GameAction {
     const p = state.pending;
     if (p.stage === 'take-photo') return { type: 'camera-photo', take: true };
     if (p.kind === 'camera') return { type: 'camera', option: 'take-camera' };
+    if (p.kind === 'wild-swap' || p.kind === 'token-swap') {
+      const holder = state.players[p.player];
+      if (p.stage === 'get') {
+        const get = COST_RESOURCES.find((r) => r !== p.give)!;
+        return { type: 'swap-get', resource: get };
+      }
+      // Trade away whatever is most plentiful.
+      const give = [...COST_RESOURCES]
+        .filter((r) => (holder.resources[r] ?? 0) > 0)
+        .sort((a, b) => (holder.resources[b] ?? 0) - (holder.resources[a] ?? 0))[0];
+      return give ? { type: 'swap-give', resource: give } : { type: 'swap-done' };
+    }
+    if (p.kind === 'copy-site') {
+      const options = copyableSites(state, p.player);
+      return options.length > 0 ? { type: 'copy-site', siteIndex: options[0] } : { type: 'copy-skip' };
+    }
     const player = state.players[p.player];
+    if (p.kind === 'park-or-gear') {
+      const claim = [...claimableParks(state, p.player)].sort((a, b) => b.vp - a.vp)[0];
+      if (claim) return { type: 'park-or-gear', option: 'claim-park', parkId: claim.id };
+      const hold = [...reservableParks(state)].sort((a, b) => b.vp - a.vp)[0];
+      if (hold && state.season < 4) return { type: 'park-or-gear', option: 'reserve-park', parkId: hold.id };
+      const kit = affordableGear(state, p.player)[0];
+      if (kit) return { type: 'park-or-gear', option: 'buy-gear', gearId: kit.id };
+      return { type: 'park-or-gear', option: 'skip' };
+    }
     const best = [...claimableParks(state, p.player)].sort((a, b) => b.vp - a.vp)[0];
     if (best) return { type: 'trail-end', option: 'claim-park', parkId: best.id };
     const reserve = [...reservableParks(state)].sort((a, b) => b.vp - a.vp)[0];
