@@ -308,7 +308,14 @@ export default function App() {
         </span>
       </footer>
 
-      {state.pending && state.pending.player === 0 && <DecisionModal state={state} art={art} dispatch={dispatch} />}
+      {state.pending && state.pending.player === 0 && (
+        <DecisionModal
+          state={state}
+          art={art}
+          dispatch={dispatch}
+          onBack={game.canUndo ? game.undo : undefined}
+        />
+      )}
       {state.phase === 'season-end' && <SeasonEndModal state={state} onContinue={() => dispatch({ type: 'end-season' })} />}
       {state.phase === 'game-over' && <ScoreboardModal state={state} onNewGame={() => game.newGame()} />}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}

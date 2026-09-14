@@ -993,6 +993,17 @@ button.bottle:disabled {
   margin: 0 0 12px;
 }
 
+.modal-foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: #1d2720;
+  border-radius: 0 0 14px 14px;
+}
+
 .choice-grid {
   display: flex;
   flex-wrap: wrap;

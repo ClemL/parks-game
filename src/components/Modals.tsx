@@ -27,11 +27,14 @@ export function Modal({
   title,
   children,
   onClose,
+  onBack,
   wide,
 }: {
   title: string;
   children: React.ReactNode;
   onClose?: () => void;
+  /** Offered on a site decision: step back to before the move that opened it. */
+  onBack?: () => void;
   wide?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
@@ -68,6 +71,14 @@ export function Modal({
           )}
         </header>
         <div className="modal-body">{children}</div>
+        {onBack && (
+          <footer className="modal-foot">
+            <button type="button" className="ghost" onClick={onBack}>
+              ↩ Undo this move
+            </button>
+            <span className="muted">Takes your hiker back to where it started this turn.</span>
+          </footer>
+        )}
       </div>
     </div>
   );
@@ -187,18 +198,24 @@ export function DecisionModal({
   state,
   art,
   dispatch,
+  onBack,
 }: {
   state: GameState;
   art: ArtMap;
   dispatch: (action: GameAction) => void;
+  /** Undo the move that opened this decision. Absent when there is nothing to undo. */
+  onBack?: () => void;
 }) {
   const pending = state.pending!;
   const player = state.players[pending.player];
   const cost = photoCost(state, player.index);
+  // A decision reached by copying or by a bison trade cannot be unwound on its
+  // own, so only offer the step back on a fresh arrival.
+  const back = pending.copied || pending.kind === 'bison' ? undefined : onBack;
 
   if (pending.stage === 'take-photo') {
     return (
-      <Modal title="Camera in hand">
+      <Modal title="Camera in hand" onBack={back}>
         <p className="modal-note">
           You are holding the camera, so a photo costs {cost} sun and scores 1 VP (2 VP with the Photo Album). You can
           take another at the Trail End.
@@ -224,7 +241,7 @@ export function DecisionModal({
   if (pending.kind === 'camera') {
     const holder = state.cameraHolder;
     return (
-      <Modal title="Camera Point">
+      <Modal title="Camera Point" onBack={back}>
         <p className="modal-note">
           {holder === null
             ? 'The camera is sitting here.'
@@ -257,7 +274,7 @@ export function DecisionModal({
     const site = siteDef(state.trail[pending.siteIndex]);
     const open = usableCampsites(state, player.index);
     return (
-      <Modal title="Pitch a tent?" wide>
+      <Modal title="Pitch a tent?" wide onBack={back}>
         <p className="modal-note">
           This site carries a tent. Take its own action, or camp for the night instead — camping skips the site&rsquo;s
           action and its season token.
@@ -292,7 +309,7 @@ export function DecisionModal({
   if (pending.kind === 'bison') {
     const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
     return (
-      <Modal title="The bison is here">
+      <Modal title="The bison is here" onBack={back}>
         <p className="modal-note">
           Trade one resource for a wildcard 🐾, then the bison moves on to the next park. Wildcards pay for any
           resource — two of them each, with Nightfall in play.
@@ -320,7 +337,7 @@ export function DecisionModal({
   if (pending.kind === 'wild-swap') {
     const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
     return (
-      <Modal title="Wildlife Hide">
+      <Modal title="Wildlife Hide" onBack={back}>
         <p className="modal-note">
           Hand over one resource for a wildcard 🐾, which pays for any resource — including part of a photo.
         </p>
@@ -350,7 +367,7 @@ export function DecisionModal({
     const giving = pending.stage === 'get';
     const held = COST_RESOURCES.filter((r) => (player.resources[r] ?? 0) > 0);
     return (
-      <Modal title={`Trading Post — ${swapsLeft} trade${swapsLeft === 1 ? '' : 's'} left`}>
+      <Modal title={`Trading Post — ${swapsLeft} trade${swapsLeft === 1 ? '' : 's'} left`} onBack={back}>
         <p className="modal-note">
           {giving
             ? `You handed over 1 ${RESOURCE_LABEL[pending.give!]}. Take any other resource in exchange.`
@@ -391,7 +408,7 @@ export function DecisionModal({
   if (pending.kind === 'copy-site') {
     const options = copyableSites(state, player.index);
     return (
-      <Modal title="Overlook">
+      <Modal title="Overlook" onBack={back}>
         <p className="modal-note">
           Pay 1 water to copy the action of any site holding a hiker. You do not take that site&rsquo;s season token.
         </p>
@@ -426,7 +443,7 @@ export function DecisionModal({
 
   if (pending.kind === 'park-or-gear') {
     return (
-      <Modal title="Ranger Station — one action" wide>
+      <Modal title="Ranger Station — one action" wide onBack={back}>
         <p className="modal-note">
           Visit a park, reserve one for later, or buy gear — without giving up the rest of your trail.
         </p>
@@ -445,7 +462,7 @@ export function DecisionModal({
 
   // Trail End: exactly one action.
   return (
-    <Modal title="Trail End — one action" wide>
+    <Modal title="Trail End — one action" wide onBack={back}>
       <p className="modal-note">
         Visit a park, reserve one for later, buy a piece of gear, take a photo, or rest. Wildcards 🐾 pay for any
         resource. You are holding {tokenCount(player)} of {TOKEN_LIMIT} tokens.
