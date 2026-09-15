@@ -13,6 +13,7 @@ export function PlayerPanel({
   revealBonuses,
   open,
   onToggle,
+  kitShownAbove,
   onUseBottle,
 }: {
   player: Player;
@@ -22,6 +23,8 @@ export function PlayerPanel({
   /** Folded panels show a one-line summary instead of the full holdings. */
   open: boolean;
   onToggle: () => void;
+  /** True when the kit bar above the board already carries these. */
+  kitShownAbove?: boolean;
   onUseBottle?: (bottleId: string) => void;
 }) {
   const active = state.current === player.index && state.phase === 'playing';
@@ -61,6 +64,7 @@ export function PlayerPanel({
         </span>
       </header>
 
+      {!kitShownAbove && (
       <div className="player-res">
         {RESOURCES.map((r) => (
           <ResourceChip key={r} resource={r} count={player.resources[r] ?? 0} dim={(player.resources[r] ?? 0) === 0} />
@@ -104,6 +108,7 @@ export function PlayerPanel({
           <b>{player.photos}</b>
         </button>
       </div>
+      )}
 
       {open && (
         <>
@@ -118,6 +123,7 @@ export function PlayerPanel({
         </span>
       </div>
 
+      {!kitShownAbove && (
       <div className="player-row">
         <span className="player-label">Bottles</span>
         <span className="player-bottles">
@@ -167,8 +173,9 @@ export function PlayerPanel({
           })}
         </span>
       </div>
+      )}
 
-      {player.gear.length > 0 && (
+      {player.gear.length > 0 && !kitShownAbove && (
         <div className="player-row">
           <span className="player-label">Gear</span>
           <span className="player-gear">

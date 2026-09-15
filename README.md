@@ -44,12 +44,19 @@ and the SPA rewrites.
 - **Undo** steps back to just before your last move, CPU replies included.
 - CPU moves flash the site they took, so their turns are readable without reading the log.
 - Modals take keyboard focus when they open, hand it back when they close, and dismiss on Escape.
+- **Your kit sits across the top** — resources, the token count, campfires, photos, bottles and
+  gear on one line, with the bottles usable straight from there. Your own panel keeps the parks,
+  reservations and bonus cards.
+- **The season sits with the turn indicator**, above the trail rather than in the top bar.
+- **The trail log closes the board**, below every player panel.
+- **Compact density stands the hikers on the trail cards** rather than in a row beneath them,
+  which halves the height of the trail strip (216px to 106px on a desktop).
 - **Every section folds away** — tap its heading. A folded section keeps a one-line summary (which
   campsites are out, what the gear shop is selling, the last log line), and each player folds to
   their resource chips plus a one-liner. What you fold is remembered.
 - **The notices close** — the turn hint, the season card and the resume banner each have an X. The
-  hint can be brought back with a link; a closed season card returns when the next season deals its
-  own.
+  hint has a switch in Setup to bring it back; a closed season card returns when the next season
+  deals its own.
 - **On a phone** the board opens with the campsites, gear shop, trail log and CPU seats already
   folded, and the setup controls tucked behind a **Setup** button. That is about a third less
   scrolling than the fully open board, before you fold anything yourself.

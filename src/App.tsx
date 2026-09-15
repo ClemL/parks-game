@@ -6,6 +6,7 @@ import { ParkCardView } from './components/ParkCardView';
 import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
 import { Notice, Panel } from './components/Panel';
 import { InfoSheet } from './components/InfoSheet';
+import { KitBar } from './components/KitBar';
 import { THEMES, useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
@@ -93,17 +94,6 @@ export default function App() {
           </div>
         </div>
 
-        <div className="seasons" aria-label={`Season ${state.season} of ${SEASONS}`}>
-          {SEASON_NAMES.map((name, i) => (
-            <span
-              key={name}
-              className={`season-pip${i + 1 === state.season ? ' season-now' : ''}${i + 1 < state.season ? ' season-past' : ''}`}
-            >
-              {name}
-            </span>
-          ))}
-        </div>
-
         <button
           type="button"
           className="ghost setup-toggle"
@@ -144,6 +134,14 @@ export default function App() {
               <option value="comfortable">Comfortable</option>
               <option value="compact">Compact</option>
             </select>
+          </label>
+          <label className="expansions" title="Show the one-line prompt above the trail">
+            <input
+              type="checkbox"
+              checked={!ui.hintsHidden}
+              onChange={(e) => (e.target.checked ? ui.showHints() : ui.hideHints())}
+            />
+            Turn hints
           </label>
           <label className="expansions" title="Tint the board's highlight colour with the season">
             <input type="checkbox" checked={ui.seasonTint} onChange={(e) => ui.setSeasonTint(e.target.checked)} />
@@ -192,6 +190,12 @@ export default function App() {
         </div>
       </header>
 
+      <KitBar
+        state={state}
+        canAct={isHumanTurn && !state.pending}
+        onUseBottle={(bottleId: string) => dispatch({ type: 'use-bottle', bottleId })}
+      />
+
       <main className="layout">
         <div className="board">
           <Panel
@@ -202,9 +206,23 @@ export default function App() {
               state.players[0].hikers.filter((h) => !h.finished).length
             } of your hikers still walking`}
             meta={
-              <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
-                <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
-                {isHumanTurn ? 'Your turn' : activePlayer.name}
+              <span className="turn-and-season">
+                <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
+                  <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
+                  {isHumanTurn ? 'Your turn' : activePlayer.name}
+                </span>
+                <span className="seasons" aria-label={`Season ${state.season} of ${SEASONS}`}>
+                  {SEASON_NAMES.map((name, i) => (
+                    <span
+                      key={name}
+                      className={`season-pip${i + 1 === state.season ? ' season-now' : ''}${
+                        i + 1 < state.season ? ' season-past' : ''
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </span>
               </span>
             }
           >
@@ -225,13 +243,7 @@ export default function App() {
                 Picked up where you left off — season {state.season}.
               </Notice>
             )}
-            {ui.hintsHidden ? (
-              <p className="hint-hidden">
-                <button type="button" className="link" onClick={ui.showHints}>
-                  Show turn hints
-                </button>
-              </p>
-            ) : (
+            {!ui.hintsHidden && (
               <Notice className="hint" onClose={ui.hideHints} closeLabel="Hide turn hints" role="status">
                 {hint}
               </Notice>
@@ -313,41 +325,6 @@ export default function App() {
             <GearShelf state={state} />
           </Panel>
 
-          <Panel
-            title="Trail log"
-            open={ui.isOpen('log')}
-            onToggle={() => ui.toggle('log')}
-            summary={state.log[state.log.length - 1]?.text ?? 'nothing yet'}
-            meta={
-              <span className="muted">
-                {state.bison !== null && bisonPark(state) && `🦬 ${bisonPark(state)!.name} · `}
-                {state.cameraHolder === null
-                  ? 'The camera is still on the trail'
-                  : state.players[state.cameraHolder].isHuman
-                    ? 'You hold the camera 📷'
-                    : `${state.players[state.cameraHolder].name} holds the camera 📷`}
-              </span>
-            }
-          >
-            <ol className="log">
-              {state.log
-                .slice(-14)
-                .reverse()
-                .map((entry, i) => (
-                  <li key={`${state.log.length - i}`}>
-                    <span className="log-season">S{entry.season}</span>
-                    {entry.player >= 0 ? (
-                      <>
-                        <span className="player-dot" style={{ background: state.players[entry.player].color }} aria-hidden="true" />
-                        <b>{state.players[entry.player].name}</b> {entry.text}
-                      </>
-                    ) : (
-                      <i>{entry.text}</i>
-                    )}
-                  </li>
-                ))}
-            </ol>
-          </Panel>
         </div>
 
         <aside className="players">
@@ -360,11 +337,50 @@ export default function App() {
               revealBonuses={state.phase === 'game-over'}
               open={ui.isOpen(`player-${player.index}`)}
               onToggle={() => ui.toggle(`player-${player.index}`)}
+              kitShownAbove={player.isHuman}
               onUseBottle={player.isHuman ? (bottleId) => dispatch({ type: 'use-bottle', bottleId }) : undefined}
             />
           ))}
         </aside>
       </main>
+
+        <section className="log-strip">
+        <Panel
+          title="Trail log"
+          open={ui.isOpen('log')}
+          onToggle={() => ui.toggle('log')}
+          summary={state.log[state.log.length - 1]?.text ?? 'nothing yet'}
+          meta={
+            <span className="muted">
+              {state.bison !== null && bisonPark(state) && `🦬 ${bisonPark(state)!.name} · `}
+              {state.cameraHolder === null
+                ? 'The camera is still on the trail'
+                : state.players[state.cameraHolder].isHuman
+                  ? 'You hold the camera 📷'
+                  : `${state.players[state.cameraHolder].name} holds the camera 📷`}
+            </span>
+          }
+        >
+          <ol className="log">
+            {state.log
+              .slice(-14)
+              .reverse()
+              .map((entry, i) => (
+                <li key={`${state.log.length - i}`}>
+                  <span className="log-season">S{entry.season}</span>
+                  {entry.player >= 0 ? (
+                    <>
+                      <span className="player-dot" style={{ background: state.players[entry.player].color }} aria-hidden="true" />
+                      <b>{state.players[entry.player].name}</b> {entry.text}
+                    </>
+                  ) : (
+                    <i>{entry.text}</i>
+                  )}
+                </li>
+              ))}
+          </ol>
+        </Panel>
+      </section>
 
       <div className="action-bar">
         <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>

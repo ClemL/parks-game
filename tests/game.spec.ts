@@ -390,6 +390,101 @@ test('keeps the action bar in reach on a phone', async ({ page }) => {
   }
 });
 
+test('summarises your kit above the board', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const kit = page.locator('.kit');
+  await expect(kit).toBeVisible();
+  // Resources, the token count, campfires, photos, bottles and gear.
+  expect(await kit.locator('.chip').count()).toBeGreaterThanOrEqual(8);
+  expect(await kit.locator('.kit-bottle').count()).toBeGreaterThanOrEqual(1);
+  await expect(kit.locator('.kit-gear')).toBeVisible();
+
+  // It sits above the board rather than inside a column.
+  const above = await page.evaluate(() => {
+    const k = document.querySelector('.kit')!.getBoundingClientRect();
+    const layout = document.querySelector('.layout')!.getBoundingClientRect();
+    return k.bottom <= layout.top + 1;
+  });
+  expect(above).toBe(true);
+
+  // Your own panel no longer repeats what the kit bar carries.
+  const you = page.locator('aside .player').first();
+  await expect(you.locator('.player-res')).toHaveCount(0);
+});
+
+test('shows the season beside the turn label, not in the top bar', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  await expect(page.locator('.topbar .seasons')).toHaveCount(0);
+  const meta = page.locator('.turn-and-season');
+  await expect(meta.locator('.turn-pill')).toBeVisible();
+  await expect(meta.locator('.season-pip')).toHaveCount(4);
+  await expect(meta.locator('.season-now')).toHaveText('Spring');
+});
+
+test('puts the turn hints switch in Setup', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const toggle = page.locator('label', { hasText: 'Turn hints' }).locator('input');
+  await expect(page.locator('.notice.hint')).toBeVisible();
+  await toggle.uncheck();
+  await expect(page.locator('.notice.hint')).toHaveCount(0);
+  // No stray restore link left behind on the board.
+  await expect(page.locator('.hint-hidden')).toHaveCount(0);
+  await toggle.check();
+  await expect(page.locator('.notice.hint')).toBeVisible();
+});
+
+test('closes the board with the trail log', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const below = await page.evaluate(() => {
+    const log = document.querySelector('.log-strip')!.getBoundingClientRect();
+    const players = document.querySelector('aside.players')!.getBoundingClientRect();
+    const board = document.querySelector('.board')!.getBoundingClientRect();
+    return { belowPlayers: log.top >= players.top, belowBoard: log.top >= board.top };
+  });
+  expect(below.belowPlayers).toBe(true);
+  expect(below.belowBoard).toBe(true);
+  await expect(page.locator('.log-strip .log')).toBeVisible();
+});
+
+test('stands the hikers on the cards in compact density', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const trailHeight = () =>
+    page.evaluate(() => Math.round(document.querySelector('.trail')!.getBoundingClientRect().height));
+  const comfortable = await trailHeight();
+
+  await page.locator('label', { hasText: 'Density' }).locator('select').selectOption('compact');
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
+  const compact = await trailHeight();
+  // Losing the pawn row under the trail is most of the saving.
+  expect(compact).toBeLessThan(comfortable);
+
+  const pawns = await page.evaluate(() => {
+    const box = document.querySelector('.site-start .site-hikers')!;
+    const card = document.querySelector('.site-start .site-hit')!;
+    const p = box.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    return { position: getComputedStyle(box).position, onCard: p.top < c.bottom && p.bottom > c.top };
+  });
+  expect(pawns.position).toBe('absolute');
+  expect(pawns.onCard).toBe(true);
+});
+
 test('lays out at phone width without sideways scroll', async ({ page }) => {
   await page.setViewportSize({ width: 400, height: 900 });
   await page.goto('/');

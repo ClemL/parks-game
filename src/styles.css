@@ -409,6 +409,43 @@
   height: 90px;
 }
 
+/* Compact play stands the hikers on the cards, which saves the whole pawn row
+   beneath the trail. */
+:root[data-density='compact'] .site {
+  position: relative;
+}
+
+:root[data-density='compact'] .site-hikers {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  min-height: 0;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+}
+
+:root[data-density='compact'] .site-start .site-hikers,
+:root[data-density='compact'] .site-finish .site-hikers {
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+}
+
+:root[data-density='compact'] .hiker {
+  width: 19px;
+  height: 19px;
+  font-size: 10px;
+  border-width: 1px;
+}
+
+:root[data-density='compact'] .site-name {
+  /* Leave the bottom strip of the card to the pawns. */
+  margin-bottom: 20px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -498,6 +535,7 @@ button:disabled {
 
 .seasons {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -771,6 +809,108 @@ button.link {
   border-radius: 50%;
   display: inline-block;
   flex: none;
+}
+
+/* ------------------------------------------------- your kit, across the top */
+
+.kit {
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 9px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.kit-label {
+  font-family: var(--display);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  flex: none;
+}
+
+.kit-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.kit-group + .kit-group {
+  padding-left: 14px;
+  border-left: 1px solid var(--line-softer);
+}
+
+.chip-full {
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
+
+.kit-bottle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 12px;
+}
+
+.kit-bottle.bottle-ready {
+  border-color: var(--accent);
+  background: var(--surface-accent);
+  cursor: pointer;
+}
+
+.kit-bottle.bottle-used {
+  opacity: 0.45;
+}
+
+.kit-use {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.kit-gear-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 11.5px;
+}
+
+/* --------------------------------------------- the season sits with the turn */
+
+.turn-and-season {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------- the log closes the board */
+
+.log-strip {
+  margin-top: 16px;
 }
 
 /* ------------------------------------------------------------------- trail */
@@ -1882,6 +2022,29 @@ button.bottle:disabled {
     font-size: 9.5px;
   }
 
+  /* The kit bar carries a lot; on a phone it keeps to icons and counts. */
+  .kit {
+    gap: 6px 9px;
+    padding: 7px 9px;
+  }
+
+  .kit-label {
+    display: none;
+  }
+
+  .kit-group + .kit-group {
+    padding-left: 9px;
+  }
+
+  .kit-bottle-name {
+    display: none;
+  }
+
+  .kit-gear-item {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
   /* Eight hikers at the trailhead used to stack four rows deep. Smaller pawns
      and a wider start column bring that down to two. */
   .site-start,
@@ -1907,6 +2070,25 @@ button.bottle:disabled {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* The turn and the season are not status text: they get the room they need. */
+  .panel-meta:has(.turn-and-season) {
+    max-width: 100%;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .turn-and-season {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  /* Four pips and the turn pill share the room, wrapping rather than pushing
+     the page sideways. */
+  .turn-and-season .season-pip {
+    padding: 3px 7px;
+    font-size: 9px;
   }
 
   .players {
