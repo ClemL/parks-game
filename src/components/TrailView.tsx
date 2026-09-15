@@ -1,5 +1,8 @@
 import type { GameState } from '../game/types';
 import { hasTent, occupants, siteDef } from '../game/engine';
+import { useEffect, useRef } from 'react';
+import { useInfo } from './InfoSheet';
+import { RESOURCE_LABEL } from './Bits';
 import type { MoveOption } from '../game/engine';
 import { RESOURCE_ICON } from './Bits';
 
@@ -23,11 +26,46 @@ export function TrailView({
   interactive,
   lastCpuMove,
 }: Props) {
+  const info = useInfo();
+  const strip = useRef<HTMLDivElement>(null);
+
+  // Bring the nearest site you could actually move to into view, so the trail
+  // does not have to be hunted along by hand.
+  const firstTarget = moves
+    .filter((m) => !selectedHiker || m.hikerId === selectedHiker)
+    .map((m) => m.to)
+    .sort((a, b) => a - b)[0];
+  useEffect(() => {
+    if (firstTarget === undefined || !strip.current) return;
+    const tile = strip.current.children[firstTarget] as HTMLElement | undefined;
+    tile?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [firstTarget]);
+
   const movesFor = (index: number) =>
     moves.filter((m) => m.to === index && (!selectedHiker || m.hikerId === selectedHiker));
 
+  /** Tapping a site you cannot move to explains what it does instead. */
+  const explain = (index: number) => {
+    const def = siteDef(state.trail[index]);
+    const token = state.siteTokens[index];
+    const here = occupants(state, index).map((id) => state.players[Number(id[1])].name);
+    info.show({
+      title: def.name,
+      icon: def.icon,
+      lines: [
+        def.text,
+        ...(token ? [{ label: 'Season token', value: `1 ${RESOURCE_LABEL[token]} to the first hiker here` }] : []),
+        ...(hasTent(state, index)
+          ? ['Tent site: camp here instead of taking the action, if a campsite is open.']
+          : []),
+        ...(here.length > 0 ? [{ label: 'Occupied by', value: here.join(', ') }] : []),
+        ...(def.capacity === Infinity ? ['Unlimited room.'] : ['One hiker at a time, unless a campfire is spent.']),
+      ],
+    });
+  };
+
   return (
-    <div className="trail" role="list" aria-label="Trail">
+    <div className="trail" role="list" aria-label="Trail" ref={strip}>
       {state.trail.map((kind, index) => {
         const def = siteDef(kind);
         const here = occupants(state, index);
@@ -58,13 +96,12 @@ export function TrailView({
           >
             <button
               type="button"
-              className="site-hit"
-              disabled={!target}
-              onClick={() => target && onMove(target)}
+              className={`site-hit${target ? '' : ' site-hit-info'}`}
+              onClick={() => (target ? onMove(target) : explain(index))}
               title={target ? `Move here${needsFire ? ' (spends a campfire)' : ''}` : def.text}
               aria-label={`${def.name}. ${def.text}${
                 token ? ` A ${token} season token is still here.` : ''
-              }${target ? ' Move here.' : ''}`}
+              }${target ? ' Move here.' : ' Tap to read what it does.'}`}
             >
               <span className="site-index">
                 {index === 0 ? 'start' : isEnd ? 'end' : index}

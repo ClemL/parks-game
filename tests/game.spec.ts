@@ -264,6 +264,132 @@ test('opens on a phone with the reference material folded and setup behind a but
   await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
 });
 
+test('switches skins and remembers the choice', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const root = page.locator('html');
+  await expect(root).toHaveAttribute('data-theme', 'trailside');
+
+  const skin = page.locator('label', { hasText: 'Skin' }).locator('select');
+  for (const theme of ['parchment', 'wpa', 'nightfall', 'contrast']) {
+    await skin.selectOption(theme);
+    await expect(root).toHaveAttribute('data-theme', theme);
+    // Every skin has to paint its own ground and keep text on it.
+    const painted = await page.evaluate(() => {
+      const body = getComputedStyle(document.body).backgroundColor;
+      const panel = getComputedStyle(document.querySelector('.panel')!).backgroundColor;
+      return { body, panel };
+    });
+    expect(painted.body).not.toBe('rgba(0, 0, 0, 0)');
+    expect(painted.panel).not.toBe('rgba(0, 0, 0, 0)');
+  }
+
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await expect(root).toHaveAttribute('data-theme', 'contrast');
+});
+
+test('leaves no CSS variable undefined in any skin', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  // Undefined custom properties fail silently and flatten the board, so check.
+  const missing = await page.evaluate(() => {
+    const sheets = Array.from(document.styleSheets);
+    const text = sheets
+      .flatMap((sheet) => {
+        try {
+          return Array.from(sheet.cssRules).map((rule) => rule.cssText);
+        } catch {
+          return [];
+        }
+      })
+      .join('\n');
+    const defined = new Set(Array.from(text.matchAll(/(--[a-z0-9-]+):/g)).map((m) => m[1]));
+    const used = new Set(Array.from(text.matchAll(/var\((--[a-z0-9-]+)/g)).map((m) => m[1]));
+    return Array.from(used).filter((name) => !defined.has(name));
+  });
+  expect(missing).toEqual([]);
+});
+
+test('density and season tint reach the document', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const root = page.locator('html');
+  await expect(root).toHaveAttribute('data-season', '1');
+  await page.locator('label', { hasText: 'Density' }).locator('select').selectOption('compact');
+  await expect(root).toHaveAttribute('data-density', 'compact');
+
+  await page.locator('label', { hasText: 'Season tint' }).locator('input').uncheck();
+  await expect(root).not.toHaveAttribute('data-season', '1');
+});
+
+test('explains the board by tapping, for devices without hover', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  // A site you cannot move to explains itself instead of doing nothing.
+  const logBefore = await page.locator('.log li').count();
+  await page.locator('.site-hit-info').first().click();
+  await expect(page.locator('.info-sheet')).toBeVisible();
+  expect(await page.locator('.log li').count()).toBe(logBefore);
+  await page.locator('.info-sheet .notice-close').click();
+  await expect(page.locator('.info-sheet')).toHaveCount(0);
+
+  // Park cards, gear, campsites and chips all carry their rules text.
+  for (const selector of ['.panel .card-strip .park-card', '.gear-card.card-info', '.chip']) {
+    await page.locator(selector).first().click();
+    await expect(page.locator('.info-sheet')).toBeVisible();
+    expect((await page.locator('.info-body').innerText()).length).toBeGreaterThan(10);
+    await page.locator('.info-sheet .notice-close').click();
+  }
+});
+
+test('is installable and caches itself for offline play', async ({ page }) => {
+  await page.goto('/');
+  const manifest = await page.evaluate(async () => {
+    const href = document.querySelector('link[rel=manifest]')?.getAttribute('href');
+    if (!href) return null;
+    return fetch(href).then((r) => r.json());
+  });
+  expect(manifest?.name).toBe('Trailside Seasons');
+  expect(manifest?.display).toBe('standalone');
+  expect(manifest?.icons?.length).toBeGreaterThanOrEqual(2);
+  const sw = await page.evaluate(() => fetch('./sw.js').then((r) => r.ok));
+  expect(sw).toBe(true);
+});
+
+test('keeps the action bar in reach on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const bar = page.locator('.action-bar');
+  await expect(bar).toBeVisible();
+  const box = (await bar.boundingBox())!;
+  // Pinned to the bottom edge, not floating mid-page.
+  expect(box.y + box.height).toBeGreaterThan(830);
+  await expect(bar.getByRole('button', { name: /Undo/ })).toBeVisible();
+
+  // Decisions slide up from the bottom rather than sitting centred.
+  for (let i = 0; i < 30 && !(await page.locator('.modal').count()); i++) {
+    const target = page.locator('.site-target .site-hit:not([disabled])');
+    if (await target.count()) await target.first().click();
+    await page.waitForTimeout(200);
+  }
+  if (await page.locator('.modal').count()) {
+    const modal = (await page.locator('.modal').boundingBox())!;
+    expect(modal.y + modal.height).toBeGreaterThan(830);
+  }
+});
+
 test('lays out at phone width without sideways scroll', async ({ page }) => {
   await page.setViewportSize({ width: 400, height: 900 });
   await page.goto('/');

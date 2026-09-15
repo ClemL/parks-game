@@ -5,7 +5,8 @@ import { PlayerPanel } from './components/PlayerPanel';
 import { ParkCardView } from './components/ParkCardView';
 import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
 import { Notice, Panel } from './components/Panel';
-import { useUi } from './hooks/useUi';
+import { InfoSheet } from './components/InfoSheet';
+import { THEMES, useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
 import { PARKS } from './game/data/parks';
@@ -21,7 +22,7 @@ export default function App() {
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
-  const ui = useUi();
+  const ui = useUi(state.season);
 
   useEffect(() => {
     let alive = true;
@@ -127,6 +128,27 @@ export default function App() {
           <button type="button" className="ghost" onClick={() => setShowCredits(true)}>
             Credits
           </button>
+          <label className="speed" title="Board skin">
+            Skin
+            <select value={ui.theme} onChange={(e) => ui.setTheme(e.target.value as typeof ui.theme)}>
+              {THEMES.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="speed" title="Tighter spacing and smaller cards">
+            Density
+            <select value={ui.density} onChange={(e) => ui.setDensity(e.target.value as typeof ui.density)}>
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label className="expansions" title="Tint the board's highlight colour with the season">
+            <input type="checkbox" checked={ui.seasonTint} onChange={(e) => ui.setSeasonTint(e.target.checked)} />
+            Season tint
+          </label>
           <label className="speed" title="Seats at the table: you plus CPU hikers. Applied on a new game.">
             Players
             <select value={game.seats} onChange={(e) => game.setSeats(Number(e.target.value))}>
@@ -344,6 +366,23 @@ export default function App() {
         </aside>
       </main>
 
+      <div className="action-bar">
+        <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
+          <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
+          {isHumanTurn ? 'Your turn' : activePlayer.name}
+        </span>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => document.querySelector('.trail')?.scrollIntoView({ block: 'center' })}
+        >
+          Trail
+        </button>
+        <button type="button" className="ghost" onClick={game.undo} disabled={!game.canUndo}>
+          ↩ Undo
+        </button>
+      </div>
+
       <footer className="footer">
         <span>Seed {game.seed}</span>
         <span className="footer-note">
@@ -370,6 +409,7 @@ export default function App() {
       {state.phase === 'game-over' && <ScoreboardModal state={state} onNewGame={() => game.newGame()} />}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
       {showCredits && <CreditsModal onClose={() => setShowCredits(false)} credits={credits} />}
+      <InfoSheet />
     </div>
   );
 }

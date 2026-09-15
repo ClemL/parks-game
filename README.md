@@ -54,6 +54,45 @@ and the SPA rewrites.
   folded, and the setup controls tucked behind a **Setup** button. That is about a third less
   scrolling than the fully open board, before you fold anything yourself.
 
+## Skins and layout
+
+Six choices in **Setup → Skin**, all driven by CSS custom properties — a skin is a block of tokens,
+nothing more. Every measured text/background pair passes WCAG AA.
+
+| Skin | Look |
+| --- | --- |
+| **Auto** | Follows the device's light/dark setting, and keeps following it if you change it |
+| **Trailside** (default) | Deep forest ground, parchment cards, gold accents |
+| **Parchment** | A daylight board: the whole page becomes the same paper the cards are printed on |
+| **WPA Poster** | The 1930s Park Service silkscreen palette — burnt orange, mustard, teal, cream, flat shadows |
+| **Nightfall** | Indigo and violet after dark, named for the expansion |
+| **High contrast** | Black on white with 2px rules, and the Okabe–Ito seat colours so the table never depends on telling red from green |
+
+Two more controls sit beside it:
+
+- **Density** — comfortable or compact, trading the space savings back for bigger type.
+- **Season tint** — the board's highlight colour follows the season (spring green → summer gold →
+  autumn rust → winter slate). The high-contrast skin ignores it on purpose.
+
+Seat colours come from the skin rather than the game code, which is why the high-contrast skin can
+swap in a colour-blind-safe set.
+
+## On a phone
+
+- **Tap anything to read its rules.** Hover text does not exist on a phone, so a tap on a trail
+  site you cannot move to, a park card, a gear card, a campsite, a resource chip or a bottle opens
+  a sheet with what it does — the season token waiting on it, who is standing there, what a
+  wildcard pays for.
+- **Decisions rise from the bottom edge** as sheets rather than centred boxes, so the buttons land
+  under your thumb.
+- **A pinned action bar** keeps the turn indicator, a jump-to-trail button and Undo in reach.
+- **The trail scrolls to your next legal move** and its tiles snap as you swipe.
+- **Installable and offline** — a manifest, icons and a service worker that caches the shell and
+  the art as it is fetched. Run `npm run art` first and the whole game works with no network.
+- Smaller things: the screen stays awake while the CPUs play, a short buzz when the table comes
+  back to you, safe-area padding under the action bar and sheets, and taps that fire immediately
+  instead of waiting to see if you meant to double-tap-zoom.
+
 ## Rules as implemented
 
 Checked against the published PARKS rules (see **Fidelity notes** below for the

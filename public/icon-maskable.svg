@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Trailside Seasons">
+  <rect width="512" height="512" fill="#1b241f"/>
+  <circle cx="330" cy="182" r="34" fill="#e0b654"/>
+  <path d="M104 372 L196 258 L258 330 L306 276 L408 372 Z" fill="#7fb685"/>
+  <path d="M168 400 L168 330 M142 400 L194 400" stroke="#f3ecdc" stroke-width="14" stroke-linecap="round"/>
+</svg>

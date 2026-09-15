@@ -1,5 +1,6 @@
 import type { Resource, ResourceBag } from '../game/types';
 import { RESOURCES } from '../game/types';
+import { useInfo } from './InfoSheet';
 
 export const RESOURCE_ICON: Record<Resource, string> = {
   sun: '☀️',
@@ -17,6 +18,14 @@ export const RESOURCE_LABEL: Record<Resource, string> = {
   wild: 'Wildcard',
 };
 
+const RESOURCE_USE: Record<Resource, string> = {
+  sun: 'Buys gear and photos. No park asks for sun.',
+  water: 'Pays park costs, fills bottles and pays the Overlook.',
+  forest: 'Pays park costs.',
+  mountain: 'Pays park costs.',
+  wild: 'Pays for any resource, and two of them each once Nightfall is in play.',
+};
+
 export function ResourceChip({
   resource,
   count,
@@ -26,15 +35,28 @@ export function ResourceChip({
   count: number;
   dim?: boolean;
 }) {
+  const info = useInfo();
   const label =
     resource === 'wild'
       ? `${count} wildcards (each pays for any resource)`
       : `${count} ${RESOURCE_LABEL[resource]}`;
   return (
-    <span className={`chip${dim ? ' chip-dim' : ''}`} title={label} aria-label={label}>
+    <button
+      type="button"
+      className={`chip chip-info${dim ? ' chip-dim' : ''}`}
+      title={label}
+      aria-label={label}
+      onClick={() =>
+        info.show({
+          title: RESOURCE_LABEL[resource],
+          icon: RESOURCE_ICON[resource],
+          lines: [RESOURCE_USE[resource], { label: 'Held', value: String(count) }],
+        })
+      }
+    >
       <span aria-hidden="true">{RESOURCE_ICON[resource]}</span>
       <b>{count}</b>
-    </span>
+    </button>
   );
 }
 

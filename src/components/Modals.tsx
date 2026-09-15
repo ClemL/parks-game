@@ -17,7 +17,8 @@ import {
   tokenCount,
   usableCampsites,
 } from '../game/engine';
-import { TOKEN_LIMIT } from '../game/data/sites';
+import { GEAR_VP, TOKEN_LIMIT } from '../game/data/sites';
+import { useInfo } from './InfoSheet';
 import type { GameAction, GameState, Resource } from '../game/types';
 import { COST_RESOURCES } from '../game/types';
 import { CostRow, RESOURCE_ICON, RESOURCE_LABEL } from './Bits';
@@ -609,13 +610,32 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
 /** Nightfall's campsite board: three campsites, with the tents pitched on them. */
 export function CampsiteBoard({ state }: { state: GameState }) {
   const capacity = state.players.length >= 4 ? 2 : 1;
+  const info = useInfo();
   return (
     <div className="card-strip gear-strip">
       {state.campsites.map((slot) => {
         const def = campsiteDef(slot.id);
         const full = slot.tents.length >= capacity;
+        const campers = slot.tents.map((i) => state.players[i].name);
         return (
-          <div key={slot.id} className={`gear-card campsite${full ? ' campsite-full' : ''}`} title={def.text}>
+          <button
+            key={slot.id}
+            type="button"
+            className={`gear-card campsite card-info${full ? ' campsite-full' : ''}`}
+            title={def.text}
+            onClick={() =>
+              info.show({
+                title: def.name,
+                icon: def.icon,
+                lines: [
+                  def.text,
+                  { label: 'Tent slots', value: `${slot.tents.length} of ${capacity} taken` },
+                  ...(campers.length > 0 ? [{ label: 'Camped here', value: campers.join(', ') }] : []),
+                  'Reached from any tent site ⛺ instead of taking that site\'s action.',
+                ],
+              })
+            }
+          >
             <span className="gear-icon" aria-hidden="true">
               {def.icon}
             </span>
@@ -640,7 +660,7 @@ export function CampsiteBoard({ state }: { state: GameState }) {
                 );
               })}
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -649,10 +669,28 @@ export function CampsiteBoard({ state }: { state: GameState }) {
 
 /** Small read-only strip: gear is bought at the Trail End, not from here. */
 export function GearShelf({ state }: { state: GameState }) {
+  const info = useInfo();
   return (
     <div className="card-strip gear-strip">
       {state.gearRow.map((gear) => (
-        <div key={gear.id} className="gear-card" title={gear.text}>
+        <button
+          key={gear.id}
+          type="button"
+          className="gear-card card-info"
+          title={gear.text}
+          onClick={() =>
+            info.show({
+              title: gear.name,
+              icon: gear.icon,
+              lines: [
+                gear.text,
+                { label: 'Cost', value: `${gearCost(state, gear)} sun` },
+                { label: 'Scores', value: `${GEAR_VP} VP at the end of the game` },
+                'Bought at the Trail End or a Ranger Station.',
+              ],
+            })
+          }
+        >
           <span className="gear-icon" aria-hidden="true">
             {gear.icon}
           </span>
@@ -662,7 +700,7 @@ export function GearShelf({ state }: { state: GameState }) {
             {gearCost(state, gear) !== gear.cost && <s> {gear.cost}</s>}
           </span>
           <span className="gear-text">{gear.text}</span>
-        </div>
+        </button>
       ))}
       {state.gearRow.length === 0 && <p className="muted">The gear shop is sold out.</p>}
     </div>

@@ -1,0 +1,16 @@
+{
+  "name": "Trailside Seasons",
+  "short_name": "Trailside",
+  "description": "A four-season hike through the national parks against three opportunistic CPU hikers.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1b241f",
+  "theme_color": "#1b241f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -2,6 +2,7 @@ import type { GameState, Player } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { bonusCardById, bottleDef, usableBottles } from '../game/engine';
 import { ResourceChip } from './Bits';
+import { useInfo } from './InfoSheet';
 import type { ArtMap } from '../art/parkArt';
 import { ParkCardView } from './ParkCardView';
 
@@ -27,6 +28,7 @@ export function PlayerPanel({
   const vp = player.parks.reduce((sum, p) => sum + p.vp, 0);
   const usable = new Set(usableBottles(player).map((b) => b.id));
   const canUseBottles = !!onUseBottle && active && !state.pending;
+  const info = useInfo();
 
   return (
     <section className={`player${active ? ' player-active' : ''}`} style={{ borderColor: player.color }}>
@@ -63,14 +65,44 @@ export function PlayerPanel({
         {RESOURCES.map((r) => (
           <ResourceChip key={r} resource={r} count={player.resources[r] ?? 0} dim={(player.resources[r] ?? 0) === 0} />
         ))}
-        <span className="chip" title="Campfire tokens: spend one to share an occupied site">
+        <button
+          type="button"
+          className="chip chip-info"
+          title="Campfire tokens: spend one to share an occupied site"
+          onClick={() =>
+            info.show({
+              title: 'Campfire tokens',
+              icon: '🔥',
+              lines: [
+                'Spend one to move onto a site another hiker already occupies.',
+                'Everyone starts each season with one, and it re-lights when your first hiker reaches the Trail End.',
+                { label: 'Alight now', value: String(player.campfires) },
+              ],
+            })
+          }
+        >
           <span aria-hidden="true">🔥</span>
           <b>{player.campfires}</b>
-        </span>
-        <span className="chip" title="Photos taken">
+        </button>
+        <button
+          type="button"
+          className="chip chip-info"
+          title="Photos taken"
+          onClick={() =>
+            info.show({
+              title: 'Photos',
+              icon: '📸',
+              lines: [
+                'Each photo scores 1 VP, or 2 VP with the Photo Album.',
+                'A photo costs 2 sun, or 1 while you hold the camera.',
+                { label: 'Taken', value: String(player.photos) },
+              ],
+            })
+          }
+        >
           <span aria-hidden="true">📸</span>
           <b>{player.photos}</b>
-        </span>
+        </button>
       </div>
 
       {open && (
@@ -111,14 +143,26 @@ export function PlayerPanel({
               );
             }
             return (
-              <span
+              <button
                 key={bottle.id}
-                className={`bottle${bottle.used ? ' bottle-used' : ''}`}
+                type="button"
+                className={`bottle card-info${bottle.used ? ' bottle-used' : ''}`}
                 title={bottle.used ? `${def.name} — already used this season` : label}
+                onClick={() =>
+                  info.show({
+                    title: def.name,
+                    icon: def.icon,
+                    lines: [
+                      label,
+                      'One conversion per bottle per season; they refill at the season break.',
+                      { label: 'State', value: bottle.used ? 'used this season' : 'ready' },
+                    ],
+                  })
+                }
               >
                 <span aria-hidden="true">{def.icon}</span> {def.name}
                 {bottle.used ? ' (used)' : ''}
-              </span>
+              </button>
             );
           })}
         </span>

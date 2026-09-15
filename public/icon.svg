@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Trailside Seasons">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2e4a3a"/>
+      <stop offset="100%" stop-color="#1b241f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#sky)"/>
+  <circle cx="366" cy="140" r="44" fill="#e0b654"/>
+  <path d="M0 392 L146 212 L246 330 L318 246 L512 392 Z" fill="#3b5c46"/>
+  <path d="M0 512 L512 512 L512 392 L318 246 L246 330 L146 212 L0 392 Z" fill="#7fb685" opacity="0.28"/>
+  <path d="M96 470 L96 372 M60 470 L132 470" stroke="#f3ecdc" stroke-width="18" stroke-linecap="round"/>
+  <path d="M96 372 L150 400 L96 428 Z" fill="#c9a227"/>
+</svg>

@@ -147,6 +147,40 @@ export function useGame(initialSeed?: number) {
     return () => clearTimeout(timer);
   }, [state, speed, push]);
 
+  // A short buzz when the table comes back to you, if the device does that.
+  const wasHumanTurn = useRef(isHumanTurn);
+  useEffect(() => {
+    if (isHumanTurn && !wasHumanTurn.current && state.phase === 'playing') {
+      try {
+        navigator.vibrate?.(18);
+      } catch {
+        /* no haptics here */
+      }
+    }
+    wasHumanTurn.current = isHumanTurn;
+  }, [isHumanTurn, state.phase]);
+
+  // Hold the screen awake while the CPUs take their turns.
+  useEffect(() => {
+    if (state.phase === 'game-over') return;
+    let sentinel: { release: () => Promise<void> } | null = null;
+    let cancelled = false;
+    const wakeLock = (navigator as Navigator & { wakeLock?: { request: (t: string) => Promise<any> } }).wakeLock;
+    wakeLock
+      ?.request('screen')
+      .then((lock: any) => {
+        if (cancelled) lock.release?.();
+        else sentinel = lock;
+      })
+      .catch(() => {
+        /* not supported, or the tab is not visible */
+      });
+    return () => {
+      cancelled = true;
+      sentinel?.release?.().catch(() => {});
+    };
+  }, [state.phase]);
+
   // Fade the CPU move highlight out on its own.
   useEffect(() => {
     if (!lastCpuMove) return;
