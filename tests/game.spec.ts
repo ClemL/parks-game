@@ -95,11 +95,11 @@ test('a decision modal can be undone from inside it', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
 
-  // Walk onto a site that opens a decision, then back out of it.
-  const decision = page.locator(
-    '.site-target.site-camera .site-hit:not([disabled]), .site-target.site-tent .site-hit:not([disabled])',
-  );
-  if ((await decision.count()) === 0) test.skip(true, 'no decision site reachable on this trail');
+  // The Camera Point always opens a decision. A tent site is not a reliable
+  // choice here: its prompt is skipped when no campsite is payable, which is
+  // the normal case before anyone has collected anything.
+  const decision = page.locator('.site-target.site-camera .site-hit');
+  if ((await decision.count()) === 0) test.skip(true, 'no camera site reachable on this trail');
   await decision.first().click();
 
   const modal = page.locator('.modal');
