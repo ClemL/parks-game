@@ -74,7 +74,7 @@ test('plays a full game through every decision modal', async ({ page }) => {
 test('undo steps back to before the last move', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
-  const undo = page.getByRole('button', { name: 'Undo' });
+  const undo = page.locator('.topbar').getByRole('button', { name: 'Undo' });
   await expect(undo).toBeDisabled();
 
   // A plain resource site resolves without opening a decision.
@@ -87,7 +87,7 @@ test('undo steps back to before the last move', async ({ page }) => {
   expect(await page.locator('.log li').count()).toBeGreaterThan(before);
 
   await undo.click();
-  await expect(page.locator('.turn-you')).toBeVisible();
+  await expect(page.locator('.board .turn-you')).toBeVisible();
   await expect(undo).toBeDisabled();
 });
 
@@ -110,7 +110,7 @@ test('a decision modal can be undone from inside it', async ({ page }) => {
 
   // The board is back to our turn with no decision pending.
   await expect(page.locator('.modal')).toHaveCount(0);
-  await expect(page.locator('.turn-you')).toBeVisible();
+  await expect(page.locator('.board .turn-you')).toBeVisible();
 });
 
 test('resumes a saved game after a reload', async ({ page }) => {
