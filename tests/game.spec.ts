@@ -33,6 +33,8 @@ test('plays a full game through every decision modal', async ({ page }) => {
 
     const modal = page.locator('.modal');
     if (await modal.count()) {
+      // A CPU can finish the game between the check above and this one.
+      if (await modal.locator('.scores').count()) break;
       modalsSeen.add((await modal.locator('.modal-head h2').innerText()).split('—')[0].trim());
       const parks = modal.locator('.park-card.clickable');
       const gear = modal.locator('.gear-card.clickable');
@@ -202,7 +204,7 @@ test('folds sections away and remembers it', async ({ page }) => {
   await expect(page.locator('.panel', { hasText: 'PARK ROW' }).locator('.park-card').first()).toBeVisible();
 });
 
-test('closes the notices with their X and can bring hints back', async ({ page }) => {
+test('closes the notices with their X, and the dismissal sticks', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
   await page.evaluate(() => localStorage.clear());
@@ -219,12 +221,11 @@ test('closes the notices with their X and can bring hints back', async ({ page }
     await expect(page.locator('.notice.season-card')).toHaveCount(0);
   }
 
-  // The dismissal sticks across a reload, with a way back.
+  // The dismissal sticks across a reload; Setup is where it comes back from.
   await page.reload();
   await page.waitForSelector('.trail .site');
   await expect(page.locator('.notice.hint')).toHaveCount(0);
-  await page.locator('.hint-hidden button').click();
-  await expect(page.locator('.notice.hint')).toBeVisible();
+  await expect(page.locator('label', { hasText: 'Turn hints' }).locator('input')).not.toBeChecked();
 });
 
 test('folds a player away to a one-line summary', async ({ page }) => {
