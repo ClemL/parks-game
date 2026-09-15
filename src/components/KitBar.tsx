@@ -2,8 +2,9 @@ import type { GameState } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { bottleDef, campfireAllowance, tokenCount, usableBottles } from '../game/engine';
 import { GEAR_VP, TOKEN_LIMIT } from '../game/data/sites';
-import { ResourceChip } from './Bits';
+import { ChipCount, ResourceChip } from './Bits';
 import { useInfo } from './InfoSheet';
+import { useCountFlashes } from '../hooks/useFlash';
 
 /**
  * Everything you are carrying, on one line at the top of the board: resources,
@@ -23,17 +24,37 @@ export function KitBar({
   const ready = new Set(usableBottles(player).map((b) => b.id));
   const tokens = tokenCount(player);
 
+  // Anything that just arrived or was just spent gets a moment on screen.
+  const flash = useCountFlashes({
+    sun: player.resources.sun ?? 0,
+    water: player.resources.water ?? 0,
+    forest: player.resources.forest ?? 0,
+    mountain: player.resources.mountain ?? 0,
+    wild: player.resources.wild ?? 0,
+    tokens,
+    campfires: player.campfires,
+    photos: player.photos,
+  });
+
   return (
     <section className="kit" aria-label="Your resources, bottles and gear">
       <span className="kit-label">Your kit</span>
 
       <span className="kit-group">
         {RESOURCES.map((r) => (
-          <ResourceChip key={r} resource={r} count={player.resources[r] ?? 0} dim={(player.resources[r] ?? 0) === 0} />
+          <ResourceChip
+            key={r}
+            resource={r}
+            count={player.resources[r] ?? 0}
+            dim={(player.resources[r] ?? 0) === 0}
+            flash={flash[r]}
+          />
         ))}
         <button
           type="button"
-          className={`chip chip-info${tokens >= TOKEN_LIMIT ? ' chip-full' : ''}`}
+          className={`chip chip-info${tokens >= TOKEN_LIMIT ? ' chip-full' : ''}${
+            flash.tokens ? ` chip-${flash.tokens.dir}` : ''
+          }`}
           title={`${tokens} of ${TOKEN_LIMIT} tokens`}
           onClick={() =>
             info.show({
@@ -47,7 +68,7 @@ export function KitBar({
           }
         >
           <span aria-hidden="true">🎒</span>
-          <b>
+          <b key={flash.tokens?.at ?? 'steady'} className="chip-count">
             {tokens}/{TOKEN_LIMIT}
           </b>
         </button>
@@ -56,7 +77,7 @@ export function KitBar({
       <span className="kit-group">
         <button
           type="button"
-          className="chip chip-info"
+          className={`chip chip-info${flash.campfires ? ` chip-${flash.campfires.dir}` : ''}`}
           title="Campfire tokens"
           onClick={() =>
             info.show({
@@ -71,11 +92,11 @@ export function KitBar({
           }
         >
           <span aria-hidden="true">🔥</span>
-          <b>{player.campfires}</b>
+          <ChipCount count={player.campfires} flash={flash.campfires} />
         </button>
         <button
           type="button"
-          className="chip chip-info"
+          className={`chip chip-info${flash.photos ? ` chip-${flash.photos.dir}` : ''}`}
           title="Photos taken"
           onClick={() =>
             info.show({
@@ -86,7 +107,7 @@ export function KitBar({
           }
         >
           <span aria-hidden="true">📸</span>
-          <b>{player.photos}</b>
+          <ChipCount count={player.photos} flash={flash.photos} />
         </button>
       </span>
 

@@ -59,7 +59,8 @@ export function PlayerPanel({
             📷
           </span>
         )}
-        <span className="player-vp" title="Park points so far">
+        {/* Remounting on a change restarts the bump, so a purchase is visible. */}
+        <span key={vp} className="player-vp" title="Park points so far">
           {vp} VP
         </span>
       </header>

@@ -15,6 +15,63 @@ import { loadParkArt, type ArtMap } from './art/parkArt';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 
+/**
+ * Whose turn it is. On your own turn it doubles as the hiker switch: clicking
+ * it steps to your next hiker that still has somewhere to go.
+ */
+function TurnPill({
+  name,
+  color,
+  isYou,
+  hiker,
+  hikers,
+  onSwitch,
+}: {
+  name: string;
+  color: string;
+  isYou: boolean;
+  /** 1-based index of the selected hiker, when one is selected. */
+  hiker: number | null;
+  /** How many of your hikers can still move. */
+  hikers: number;
+  onSwitch?: () => void;
+}) {
+  const body = (
+    <>
+      <span className="player-dot" style={{ background: color }} aria-hidden="true" />
+      {isYou ? 'Your turn' : name}
+      {isYou && hiker !== null && (
+        <span className="turn-hiker">
+          <span aria-hidden="true">🚶</span>
+          {hiker}
+          {hikers > 1 && <span className="turn-swap" aria-hidden="true">⇄</span>}
+        </span>
+      )}
+    </>
+  );
+  const className = `turn-pill${isYou ? ' turn-you' : ''}${onSwitch ? ' turn-switch' : ''}`;
+
+  if (!onSwitch) {
+    return (
+      <span className={className} style={{ borderColor: color }}>
+        {body}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={className}
+      style={{ borderColor: color }}
+      onClick={onSwitch}
+      title="Switch to your other hiker"
+      aria-label={`Your turn, hiker ${hiker}. Click to switch hiker.`}
+    >
+      {body}
+    </button>
+  );
+}
+
 export default function App() {
   const game = useGame();
   const { state, moves, isHumanTurn, selectedHiker, dispatch } = game;
@@ -69,6 +126,16 @@ export default function App() {
     (park) => canClaim(state, human, park) && !reservedBy.has(park.id),
   ).length;
 
+  // Which of your hikers is holding the highlight, and whether there is another
+  // to hand it to.
+  const movableHikers = new Set(moves.map((m) => m.hikerId)).size;
+  const selectedIndex = (() => {
+    if (selectedHiker === null) return null;
+    const at = human.hikers.findIndex((h) => h.id === selectedHiker);
+    return at < 0 ? null : at + 1;
+  })();
+  const canSwitchHiker = isHumanTurn && !state.pending && movableHikers > 1;
+
   const hint = (() => {
     if (state.phase === 'game-over') return 'The year is over — see the final scores.';
     if (state.phase === 'season-end') return `Season ${state.season} is complete.`;
@@ -76,9 +143,10 @@ export default function App() {
     if (state.pending) return `Resolve ${siteDef(state.trail[state.pending.siteIndex]).name}.`;
     if (moves.length === 0) return 'Both of your hikers are home for the season.';
     const fireOnly = moves.every((m) => m.useCampfire);
-    return fireOnly
-      ? 'Every open site is taken — spend your campfire to share one, or walk to the Trail End.'
-      : 'Pick a hiker, then click a highlighted site. Every site holds a season token for whoever gets there first.';
+    if (fireOnly) return 'Every open site is taken — spend your campfire to share one, or walk to the Trail End.';
+    return movableHikers > 1
+      ? 'Click a hiker or the turn label to switch, then click a highlighted site. Every site holds a season token for whoever gets there first.'
+      : 'Click a highlighted site to move. Every site holds a season token for whoever gets there first.';
   })();
 
   return (
@@ -205,25 +273,23 @@ export default function App() {
             summary={`${state.trail.length - 2} sites · ${
               state.players[0].hikers.filter((h) => !h.finished).length
             } of your hikers still walking`}
-            meta={
-              <span className="turn-and-season">
-                <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
-                  <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
-                  {isHumanTurn ? 'Your turn' : activePlayer.name}
-                </span>
-                <span className="seasons" aria-label={`Season ${state.season} of ${SEASONS}`}>
-                  {SEASON_NAMES.map((name, i) => (
-                    <span
-                      key={name}
-                      className={`season-pip${i + 1 === state.season ? ' season-now' : ''}${
-                        i + 1 < state.season ? ' season-past' : ''
-                      }`}
-                    >
-                      {name}
-                    </span>
-                  ))}
+            badge={
+              <span className="season-badge" aria-label={`${SEASON_NAMES[state.season - 1]}, season ${state.season} of ${SEASONS}`}>
+                {SEASON_NAMES[state.season - 1]}
+                <span className="season-count" aria-hidden="true">
+                  {state.season}/{SEASONS}
                 </span>
               </span>
+            }
+            meta={
+              <TurnPill
+                name={activePlayer.name}
+                color={activePlayer.color}
+                isYou={isHumanTurn}
+                hiker={selectedIndex}
+                hikers={movableHikers}
+                onSwitch={canSwitchHiker ? game.cycleHiker : undefined}
+              />
             }
           >
             {state.seasonCard && ui.seasonCardClosed !== state.season && (
@@ -383,10 +449,14 @@ export default function App() {
       </section>
 
       <div className="action-bar">
-        <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
-          <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
-          {isHumanTurn ? 'Your turn' : activePlayer.name}
-        </span>
+        <TurnPill
+          name={activePlayer.name}
+          color={activePlayer.color}
+          isYou={isHumanTurn}
+          hiker={selectedIndex}
+          hikers={movableHikers}
+          onSwitch={canSwitchHiker ? game.cycleHiker : undefined}
+        />
         <button
           type="button"
           className="ghost"

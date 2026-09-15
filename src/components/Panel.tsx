@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 /** A board section that folds away, with its heading as the handle. */
 export function Panel({
   title,
+  badge,
   meta,
   open,
   onToggle,
@@ -10,6 +11,8 @@ export function Panel({
   summary,
 }: {
   title: string;
+  /** Sits inside the heading itself, for status that belongs to the title. */
+  badge?: ReactNode;
   /** Right-hand status text or element, shown whether open or folded. */
   meta?: ReactNode;
   open: boolean;
@@ -26,6 +29,7 @@ export function Panel({
             ▾
           </span>
           <h2>{title}</h2>
+          {badge}
         </button>
         {meta && <span className="panel-meta">{meta}</span>}
       </div>

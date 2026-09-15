@@ -1,6 +1,7 @@
 import type { Resource, ResourceBag } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { useInfo } from './InfoSheet';
+import type { Flash } from '../hooks/useFlash';
 
 export const RESOURCE_ICON: Record<Resource, string> = {
   sun: '☀️',
@@ -30,10 +31,13 @@ export function ResourceChip({
   resource,
   count,
   dim,
+  flash,
 }: {
   resource: Resource;
   count: number;
   dim?: boolean;
+  /** Set when this count just moved, to animate the gain or the spend. */
+  flash?: Flash;
 }) {
   const info = useInfo();
   const label =
@@ -43,7 +47,7 @@ export function ResourceChip({
   return (
     <button
       type="button"
-      className={`chip chip-info${dim ? ' chip-dim' : ''}`}
+      className={`chip chip-info${dim ? ' chip-dim' : ''}${flash ? ` chip-${flash.dir}` : ''}`}
       title={label}
       aria-label={label}
       onClick={() =>
@@ -55,8 +59,28 @@ export function ResourceChip({
       }
     >
       <span aria-hidden="true">{RESOURCE_ICON[resource]}</span>
-      <b>{count}</b>
+      <ChipCount count={count} flash={flash} />
     </button>
+  );
+}
+
+/**
+ * The number on a chip. Remounting it on every change restarts the pop, so two
+ * gains in a row both register.
+ */
+export function ChipCount({ count, flash }: { count: number; flash?: Flash }) {
+  return (
+    <>
+      <b key={flash?.at ?? 'steady'} className="chip-count">
+        {count}
+      </b>
+      {flash && (
+        <span key={`d${flash.at}`} className={`chip-delta chip-delta-${flash.dir}`} aria-hidden="true">
+          {flash.dir === 'up' ? '+' : '−'}
+          {flash.by}
+        </span>
+      )}
+    </>
   );
 }
 

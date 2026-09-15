@@ -188,6 +188,16 @@ export function useGame(initialSeed?: number) {
     return () => clearTimeout(timer);
   }, [lastCpuMove]);
 
+  /** Hand the highlight to your next hiker that still has somewhere to go. */
+  const cycleHiker = useCallback(() => {
+    const ids = [...new Set(moves.map((m) => m.hikerId))];
+    if (ids.length === 0) return;
+    setSelectedHiker((current) => {
+      const at = current === null ? -1 : ids.indexOf(current);
+      return ids[(at + 1) % ids.length];
+    });
+  }, [moves]);
+
   // Default-select a hiker that still has somewhere to go.
   useEffect(() => {
     if (!isHumanTurn || state.pending) return;
@@ -205,6 +215,7 @@ export function useGame(initialSeed?: number) {
     isHumanTurn,
     selectedHiker,
     setSelectedHiker,
+    cycleHiker,
     speed,
     setSpeed,
     expansions,

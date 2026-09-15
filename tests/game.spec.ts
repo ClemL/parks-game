@@ -120,12 +120,12 @@ test('resumes a saved game after a reload', async ({ page }) => {
   await page.waitForSelector('.trail .site');
   await page.locator('.site-target .site-hit:not([disabled])').first().click();
   await page.waitForTimeout(400);
-  const season = await page.locator('.season-now').innerText();
+  const season = await page.locator('.season-badge').innerText();
 
   await page.reload();
   await page.waitForSelector('.trail .site');
   await expect(page.locator('.resumed')).toBeVisible();
-  expect(await page.locator('.season-now').innerText()).toBe(season);
+  expect(await page.locator('.season-badge').innerText()).toBe(season);
 });
 
 test('turning both expansions off deals a base-game board', async ({ page }) => {
@@ -310,7 +310,14 @@ test('leaves no CSS variable undefined in any skin', async ({ page }) => {
       })
       .join('\n');
     const defined = new Set(Array.from(text.matchAll(/(--[a-z0-9-]+):/g)).map((m) => m[1]));
-    const used = new Set(Array.from(text.matchAll(/var\((--[a-z0-9-]+)/g)).map((m) => m[1]));
+    // A var() that carries a fallback cannot flatten anything, so only bare
+    // references have to resolve to a declaration. (--slot, for one, is set on
+    // the element by the pawn stack.)
+    const used = new Set(
+      Array.from(text.matchAll(/var\((--[a-z0-9-]+)\s*([,)])/g))
+        .filter((m) => m[2] === ')')
+        .map((m) => m[1]),
+    );
     return Array.from(used).filter((name) => !defined.has(name));
   });
   expect(missing).toEqual([]);
@@ -415,15 +422,47 @@ test('summarises your kit above the board', async ({ page }) => {
   await expect(you.locator('.player-res')).toHaveCount(0);
 });
 
-test('shows the season beside the turn label, not in the top bar', async ({ page }) => {
+test('names the season in the trail heading', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
 
-  await expect(page.locator('.topbar .seasons')).toHaveCount(0);
-  const meta = page.locator('.turn-and-season');
-  await expect(meta.locator('.turn-pill')).toBeVisible();
-  await expect(meta.locator('.season-pip')).toHaveCount(4);
-  await expect(meta.locator('.season-now')).toHaveText('Spring');
+  await expect(page.locator('.topbar .season-badge')).toHaveCount(0);
+  // One label in the heading itself, reading "Spring 1/4".
+  const badge = page.locator('.panel-head .season-badge');
+  await expect(badge).toHaveCount(1);
+  await expect(badge).toContainText('Spring');
+  await expect(badge.locator('.season-count')).toHaveText('1/4');
+
+  const head = await page.evaluate(() => {
+    const b = document.querySelector('.season-badge')!;
+    const h = b.closest('.panel-head')!.querySelector('h2')!;
+    return { heading: h.textContent, sameLine: Math.abs(b.getBoundingClientRect().top - h.getBoundingClientRect().top) < 14 };
+  });
+  expect(head.heading).toBe('The trail');
+  expect(head.sameLine).toBe(true);
+
+  // The turn label keeps its own place beside the heading.
+  await expect(page.locator('.board .panel-meta .turn-pill')).toBeVisible();
+});
+
+test('clicking your turn switches the active hiker', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const pill = page.locator('.board .panel-meta .turn-pill');
+  await expect(pill).toHaveClass(/turn-switch/);
+  const first = await pill.locator('.turn-hiker').textContent();
+
+  const selected = () => page.locator('.hiker-selected').getAttribute('data-hiker');
+  const before = await selected();
+  await pill.click();
+  const after = await selected();
+  expect(after).not.toBe(before);
+  expect(await pill.locator('.turn-hiker').textContent()).not.toBe(first);
+
+  // And back again: two hikers cycle.
+  await pill.click();
+  expect(await selected()).toBe(before);
 });
 
 test('puts the turn hints switch in Setup', async ({ page }) => {
@@ -484,6 +523,124 @@ test('stands the hikers on the cards in compact density', async ({ page }) => {
   });
   expect(pawns.position).toBe('absolute');
   expect(pawns.onCard).toBe(true);
+});
+
+test('stacks the hikers up the left edge of the card, offset', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const stack = await page.evaluate(() => {
+    const card = document.querySelector('.site-start .site-hit')!.getBoundingClientRect();
+    const pawns = Array.from(document.querySelectorAll('.site-start .hiker')).map((p) =>
+      p.getBoundingClientRect(),
+    );
+    return {
+      count: pawns.length,
+      onCard: pawns.every((p) => p.top >= card.top - 1 && p.bottom <= card.bottom + 1),
+      // The stack hugs the left edge; only the trailhead is crowded enough to
+      // wrap a second column, and even that stays on the card.
+      hugsLeft: pawns[0].left - card.left < 10,
+      insideCard: pawns.every((p) => p.right <= card.right + 1),
+      // A column, not a row: each pawn sits below the one before it, overlapping
+      // it rather than spaced out. Checked on the first column, since the
+      // trailhead wraps.
+      descending: pawns.slice(0, 3).every((p, i) => i === 0 || p.top > pawns[i - 1].top),
+      overlaps: pawns.slice(0, 3).every((p, i) => i === 0 || p.top < pawns[i - 1].bottom),
+      // And each one leans a step further right, within its column.
+      stepped: pawns.slice(0, 3).every((p, i) => i === 0 || p.left > pawns[i - 1].left),
+      // The card's own label is clear of the stack.
+      labelClear:
+        document.querySelector('.site-start .site-name')!.getBoundingClientRect().left >
+        pawns[0].left,
+    };
+  });
+  expect(stack.count).toBeGreaterThanOrEqual(4);
+  expect(stack.onCard).toBe(true);
+  expect(stack.hugsLeft).toBe(true);
+  expect(stack.insideCard).toBe(true);
+  expect(stack.descending).toBe(true);
+  expect(stack.overlaps).toBe(true);
+  expect(stack.stepped).toBe(true);
+  expect(stack.labelClear).toBe(true);
+});
+
+test('lets a click through a pawn to the card it stands on', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  // A CPU pawn overlaps the card's own button now that the stack is on the
+  // card, so it must not swallow the tap.
+  const blocked = await page.evaluate(() => {
+    const pawn = document.querySelector<HTMLElement>('.hiker:disabled');
+    if (!pawn) return null;
+    return getComputedStyle(pawn).pointerEvents;
+  });
+  expect(blocked).toBe('none');
+
+  // Your own hikers stay tappable, which is how you pick one.
+  const mine = await page.evaluate(
+    () => getComputedStyle(document.querySelector<HTMLElement>('.hiker-selectable')!).pointerEvents,
+  );
+  expect(mine).toBe('auto');
+});
+
+test('walks a hiker to its new site instead of teleporting it', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  const hiker = await page.locator('.hiker-selected').getAttribute('data-hiker');
+  await page.locator('.site-target .site-hit:not([disabled])').first().click();
+
+  // The pawn is mid-walk: a script-driven animation is running on it.
+  const walking = await page.evaluate((id) => {
+    const pawn = document.querySelector<HTMLElement>(`.hiker[data-hiker="${id}"]`);
+    if (!pawn) return null;
+    return { animations: pawn.getAnimations().length, lifted: getComputedStyle(pawn).zIndex };
+  }, hiker);
+  expect(walking?.animations).toBeGreaterThan(0);
+  expect(walking?.lifted).toBe('6');
+
+  // And it settles back onto the card once it arrives.
+  await page.waitForTimeout(700);
+  const settled = await page.evaluate((id) => {
+    const pawn = document.querySelector<HTMLElement>(`.hiker[data-hiker="${id}"]`);
+    return { transform: getComputedStyle(pawn!).transform, z: pawn!.style.zIndex };
+  }, hiker);
+  expect(settled.transform === 'none' || settled.transform === 'matrix(1, 0, 0, 1, 0, 0)').toBe(true);
+  expect(settled.z).toBe('');
+});
+
+test('shows a resource arriving on its chip', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  // A plain resource site pays out on arrival, with no decision in between.
+  const plain = page.locator(
+    '.site-target:not(.site-camera):not(.site-tent):not([class*="site-adv"]) .site-hit:not([disabled])',
+  );
+  if ((await plain.count()) === 0) test.skip(true, 'no plain resource site reachable');
+  await plain.first().click();
+
+  // The chip that went up carries a floating delta and a pop.
+  const gained = page.locator('.kit .chip-up').first();
+  await expect(gained).toBeVisible();
+  const delta = gained.locator('.chip-delta');
+  await expect(delta).toHaveText(/^\+\d$/);
+
+  // It clears itself rather than staying lit.
+  await expect(page.locator('.kit .chip-up')).toHaveCount(0, { timeout: 4000 });
+});
+
+test('deals cards in rather than snapping them onto the board', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.park-card');
+
+  // Park cards, gear and the kit's own gear chips all animate on arrival, which
+  // is what makes a purchase or a reservation visible.
+  const dealt = await page.evaluate(() =>
+    ['.park-card', '.gear-card'].map((sel) => getComputedStyle(document.querySelector(sel)!).animationName),
+  );
+  expect(dealt).toEqual(['card-in', 'card-in']);
 });
 
 test('lays out at phone width without sideways scroll', async ({ page }) => {

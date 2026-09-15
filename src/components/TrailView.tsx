@@ -1,10 +1,10 @@
 import type { GameState } from '../game/types';
 import { hasTent, occupants, siteDef } from '../game/engine';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 import { useInfo } from './InfoSheet';
-import { RESOURCE_LABEL } from './Bits';
+import { RESOURCE_ICON, RESOURCE_LABEL } from './Bits';
 import type { MoveOption } from '../game/engine';
-import { RESOURCE_ICON } from './Bits';
 
 interface Props {
   state: GameState;
@@ -28,6 +28,7 @@ export function TrailView({
 }: Props) {
   const info = useInfo();
   const strip = useRef<HTMLDivElement>(null);
+  useWalkingPawns(strip, state);
 
   // Bring the nearest site you could actually move to into view, so the trail
   // does not have to be hunted along by hand.
@@ -124,17 +125,20 @@ export function TrailView({
             </button>
 
             <div className="site-hikers">
-              {here.map((hikerId) => {
+              {here.map((hikerId, slot) => {
                 const owner = state.players[Number(hikerId[1])];
                 const selectable = interactive && owner.isHuman && !isEnd;
                 return (
                   <button
                     key={hikerId}
                     type="button"
+                    data-hiker={hikerId}
                     className={`hiker${selectedHiker === hikerId ? ' hiker-selected' : ''}${
                       selectable ? ' hiker-selectable' : ''
                     }`}
-                    style={{ background: owner.color }}
+                    // The stack leans a little further right with each pawn, so a
+                    // crowded site reads as a crowd rather than one pawn.
+                    style={{ background: owner.color, '--slot': slot } as CSSProperties}
                     onClick={() => selectable && onSelectHiker(hikerId)}
                     disabled={!selectable}
                     title={`${owner.name}'s hiker`}
@@ -150,4 +154,64 @@ export function TrailView({
       })}
     </div>
   );
+}
+
+/** How long a pawn takes to walk to its new site. */
+const WALK_MS = 520;
+
+/**
+ * Walks the pawns between sites instead of teleporting them. React rebuilds the
+ * pawn in its new tile, so the old screen position is remembered per hiker and
+ * replayed as a hop from there (a FLIP animation). Positions are measured
+ * against the strip's scrolled content, so scrolling the trail never registers
+ * as a move.
+ */
+function useWalkingPawns(strip: RefObject<HTMLDivElement>, state: GameState): void {
+  const seen = useRef(new Map<string, { x: number; y: number }>());
+
+  useLayoutEffect(() => {
+    const root = strip.current;
+    if (!root) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const base = root.getBoundingClientRect();
+    const next = new Map<string, { x: number; y: number }>();
+
+    for (const pawn of root.querySelectorAll<HTMLElement>('.hiker')) {
+      const id = pawn.dataset.hiker;
+      if (!id) continue;
+      const box = pawn.getBoundingClientRect();
+      const now = {
+        x: box.left - base.left + root.scrollLeft,
+        y: box.top - base.top + root.scrollTop,
+      };
+      next.set(id, now);
+
+      const was = seen.current.get(id);
+      if (!was || still || typeof pawn.animate !== 'function') continue;
+      const dx = was.x - now.x;
+      const dy = was.y - now.y;
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) continue;
+
+      // Lift off the card while travelling so the pawn is never hidden behind
+      // the tile it is passing.
+      pawn.style.zIndex = '6';
+      const walk = pawn.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(1)` },
+          { transform: `translate(${dx / 2}px, ${dy / 2 - 16}px) scale(1.2)`, offset: 0.55 },
+          { transform: 'translate(0, 0) scale(1)' },
+        ],
+        { duration: WALK_MS, easing: 'cubic-bezier(.3, .72, .3, 1)' },
+      );
+      walk.finished
+        .then(() => {
+          pawn.style.zIndex = '';
+        })
+        .catch(() => {
+          pawn.style.zIndex = '';
+        });
+    }
+
+    seen.current = next;
+  }, [state, strip]);
 }

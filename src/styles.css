@@ -24,7 +24,6 @@
   --line: #3c5145;
   --line-soft: #263229;
   --line-softer: #2c3b32;
-  --season-past-line: #2f4238;
   --season-line: #3f6b4c;
   --resumed-line: #6b5a2c;
   --camp-line: #5c6f8a;
@@ -124,7 +123,6 @@
   --line: #c9bb9c;
   --line-soft: #ded2b6;
   --line-softer: #d5c8a9;
-  --season-past-line: #d5c8a9;
   --season-line: #8aa98c;
   --resumed-line: #c8a86a;
   --camp-line: #8fa3b8;
@@ -193,7 +191,6 @@
   --line: #2d6b6b;
   --line-soft: #cbb994;
   --line-softer: #c0ad86;
-  --season-past-line: #c0ad86;
   --season-line: #2d6b6b;
   --resumed-line: #c75b3a;
   --camp-line: #2d6b6b;
@@ -262,7 +259,6 @@
   --line: #3b4278;
   --line-soft: #242a4e;
   --line-softer: #2b3159;
-  --season-past-line: #2b3159;
   --season-line: #4b5aa8;
   --resumed-line: #6b5a9c;
   --camp-line: #5a63a8;
@@ -331,7 +327,6 @@
   --line: #000000;
   --line-soft: #767676;
   --line-softer: #767676;
-  --season-past-line: #767676;
   --season-line: #000000;
   --resumed-line: #000000;
   --camp-line: #000000;
@@ -409,41 +404,23 @@
   height: 90px;
 }
 
-/* Compact play stands the hikers on the cards, which saves the whole pawn row
-   beneath the trail. */
-:root[data-density='compact'] .site {
-  position: relative;
-}
-
-:root[data-density='compact'] .site-hikers {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  bottom: 3px;
-  min-height: 0;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--ink) 28%, transparent);
-  backdrop-filter: blur(2px);
-  pointer-events: auto;
-}
-
-:root[data-density='compact'] .site-start .site-hikers,
-:root[data-density='compact'] .site-finish .site-hikers {
-  background: color-mix(in srgb, var(--bg) 45%, transparent);
-}
-
+/* Compact play keeps the same left-hand stack, on smaller pawns and a shorter
+   card. */
 :root[data-density='compact'] .hiker {
   width: 19px;
   height: 19px;
   font-size: 10px;
   border-width: 1px;
+  margin-bottom: -7px;
 }
 
-:root[data-density='compact'] .site-name {
-  /* Leave the bottom strip of the card to the pawns. */
-  margin-bottom: 20px;
+:root[data-density='compact'] .site-hit {
+  padding-left: 25px;
+}
+
+:root[data-density='compact'] .site-start .site-hit,
+:root[data-density='compact'] .site-finish .site-hit {
+  padding-left: 48px;
 }
 
 * {
@@ -533,33 +510,30 @@ button:disabled {
   font-size: 12.5px;
 }
 
-.seasons {
-  display: flex;
-  flex-wrap: wrap;
+/* The season rides in the trail heading itself: "THE TRAIL  SPRING 1/4". */
+.season-badge {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-}
-
-.season-pip {
-  font-family: var(--display);
-  padding: 4px 10px;
+  margin-left: 8px;
+  padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-family: var(--display);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.season-past {
-  color: var(--text-dim);
-  border-color: var(--season-past-line);
-}
-
-.season-now {
+  white-space: nowrap;
   background: var(--season-accent);
-  border-color: var(--season-accent);
+  border: 1px solid var(--season-accent);
   color: var(--on-gold);
   font-weight: 700;
+}
+
+.season-count {
+  padding-left: 6px;
+  border-left: 1px solid color-mix(in srgb, var(--on-gold) 35%, transparent);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
 }
 
 .topbar-actions {
@@ -655,7 +629,6 @@ button.link {
 .panel-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -702,6 +675,7 @@ button.link {
 .panel-meta {
   flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
   text-align: right;
 }
 
@@ -897,14 +871,30 @@ button.link {
   font-size: 11.5px;
 }
 
-/* --------------------------------------------- the season sits with the turn */
+/* ------------------------------------- the turn pill switches your hiker */
 
-.turn-and-season {
-  display: flex;
+.turn-hiker {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  gap: 3px;
+  padding-left: 7px;
+  margin-left: 1px;
+  border-left: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-swap {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+button.turn-switch {
+  cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+button.turn-switch:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 /* ------------------------------------------------- the log closes the board */
@@ -924,10 +914,22 @@ button.link {
 }
 
 .site {
+  position: relative;
   flex: 0 0 104px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+}
+
+/* Everyone starts and finishes on these two, so they hold a wider stack: two
+   columns of pawns, with the label clear of both. */
+.site-start,
+.site-finish {
+  flex: 0 0 142px;
+}
+
+.site-start .site-hit,
+.site-finish .site-hit {
+  padding-left: 70px;
 }
 
 .site-hit {
@@ -1203,12 +1205,19 @@ button.bottle:disabled {
   padding: 1px 6px;
 }
 
+/* The pawns stand on the left edge of the card, stacked with an overlap and a
+   step to the right so a crowd reads as a crowd. The stack wraps into a second
+   column at the trailhead, where every hiker in the game starts out. */
 .site-hikers {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 4px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-  min-height: 26px;
+  flex-flow: column wrap;
+  align-content: flex-start;
+  gap: 0;
+  pointer-events: none;
 }
 
 .hiker {
@@ -1222,6 +1231,26 @@ button.bottle:disabled {
   display: grid;
   place-items: center;
   padding: 0;
+  pointer-events: auto;
+  /* Each pawn pulls the next one up over it and leans a step further right. The
+     offset is a margin, not a transform, which the walk animation owns. A
+     bottom margin is what keeps a wrapped second column level with the first. */
+  margin-bottom: -9px;
+  /* The lean is capped, so a wrapped column does not drift off the card. */
+  margin-left: calc(min(var(--slot, 0), 2) * 3px);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 45%, transparent);
+  z-index: calc(var(--slot, 0) + 1);
+}
+
+/* Nothing of the card's own label hides behind the stack. */
+.site-hit {
+  padding-left: 32px;
+}
+
+/* Another player's pawn sits on top of the card's own button, so it must let a
+   click through to the site rather than swallowing it. */
+.hiker:disabled {
+  pointer-events: none;
 }
 
 .hiker-selectable {
@@ -1464,6 +1493,140 @@ button.bottle:disabled {
 
 .chip-dim {
   opacity: 0.45;
+}
+
+/* ------------------------------------------------------------- animations */
+
+/* A resource arriving or being spent: the chip pops and the difference floats
+   off it, so a gain is visible even when the eye was on the trail. */
+.chip {
+  position: relative;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.chip-up {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  opacity: 1;
+}
+
+.chip-down {
+  border-color: var(--trail);
+  background: color-mix(in srgb, var(--trail) 18%, var(--surface-2));
+  opacity: 1;
+}
+
+.chip-count {
+  display: inline-block;
+  animation: chip-pop 420ms cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes chip-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.45);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.chip-delta {
+  position: absolute;
+  left: 50%;
+  /* Rises from inside the chip, so the tick stays within the kit bar. */
+  bottom: 60%;
+  transform: translateX(-50%);
+  font-weight: 700;
+  font-size: 11.5px;
+  pointer-events: none;
+  animation: chip-float 1s ease-out forwards;
+}
+
+.chip-delta-up {
+  color: var(--accent);
+}
+
+.chip-delta-down {
+  color: var(--trail);
+}
+
+@keyframes chip-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -11px);
+  }
+}
+
+/* Anything bought, claimed or reserved deals itself onto the board. */
+.park-card,
+.gear-card,
+.gear-mini,
+.kit-gear-item,
+.bonus,
+.campsite-claimed {
+  animation: card-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+@keyframes card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A park's score landing on your panel. */
+.player-vp {
+  animation: vp-bump 520ms cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes vp-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.3);
+    color: var(--gold-ink);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The pawns are walked by script (see useWalkingPawns in TrailView); this only
+   hands their transform to the compositor. */
+.hiker {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .chip-delta {
+    display: none;
+  }
 }
 
 .player-row {
@@ -2045,11 +2208,16 @@ button.bottle:disabled {
     padding: 2px 6px;
   }
 
-  /* Eight hikers at the trailhead used to stack four rows deep. Smaller pawns
-     and a wider start column bring that down to two. */
+  /* Every hiker in the game starts and finishes here, so the two ends of the
+     trail carry a two-column stack and a label beside it. */
   .site-start,
   .site-finish {
-    flex: 0 0 96px;
+    flex: 0 0 122px;
+  }
+
+  .site-start .site-hit,
+  .site-finish .site-hit {
+    padding-left: 64px;
   }
 
   .hiker {
@@ -2059,10 +2227,6 @@ button.bottle:disabled {
     border-width: 1px;
   }
 
-  .site-hikers {
-    gap: 3px;
-    min-height: 21px;
-  }
 
   /* Status text stays on one line beside the heading. */
   .panel-meta {
@@ -2072,23 +2236,14 @@ button.bottle:disabled {
     white-space: nowrap;
   }
 
-  /* The turn and the season are not status text: they get the room they need. */
-  .panel-meta:has(.turn-and-season) {
-    max-width: 100%;
-    overflow: visible;
-    white-space: normal;
+  /* The sticky action bar already carries the turn pill on a phone, so the
+     heading keeps the whole line for its title and the season. */
+  .board .panel-meta:has(.turn-pill) {
+    display: none;
   }
 
-  .turn-and-season {
-    justify-content: flex-start;
-    width: 100%;
-  }
-
-  /* Four pips and the turn pill share the room, wrapping rather than pushing
-     the page sideways. */
-  .turn-and-season .season-pip {
-    padding: 3px 7px;
-    font-size: 9px;
+  .panel-head h2 {
+    white-space: nowrap;
   }
 
   .players {
@@ -2169,6 +2324,7 @@ button.bottle:disabled {
     width: 24px;
     height: 24px;
     font-size: 11px;
+    margin-bottom: -8px;
   }
 
   .hiker-selectable::after {

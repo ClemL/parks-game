@@ -47,10 +47,20 @@ and the SPA rewrites.
 - **Your kit sits across the top** — resources, the token count, campfires, photos, bottles and
   gear on one line, with the bottles usable straight from there. Your own panel keeps the parks,
   reservations and bonus cards.
-- **The season sits with the turn indicator**, above the trail rather than in the top bar.
+- **The season is named in the trail heading** — a `Spring 1/4` label beside the title — rather
+  than shown as a row of four pips.
+- **Clicking the turn indicator switches your hiker**, in the trail heading or the phone action
+  bar. It shows which of your two hikers currently holds the highlight.
 - **The trail log closes the board**, below every player panel.
-- **Compact density stands the hikers on the trail cards** rather than in a row beneath them,
-  which halves the height of the trail strip (216px to 106px on a desktop).
+- **The hikers stand on the left edge of the trail cards**, stacked with an overlap and a step to
+  the right so a shared site reads as a crowd. The two ends of the trail wrap the stack into a
+  second column, since every hiker in the game starts and finishes there. That takes the trail
+  strip from 216px to 124px on a desktop, and to 106px in compact density.
+- **Things move.** Pawns walk to their new site rather than teleporting (a FLIP animation, so it
+  survives the card being rebuilt); a resource arriving or being spent pops its chip and floats the
+  difference off it; parks, gear and bonus cards deal themselves in when bought, claimed or
+  reserved; the score bumps when it changes. All of it is skipped under
+  `prefers-reduced-motion: reduce`.
 - **Every section folds away** — tap its heading. A folded section keeps a one-line summary (which
   campsites are out, what the gear shop is selling, the last log line), and each player folds to
   their resource chips plus a one-liner. What you fold is remembered.
@@ -92,7 +102,9 @@ swap in a colour-blind-safe set.
   wildcard pays for.
 - **Decisions rise from the bottom edge** as sheets rather than centred boxes, so the buttons land
   under your thumb.
-- **A pinned action bar** keeps the turn indicator, a jump-to-trail button and Undo in reach.
+- **A pinned action bar** keeps the turn indicator, a jump-to-trail button and Undo in reach. On a
+  phone it is the only turn indicator, so the trail heading keeps its whole line — and it is where
+  you tap to switch hikers.
 - **The trail scrolls to your next legal move** and its tiles snap as you swipe.
 - **Installable and offline** — a manifest, icons and a service worker that caches the shell and
   the art as it is fetched. Run `npm run art` first and the whole game works with no network.
