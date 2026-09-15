@@ -171,6 +171,99 @@ test('the rules panel documents the expansions', async ({ page }) => {
   await expect(page.locator('.modal')).toHaveCount(0);
 });
 
+test('folds sections away and remembers it', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  // Desktop opens with everything showing.
+  await expect(page.locator('.panel-folded')).toHaveCount(0);
+
+  const parkRow = page.locator('.panel', { hasText: 'PARK ROW' });
+  const toggle = parkRow.locator('.panel-toggle');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await toggle.click();
+
+  // Folded: the cards go, a one-line summary takes their place.
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(parkRow.locator('.park-card')).toHaveCount(0);
+  await expect(parkRow.locator('.panel-summary')).toBeVisible();
+
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await expect(page.locator('.panel', { hasText: 'PARK ROW' }).locator('.panel-toggle')).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+
+  await page.locator('.panel', { hasText: 'PARK ROW' }).locator('.panel-toggle').click();
+  await expect(page.locator('.panel', { hasText: 'PARK ROW' }).locator('.park-card').first()).toBeVisible();
+});
+
+test('closes the notices with their X and can bring hints back', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  await expect(page.locator('.notice.hint')).toBeVisible();
+  await page.locator('.notice.hint .notice-close').click();
+  await expect(page.locator('.notice.hint')).toHaveCount(0);
+
+  const seasonCard = page.locator('.notice.season-card');
+  if (await seasonCard.count()) {
+    await seasonCard.locator('.notice-close').click();
+    await expect(page.locator('.notice.season-card')).toHaveCount(0);
+  }
+
+  // The dismissal sticks across a reload, with a way back.
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await expect(page.locator('.notice.hint')).toHaveCount(0);
+  await page.locator('.hint-hidden button').click();
+  await expect(page.locator('.notice.hint')).toBeVisible();
+});
+
+test('folds a player away to a one-line summary', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const opponent = page.locator('aside .player').nth(1);
+  await opponent.locator('.player-toggle').click();
+  await expect(opponent.locator('.player-fold-summary')).toBeVisible();
+  await expect(opponent.locator('.player-row')).toHaveCount(0);
+  // The resource chips stay: they are the part worth reading at a glance.
+  await expect(opponent.locator('.chip').first()).toBeVisible();
+});
+
+test('opens on a phone with the reference material folded and setup behind a button', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  // Campsites, gear and log start folded, as do the CPU seats.
+  expect(await page.locator('.panel-folded').count()).toBeGreaterThanOrEqual(3);
+  expect(await page.locator('.player-toggle[aria-expanded="false"]').count()).toBeGreaterThanOrEqual(1);
+  // The trail itself stays open.
+  await expect(page.locator('.trail .site').first()).toBeVisible();
+
+  // The controls hide behind Setup.
+  await expect(page.locator('.setup-toggle')).toBeVisible();
+  await expect(page.locator('.topbar-actions')).toBeHidden();
+  await page.locator('.setup-toggle').click();
+  await expect(page.locator('.topbar-actions')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+});
+
 test('lays out at phone width without sideways scroll', async ({ page }) => {
   await page.setViewportSize({ width: 400, height: 900 });
   await page.goto('/');

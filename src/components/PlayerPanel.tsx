@@ -10,12 +10,17 @@ export function PlayerPanel({
   state,
   art,
   revealBonuses,
+  open,
+  onToggle,
   onUseBottle,
 }: {
   player: Player;
   state: GameState;
   art: ArtMap;
   revealBonuses: boolean;
+  /** Folded panels show a one-line summary instead of the full holdings. */
+  open: boolean;
+  onToggle: () => void;
   onUseBottle?: (bottleId: string) => void;
 }) {
   const active = state.current === player.index && state.phase === 'playing';
@@ -26,8 +31,19 @@ export function PlayerPanel({
   return (
     <section className={`player${active ? ' player-active' : ''}`} style={{ borderColor: player.color }}>
       <header className="player-head">
-        <span className="player-dot" style={{ background: player.color }} aria-hidden="true" />
-        <h3>{player.isHuman && player.name !== 'You' ? `${player.name} (you)` : player.name}</h3>
+        <button
+          type="button"
+          className="player-toggle"
+          aria-expanded={open}
+          onClick={onToggle}
+          title={open ? 'Fold this player away' : 'Show this player'}
+        >
+          <span className="chev" aria-hidden="true">
+            ▾
+          </span>
+          <span className="player-dot" style={{ background: player.color }} aria-hidden="true" />
+          <h3>{player.isHuman && player.name !== 'You' ? `${player.name} (you)` : player.name}</h3>
+        </button>
         {state.firstPlayer === player.index && (
           <span className="badge" title="First player token — sets turn order and scores 1 VP">
             1st
@@ -57,6 +73,8 @@ export function PlayerPanel({
         </span>
       </div>
 
+      {open && (
+        <>
       <div className="player-row">
         <span className="player-label">Hikers</span>
         <span className="player-hikers">
@@ -160,6 +178,15 @@ export function PlayerPanel({
           })}
         </span>
       </div>
+        </>
+      )}
+      {!open && (
+        <p className="player-fold-summary">
+          {player.parks.length} park{player.parks.length === 1 ? '' : 's'} · {player.photos} photo
+          {player.photos === 1 ? '' : 's'} · {player.gear.length} gear ·{' '}
+          {player.hikers.filter((h) => h.finished).length}/{player.hikers.length} home
+        </p>
+      )}
     </section>
   );
 }

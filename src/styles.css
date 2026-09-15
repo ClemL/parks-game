@@ -226,8 +226,28 @@ button.link {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 10px;
+}
+
+.panel-folded .panel-head {
+  margin-bottom: 0;
+}
+
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: inherit;
+  text-align: left;
+  min-width: 0;
+}
+
+.panel-toggle:hover h2 {
+  color: var(--text);
 }
 
 .panel-head h2 {
@@ -237,8 +257,100 @@ button.link {
   color: var(--muted);
 }
 
+.chev {
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+  flex: none;
+}
+
+.panel-folded .chev,
+.player-toggle[aria-expanded='false'] .chev {
+  transform: rotate(-90deg);
+}
+
+.panel-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: right;
+}
+
+.panel-summary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #263229;
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- notices with an X */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice.hint .notice-text,
+.notice.season-card .notice-text,
+.notice.resumed .notice-text {
+  font-size: inherit;
+}
+
+.notice-close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.notice-close:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.hint-hidden {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.player-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.player-fold-summary {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.setup-toggle {
+  display: none;
+}
+
 .hint {
-  margin: 0 0 12px;
   padding: 8px 10px;
   background: #1a231d;
   border-left: 3px solid var(--gold);
@@ -354,7 +466,6 @@ button.link {
 }
 
 .resumed {
-  margin: 0 0 8px;
   padding: 6px 10px;
   background: rgba(224, 182, 84, 0.14);
   border: 1px solid #6b5a2c;
@@ -383,7 +494,6 @@ button.link {
 }
 
 .season-card {
-  margin: 0 0 10px;
   padding: 8px 11px;
   background: linear-gradient(90deg, rgba(127, 182, 133, 0.16), rgba(127, 182, 133, 0.04));
   border: 1px solid #3f6b4c;
@@ -1162,13 +1272,46 @@ button.bottle:disabled {
   }
 }
 
-@media (max-width: 620px) {
+/* ------------------------------------------------------------- phone layout */
+
+@media (max-width: 720px) {
   .app {
-    padding: 10px;
+    padding: 9px;
+  }
+
+  /* The top bar folds its controls behind one Setup button. */
+  .setup-toggle {
+    display: inline-flex;
+    order: 2;
   }
 
   .topbar {
-    gap: 10px;
+    gap: 8px 10px;
+    padding: 9px 11px;
+  }
+
+  .topbar-actions {
+    display: none;
+    width: 100%;
+    order: 4;
+    gap: 7px;
+  }
+
+  .topbar-actions-open {
+    display: flex;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .brand {
+    order: 1;
+    gap: 8px;
+  }
+
+  .brand-mark {
+    font-size: 22px;
   }
 
   .brand h1 {
@@ -1178,22 +1321,134 @@ button.bottle:disabled {
   .seasons {
     order: 3;
     width: 100%;
-    justify-content: space-between;
+    gap: 4px;
   }
 
   .season-pip {
-  font-family: var(--display);
     flex: 1;
     text-align: center;
-    padding: 4px 2px;
-    font-size: 10.5px;
+    padding: 3px 2px;
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Panels, cards and tiles all give back a little room. */
+  .panel {
+    padding: 10px;
+  }
+
+  .panel-head h2 {
+    font-size: 13px;
+  }
+
+  .panel-meta {
+    font-size: 11px;
   }
 
   .site {
-    flex: 0 0 92px;
+    flex: 0 0 84px;
+  }
+
+  .site-hit {
+    height: 94px;
+    padding: 6px 4px;
+  }
+
+  .site-name {
+    font-size: 11px;
+  }
+
+  .site-icon {
+    font-size: 19px;
+  }
+
+  .park-card {
+    flex: 0 0 138px;
+  }
+
+  .park-art {
+    height: 72px;
+  }
+
+  .park-card-compact {
+    flex: 0 0 76px;
+  }
+
+  .park-card-compact .park-art {
+    height: 40px;
+  }
+
+  .gear-card {
+    flex: 0 0 150px;
+  }
+
+  .log {
+    max-height: 148px;
+    font-size: 12px;
+  }
+
+  .chip {
+    padding: 1px 5px;
+    font-size: 11px;
+  }
+
+  .player-label {
+    flex: 0 0 66px;
+    font-size: 9.5px;
+  }
+
+  /* Eight hikers at the trailhead used to stack four rows deep. Smaller pawns
+     and a wider start column bring that down to two. */
+  .site-start,
+  .site-finish {
+    flex: 0 0 96px;
+  }
+
+  .hiker {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    border-width: 1px;
+  }
+
+  .site-hikers {
+    gap: 3px;
+    min-height: 21px;
+  }
+
+  /* Status text stays on one line beside the heading. */
+  .panel-meta {
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .players {
     grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .modal-head {
+    padding: 11px 13px;
+  }
+
+  /* The long attribution sentence gives way to a plain credits link. */
+  .footer-note {
+    display: none;
+  }
+
+  .footer {
+    margin: 12px 2px 6px;
+  }
+}
+
+@media (min-width: 721px) {
+  .footer-credits {
+    display: none;
   }
 }

@@ -4,8 +4,10 @@ import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
 import { ParkCardView } from './components/ParkCardView';
 import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModal } from './components/Modals';
+import { Notice, Panel } from './components/Panel';
+import { useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
-import { bisonPark, canClaim, SEASONS, siteDef } from './game/engine';
+import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
 import { PARKS } from './game/data/parks';
 import { loadParkArt, type ArtMap } from './art/parkArt';
 
@@ -18,6 +20,8 @@ export default function App() {
   const [artState, setArtState] = useState<'loading' | 'ready' | 'local' | 'offline'>('loading');
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const ui = useUi();
 
   useEffect(() => {
     let alive = true;
@@ -59,6 +63,10 @@ export default function App() {
     return map;
   }, [state.players]);
 
+  const affordableNow = state.parkRow.filter(
+    (park) => canClaim(state, human, park) && !reservedBy.has(park.id),
+  ).length;
+
   const hint = (() => {
     if (state.phase === 'game-over') return 'The year is over — see the final scores.';
     if (state.phase === 'season-end') return `Season ${state.season} is complete.`;
@@ -95,7 +103,16 @@ export default function App() {
           ))}
         </div>
 
-        <div className="topbar-actions">
+        <button
+          type="button"
+          className="ghost setup-toggle"
+          aria-expanded={setupOpen}
+          onClick={() => setSetupOpen((open) => !open)}
+        >
+          ⚙ Setup
+        </button>
+
+        <div className={`topbar-actions${setupOpen ? ' topbar-actions-open' : ''}`}>
           <label className="speed">
             CPU speed
             <select value={game.speed} onChange={(e) => game.setSpeed(e.target.value as typeof game.speed)}>
@@ -155,33 +172,48 @@ export default function App() {
 
       <main className="layout">
         <div className="board">
-          <section className="panel">
-            <div className="panel-head">
-              <h2>The trail</h2>
+          <Panel
+            title="The trail"
+            open={ui.isOpen('trail')}
+            onToggle={() => ui.toggle('trail')}
+            summary={`${state.trail.length - 2} sites · ${
+              state.players[0].hikers.filter((h) => !h.finished).length
+            } of your hikers still walking`}
+            meta={
               <span className={`turn-pill${isHumanTurn ? ' turn-you' : ''}`} style={{ borderColor: activePlayer.color }}>
                 <span className="player-dot" style={{ background: activePlayer.color }} aria-hidden="true" />
                 {isHumanTurn ? 'Your turn' : activePlayer.name}
               </span>
-            </div>
-            {state.seasonCard && (
-              <p className="season-card" title="Season card: in effect all season">
+            }
+          >
+            {state.seasonCard && ui.seasonCardClosed !== state.season && (
+              <Notice
+                className="season-card"
+                onClose={() => ui.closeSeasonCard(state.season)}
+                closeLabel="Hide this season's card"
+              >
                 <span className="season-card-icon" aria-hidden="true">
                   🍃
                 </span>
                 <b>{state.seasonCard.name}</b> — {state.seasonCard.text}
-              </p>
+              </Notice>
             )}
             {game.resumed && (
-              <p className="resumed">
-                Picked up where you left off — season {state.season}.{' '}
-                <button type="button" className="link" onClick={game.dismissResumed}>
-                  dismiss
+              <Notice className="resumed" onClose={game.dismissResumed} closeLabel="Dismiss">
+                Picked up where you left off — season {state.season}.
+              </Notice>
+            )}
+            {ui.hintsHidden ? (
+              <p className="hint-hidden">
+                <button type="button" className="link" onClick={ui.showHints}>
+                  Show turn hints
                 </button>
               </p>
+            ) : (
+              <Notice className="hint" onClose={ui.hideHints} closeLabel="Hide turn hints" role="status">
+                {hint}
+              </Notice>
             )}
-            <p className="hint" role="status">
-              {hint}
-            </p>
             <TrailView
               state={state}
               moves={moves}
@@ -193,11 +225,14 @@ export default function App() {
               interactive={isHumanTurn && !state.pending}
               lastCpuMove={game.lastCpuMove}
             />
-          </section>
+          </Panel>
 
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Park row</h2>
+          <Panel
+            title="Park row"
+            open={ui.isOpen('parks')}
+            onToggle={() => ui.toggle('parks')}
+            summary={`${state.parkRow.length} on offer · ${affordableNow} within your resources`}
+            meta={
               <span className="muted">
                 {state.parkDeck.length} in the deck
                 {artState === 'loading'
@@ -208,7 +243,8 @@ export default function App() {
                       ? ' · bundled photos'
                       : ''}
               </span>
-            </div>
+            }
+          >
             <div className="card-strip">
               {state.parkRow.map((park) => (
                 <ParkCardView
@@ -222,37 +258,45 @@ export default function App() {
               ))}
               {state.parkRow.length === 0 && <p className="muted">Every park has been claimed.</p>}
             </div>
-          </section>
+          </Panel>
 
           {state.campsites.length > 0 && (
-            <section className="panel">
-              <div className="panel-head">
-                <h2>Campsites</h2>
+            <Panel
+              title="Campsites"
+              open={ui.isOpen('campsites')}
+              onToggle={() => ui.toggle('campsites')}
+              summary={state.campsites.map((c) => campsiteDef(c.id).name).join(' · ')}
+              meta={
                 <span className="muted">
-                  Nightfall · reachable from any tent site ⛺ ·{' '}
-                  {state.players.length >= 4 ? 'two tents each' : 'one tent each'}
+                  From any tent site ⛺ · {state.players.length >= 4 ? '2 tents each' : '1 tent each'}
                 </span>
-              </div>
+              }
+            >
               <CampsiteBoard state={state} />
-            </section>
+            </Panel>
           )}
 
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Gear shop</h2>
+          <Panel
+            title="Gear shop"
+            open={ui.isOpen('gear')}
+            onToggle={() => ui.toggle('gear')}
+            summary={state.gearRow.map((g) => `${g.name} (${gearCost(state, g)}☀️)`).join(' · ')}
+            meta={
               <span className="muted">
-                Bought at the Trail End or a Ranger Station
-                {state.gearDiscountsLeft > 0
-                  ? ` · ${state.gearDiscountsLeft} early-buyer discount${state.gearDiscountsLeft === 1 ? '' : 's'} left`
-                  : ''}
+                Trail End / Ranger Station
+                {state.gearDiscountsLeft > 0 ? ` · ${state.gearDiscountsLeft} discount left` : ''}
               </span>
-            </div>
+            }
+          >
             <GearShelf state={state} />
-          </section>
+          </Panel>
 
-          <section className="panel">
-            <div className="panel-head">
-              <h2>Trail log</h2>
+          <Panel
+            title="Trail log"
+            open={ui.isOpen('log')}
+            onToggle={() => ui.toggle('log')}
+            summary={state.log[state.log.length - 1]?.text ?? 'nothing yet'}
+            meta={
               <span className="muted">
                 {state.bison !== null && bisonPark(state) && `🦬 ${bisonPark(state)!.name} · `}
                 {state.cameraHolder === null
@@ -261,7 +305,8 @@ export default function App() {
                     ? 'You hold the camera 📷'
                     : `${state.players[state.cameraHolder].name} holds the camera 📷`}
               </span>
-            </div>
+            }
+          >
             <ol className="log">
               {state.log
                 .slice(-14)
@@ -280,7 +325,7 @@ export default function App() {
                   </li>
                 ))}
             </ol>
-          </section>
+          </Panel>
         </div>
 
         <aside className="players">
@@ -291,6 +336,8 @@ export default function App() {
               state={state}
               art={art}
               revealBonuses={state.phase === 'game-over'}
+              open={ui.isOpen(`player-${player.index}`)}
+              onToggle={() => ui.toggle(`player-${player.index}`)}
               onUseBottle={player.isHuman ? (bottleId) => dispatch({ type: 'use-bottle', bottleId }) : undefined}
             />
           ))}
@@ -299,13 +346,16 @@ export default function App() {
 
       <footer className="footer">
         <span>Seed {game.seed}</span>
-        <span>
+        <span className="footer-note">
           Park photographs from Wikipedia / Wikimedia Commons — see{' '}
           <button type="button" className="link" onClick={() => setShowCredits(true)}>
             credits
           </button>
           . Not affiliated with Keymaster Games.
         </span>
+        <button type="button" className="link footer-credits" onClick={() => setShowCredits(true)}>
+          Art credits
+        </button>
       </footer>
 
       {state.pending && state.pending.player === 0 && (
