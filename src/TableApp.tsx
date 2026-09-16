@@ -78,11 +78,13 @@ export default function TableApp() {
       setShown(created.seatTokens.map((s) => s.seat));
     } catch (error) {
       // The offline single-file build has no routes behind it, and neither does
-      // a static host: say so rather than showing a bare 404.
-      const missing = error instanceof ApiError && (error.status === 404 || error.status === 405);
+      // a static host. A 404 says so, and so does a fetch that cannot even
+      // resolve the path — either way, the answer is not a bare error string.
+      const unreachable =
+        error instanceof ApiError ? error.status === 404 || error.status === 405 : true;
       setSetupError(
-        missing
-          ? 'Table mode needs the deployed app — this copy has no server behind it. Single-device play works anywhere.'
+        unreachable
+          ? 'Could not reach the table server. Table mode needs the deployed app — single-device play works anywhere.'
           : error instanceof Error
             ? error.message
             : 'could not open a table',
