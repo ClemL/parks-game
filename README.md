@@ -2,9 +2,10 @@
 
 A browser implementation of the *PARKS*-style hiking game: your hikers walk a trail collecting
 resources, and spend them at the end of the trail to visit national parks — over four seasons.
-One human seat, three CPU opponents.
+Play solo against the CPUs, or round a tablet with everyone's hand on their own phone.
 
-Built with React + TypeScript + Vite. No backend, no accounts, no storage beyond a local art cache.
+Built with React + TypeScript + Vite. Single-device play needs no backend at all; **table mode**
+adds five small serverless routes and a Redis key per table.
 
 > Fan project. Not affiliated with, endorsed by, or licensed from Keymaster Games, who publish
 > *PARKS*. The name, artwork, cards, and icon set here are original or drawn from public sources;
@@ -31,8 +32,27 @@ One click on the button above, or:
 
 Or from a terminal: `npm i -g vercel && vercel login && vercel --prod`.
 
-There are no environment variables to set. `vercel.json` pins the Vite preset, the `dist` output
-and the SPA rewrites.
+`vercel.json` pins the Vite preset, the `dist` output, and rewrites everything except `/api/*` to
+the app.
+
+### Environment variables
+
+Single-device play needs none. **Table mode** keeps each table in Redis, and reads whichever of
+these pairs is present:
+
+| Variable | Notes |
+| --- | --- |
+| `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | Add *Upstash for Redis* from the Vercel Marketplace and both are injected for you |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN` | The names the old Vercel KV integration used; still honoured |
+
+With neither pair set, the routes fall back to an in-process store. That is exactly what you want
+locally — `npm run dev` runs table mode with no account and no network — and exactly what you do
+not want on Vercel, where each function instance would hold its own copy of the table. Set the
+variables before you play a real game on a deployment.
+
+Costs, for a sense of scale: five devices polling a version key is about 9,000 Redis commands per
+45-minute session, against a 500,000-command monthly free tier — roughly 50 sessions a month for
+nothing, and about two cents a session after that.
 
 ## Playing
 
@@ -70,6 +90,50 @@ and the SPA rewrites.
 - **On a phone** the board opens with the campsites, gear shop, trail log and CPU seats already
   folded, and the setup controls tucked behind a **Setup** button. That is about a third less
   scrolling than the fully open board, before you fold anything yourself.
+
+## Table mode
+
+One tablet in the middle of the table, one phone per player. Open it from **Table mode** in the top
+bar, or go straight to `#/table`.
+
+1. **The tablet deals the table.** Pick the number of seats and the expansions, and it opens a
+   lobby with a five-letter code and **one QR code per seat**. Each code can be hidden and shown
+   again, so a seat's link is not on display all game, and each carries its own secret — scanning
+   seat 3's code cannot get you into seat 2.
+2. **Phones scan and name themselves.** The code opens `#/hand`, which is that player's hand and
+   nothing else. The tablet ticks the seat off as it is taken, without a reload.
+3. **Start.** Every chair nobody took is played by a CPU, each with its own name and playing style.
+   The bots also take their turns the moment the board is dealt, so the first human seat is on the
+   clock straight away.
+
+**What lives where**
+
+- **The table** holds the shared board: the trail, the park row, the gear shop, the campsites, the
+  log, and every seat's public holdings. Hikers are **dragged from card to card** here — the card
+  under your finger lights up when it will take the drop, and an illegal drop snaps back. A banner
+  across the top says whose turn it is, and when a decision is open it names the seat and the site:
+  *"Kris is deciding: Camera Point"*.
+- **Each phone** holds what only that player should see: their resources, their bottles and gear,
+  their reserved parks and their bonus cards — and the **decision prompts their own moves open**.
+  The rest of the table's public state is one fold away, closed by default. A phone can also move
+  its own hikers, so a player can play entirely from their hand if they prefer.
+
+**Secrets.** Nothing reaches a device that the player is not entitled to. The park deck's order and
+the RNG cursor never leave the server (the cursor would predict every future draw, and so would the
+seed, which is why no client is ever told it); the other seats' bonus cards arrive as the word
+`hidden`; the parks they reserved out of the row arrive as a count, drawn face down. At scoring,
+the server reveals everything.
+
+**When a phone dies**, the tablet can play that seat: drag its hiker, and *Answer on the table*
+takes over its decision. The tablet holds the host token, which is allowed to act for any seat.
+
+**How it is wired.** No sockets. Each device asks `GET /api/state?since=<version>` and gets a single
+number back when nothing has changed, which costs one Redis read; the poll runs at 1.2s while the
+table is waiting on that device, 3s otherwise, and stops entirely while the screen is hidden. The
+authoritative game state lives in Redis and only ever changes inside `POST /api/act`, which checks
+that the seat is really on the clock, applies the move with the same pure reducer the solo game
+uses, plays out any CPU turns behind it, and writes back with a Lua compare-and-set. There is no
+undo in table mode: the server is the only copy of the truth.
 
 ## Skins and layout
 
@@ -345,20 +409,30 @@ src/game/engine/queries     legal moves, claimable parks, open campsites
 src/game/engine/setup       new games, trail building, season and campsite decks
 src/game/data/              parks, gear, bonuses, sites, campsites, season cards
 src/game/ai.ts              the three CPU personalities
-src/game/engine.test.ts     rules tests (62)
+src/game/view.ts            per-seat redaction: what one device is allowed to see
+src/game/engine.test.ts     rules tests
 src/dev/                    CPU strength benchmarks, run by npm test
-src/components/             board, trail, player panels, modals
+src/components/             board, trail, player panels, modals, seat QR codes
 src/art/                    local art, Wikipedia fallback, generated scenery
-src/hooks/useGame.ts        game state, save/undo, the CPU turn driver
-tests/game.spec.ts          browser tests (Playwright)
+src/hooks/useGame.ts        solo game state, save/undo, the CPU turn driver
+src/hooks/useTable.ts       table mode: the polling transport
+src/hooks/useDragPawn.ts    dragging a hiker to its next site
+src/net/table.ts            table lifecycle, seat authority, the CPU driver
+src/net/kv.ts               the Redis slice used, over Upstash REST or in process
+src/net/routes.ts           one dispatcher, shared by Vercel and the dev server
+src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone
+api/                        five Vercel functions, one line each over routes.ts
+tests/game.spec.ts          browser tests, single device (Playwright)
+tests/table.spec.ts         browser tests, a tablet and phones together
 scripts/fetch-park-art.mjs  downloads park photographs for self-hosting
+scripts/build-artifact.mjs  bundles the build into one self-contained page
 ```
 
 ## Commands
 
 ```bash
 npm run dev        # http://localhost:5173
-npm test           # 62 rules tests plus the CPU benchmarks
+npm test           # rules, redaction and table-authority tests, plus the CPU benchmarks
 npm run test:e2e   # browser tests against the production bundle
 npm run build      # type-check and bundle to dist/
 npm run art        # download park photographs into public/parks/ (needs Wikipedia access)
@@ -368,3 +442,5 @@ CI runs the build, the unit tests and the browser tests on every push.
 
 The engine is a pure reducer: `applyAction(state, action)` returns a new state, and the CPU and
 the UI both drive it through the same action list, so a game is fully replayable from its seed.
+That is also what makes table mode cheap: the server runs the same reducer, and a whole four-season
+game is only a few hundred actions at well under a millisecond each.

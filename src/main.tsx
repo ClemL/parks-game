@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import Root from './Root';
 import { InfoProvider } from './components/InfoSheet';
 import './styles.css';
 
@@ -16,7 +16,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <InfoProvider>
-      <App />
+      <Root />
     </InfoProvider>
   </StrictMode>,
 );

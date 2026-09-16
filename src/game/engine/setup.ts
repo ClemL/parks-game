@@ -34,7 +34,7 @@ export const SEASONS = 4;
 const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)'];
 
 /** The CPU roster, drawn on in order as the table grows. */
-const CPU_SEATS: { name: string; personality: AiPersonality }[] = [
+export const CPU_SEATS: { name: string; personality: AiPersonality }[] = [
   { name: 'Ranger Ada', personality: 'collector' },
   { name: 'Scout Bo', personality: 'photographer' },
   { name: 'Blazer Cy', personality: 'blazer' },

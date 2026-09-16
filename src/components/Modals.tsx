@@ -18,6 +18,7 @@ import {
   usableCampsites,
 } from '../game/engine';
 import { GEAR_VP, TOKEN_LIMIT } from '../game/data/sites';
+import { parkDeckLeft } from '../game/view';
 import { useInfo } from './InfoSheet';
 import type { GameAction, GameState, Resource } from '../game/types';
 import { COST_RESOURCES } from '../game/types';
@@ -143,7 +144,7 @@ function ParkAndGearOptions({
                 🎲
               </span>
               Claim the top of the deck
-              <span className="choice-sub">{state.parkDeck.length} cards left</span>
+              <span className="choice-sub">{parkDeckLeft(state)} cards left</span>
             </button>
           </div>
         </>

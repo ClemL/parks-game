@@ -2368,3 +2368,255 @@ button.bottle:disabled {
     display: none;
   }
 }
+
+/* ======================================================= table and hand mode */
+
+.table-app,
+.hand-app {
+  gap: 12px;
+}
+
+.table-bar {
+  align-items: center;
+}
+
+.table-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.table-setup h2,
+.hand-join h2,
+.hand-wait h2 {
+  font-family: var(--display);
+  font-size: 19px;
+}
+
+.table-error {
+  margin: 0;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--trail) 16%, transparent);
+  border-left: 3px solid var(--trail);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------- the seat grid */
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.seat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: 150px;
+  justify-content: center;
+}
+
+.seat-taken {
+  border-color: var(--accent);
+}
+
+.seat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.seat-number {
+  font-family: var(--display);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.seat-state {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.seat-state-human {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* The canvas is drawn by the bundled encoder; white quiet zone included, so it
+   scans under any skin. */
+.seat-qr {
+  width: 168px;
+  height: 168px;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.seat-link {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.seat-reveal,
+.seat-hide {
+  background: var(--moss);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* ----------------------------------------------------- whose turn it is, big */
+
+.table-turn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 17px;
+  font-family: var(--display);
+  box-shadow: var(--shadow);
+}
+
+.table-turn-detail {
+  font-family: var(--body);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* A hiker in the air, and the card it is over. */
+.hiker-dragging {
+  cursor: grabbing;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.site-drop .site-hit {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+
+.site-drop-no .site-hit {
+  opacity: 0.6;
+}
+
+/* --------------------------------------------------------------- the phone */
+
+.hand-app {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.hand-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+
+.hand-season {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hand-turn {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.hand-turn-mine {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  border-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.hand-join,
+.hand-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.hand-name {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  width: 100%;
+}
+
+.hand-name input {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--moss);
+  color: var(--text);
+}
+
+.hand-empty,
+.loading-surface {
+  padding: 24px;
+  text-align: center;
+}
+
+.hand-hint {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+}
+
+.hand-others {
+  display: grid;
+  gap: 9px;
+}
+
+/* A reservation somebody else is entitled to keep to themselves. */
+.park-facedown {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 40px;
+  border-radius: 5px;
+  background: var(--site-dark);
+  border: 1px solid var(--line);
+  font-size: 15px;
+}

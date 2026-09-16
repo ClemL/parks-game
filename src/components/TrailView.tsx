@@ -3,6 +3,7 @@ import { hasTent, occupants, siteDef } from '../game/engine';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 import { useInfo } from './InfoSheet';
+import { useDragPawn } from '../hooks/useDragPawn';
 import { RESOURCE_ICON, RESOURCE_LABEL } from './Bits';
 import type { MoveOption } from '../game/engine';
 
@@ -13,6 +14,10 @@ interface Props {
   onSelectHiker: (id: string) => void;
   onMove: (option: MoveOption) => void;
   interactive: boolean;
+  /** Whose pawns this device may pick up. Seat 0 in single-device play. */
+  seat?: number | null;
+  /** Table mode: a pawn can be dragged to the site it walks to. */
+  draggable?: boolean;
   /** The site a CPU just stepped onto, highlighted briefly. */
   lastCpuMove?: { index: number; player: number } | null;
 }
@@ -24,11 +29,19 @@ export function TrailView({
   onSelectHiker,
   onMove,
   interactive,
+  seat = 0,
+  draggable = false,
   lastCpuMove,
 }: Props) {
   const info = useInfo();
   const strip = useRef<HTMLDivElement>(null);
   useWalkingPawns(strip, state);
+  const drag = useDragPawn({
+    moves,
+    onMove,
+    onSelect: onSelectHiker,
+    enabled: draggable && interactive,
+  });
 
   // Bring the nearest site you could actually move to into view, so the trail
   // does not have to be hunted along by hand.
@@ -81,6 +94,7 @@ export function TrailView({
           <div
             key={index}
             role="listitem"
+            data-site={index}
             className={[
               'site',
               `site-${kind}`,
@@ -90,6 +104,8 @@ export function TrailView({
               needsFire ? 'site-target-fire' : '',
               tent ? 'site-tent' : '',
               lastCpuMove?.index === index ? 'site-just-taken' : '',
+              drag.over === index && target ? 'site-drop' : '',
+              drag.over === index && !target ? 'site-drop-no' : '',
               siteDef(kind).tier === 'advanced' ? 'site-advanced' : '',
             ]
               .filter(Boolean)
@@ -127,7 +143,8 @@ export function TrailView({
             <div className="site-hikers">
               {here.map((hikerId, slot) => {
                 const owner = state.players[Number(hikerId[1])];
-                const selectable = interactive && owner.isHuman && !isEnd;
+                const selectable =
+                  interactive && !isEnd && (seat === null ? owner.isHuman : owner.index === seat);
                 return (
                   <button
                     key={hikerId}
@@ -135,7 +152,8 @@ export function TrailView({
                     data-hiker={hikerId}
                     className={`hiker${selectedHiker === hikerId ? ' hiker-selected' : ''}${
                       selectable ? ' hiker-selectable' : ''
-                    }`}
+                    }${drag.dragging === hikerId ? ' hiker-dragging' : ''}`}
+                    {...(selectable ? drag.handlers(hikerId) : {})}
                     // The stack leans a little further right with each pawn, so a
                     // crowded site reads as a crowd rather than one pawn.
                     style={{ background: owner.color, '--slot': slot } as CSSProperties}

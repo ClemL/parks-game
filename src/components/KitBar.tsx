@@ -14,12 +14,15 @@ export function KitBar({
   state,
   onUseBottle,
   canAct,
+  seat = 0,
 }: {
   state: GameState;
   onUseBottle: (bottleId: string) => void;
   canAct: boolean;
+  /** Whose kit this is. Seat 0 in single-device play. */
+  seat?: number;
 }) {
-  const player = state.players[0];
+  const player = state.players[seat];
   const info = useInfo();
   const ready = new Set(usableBottles(player).map((b) => b.id));
   const tokens = tokenCount(player);

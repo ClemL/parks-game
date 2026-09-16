@@ -5,6 +5,7 @@ import { ResourceChip } from './Bits';
 import { useInfo } from './InfoSheet';
 import type { ArtMap } from '../art/parkArt';
 import { ParkCardView } from './ParkCardView';
+import { reservedCount } from '../game/view';
 
 export function PlayerPanel({
   player,
@@ -14,6 +15,7 @@ export function PlayerPanel({
   open,
   onToggle,
   kitShownAbove,
+  mine,
   onUseBottle,
 }: {
   player: Player;
@@ -25,12 +27,18 @@ export function PlayerPanel({
   onToggle: () => void;
   /** True when the kit bar above the board already carries these. */
   kitShownAbove?: boolean;
+  /**
+   * Whether this panel is the reader's own seat. On a shared table nobody's
+   * panel is, so the label is left off rather than pinned to every human.
+   */
+  mine?: boolean;
   onUseBottle?: (bottleId: string) => void;
 }) {
   const active = state.current === player.index && state.phase === 'playing';
   const vp = player.parks.reduce((sum, p) => sum + p.vp, 0);
   const usable = new Set(usableBottles(player).map((b) => b.id));
   const canUseBottles = !!onUseBottle && active && !state.pending;
+  const reserved = reservedCount(state, player.index);
   const info = useInfo();
 
   return (
@@ -47,7 +55,7 @@ export function PlayerPanel({
             ▾
           </span>
           <span className="player-dot" style={{ background: player.color }} aria-hidden="true" />
-          <h3>{player.isHuman && player.name !== 'You' ? `${player.name} (you)` : player.name}</h3>
+          <h3>{(mine ?? player.isHuman) && player.name !== 'You' ? `${player.name} (you)` : player.name}</h3>
         </button>
         {state.firstPlayer === player.index && (
           <span className="badge" title="First player token — sets turn order and scores 1 VP">
@@ -189,12 +197,19 @@ export function PlayerPanel({
         </div>
       )}
 
-      {player.reserved.length > 0 && (
+      {reserved > 0 && (
         <div className="player-row">
           <span className="player-label">Reserved</span>
           <span className="mini-parks">
             {player.reserved.map((p) => (
               <ParkCardView key={p.id} park={p} art={art} compact />
+            ))}
+            {/* On another player's device the cards are theirs to know; only the
+                count crosses the table. */}
+            {Array.from({ length: reserved - player.reserved.length }, (_, i) => (
+              <span key={`hidden-${i}`} className="park-facedown" title="Reserved — only they can see which">
+                🎴
+              </span>
             ))}
           </span>
         </div>
@@ -213,11 +228,14 @@ export function PlayerPanel({
       <div className="player-row">
         <span className="player-label">Bonus cards</span>
         <span className="bonus-list">
-          {player.bonusCards.map((id) => {
+          {player.bonusCards.map((id, slot) => {
             const card = bonusCardById(id);
-            if (!revealBonuses && !player.isHuman) {
+            // A card this device was never told the name of stays face down
+            // whatever the reveal flag says: in table mode the only bonus cards
+            // that arrive in full are the ones the seat is entitled to read.
+            if (!card || (!revealBonuses && !player.isHuman)) {
               return (
-                <span key={id} className="bonus-hidden" title="Hidden until scoring">
+                <span key={`${id}-${slot}`} className="bonus-hidden" title="Hidden until scoring">
                   🂠 hidden
                 </span>
               );

@@ -10,6 +10,7 @@ import { KitBar } from './components/KitBar';
 import { THEMES, useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
+import { parkDeckLeft } from './game/view';
 import { PARKS } from './game/data/parks';
 import { loadParkArt, type ArtMap } from './art/parkArt';
 
@@ -72,7 +73,7 @@ function TurnPill({
   );
 }
 
-export default function App() {
+export default function App({ onTableMode }: { onTableMode?: () => void }) {
   const game = useGame();
   const { state, moves, isHumanTurn, selectedHiker, dispatch } = game;
   const [art, setArt] = useState<ArtMap>({});
@@ -183,6 +184,16 @@ export default function App() {
           <button type="button" className="ghost" onClick={() => setShowRules(true)}>
             Rules
           </button>
+          {onTableMode && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={onTableMode}
+              title="Play round a tablet, with everyone's hand on their own phone"
+            >
+              Table mode
+            </button>
+          )}
           <button type="button" className="ghost" onClick={() => setShowCredits(true)}>
             Credits
           </button>
@@ -334,7 +345,7 @@ export default function App() {
             summary={`${state.parkRow.length} on offer · ${affordableNow} within your resources`}
             meta={
               <span className="muted">
-                {state.parkDeck.length} in the deck
+                {parkDeckLeft(state)} in the deck
                 {artState === 'loading'
                   ? ' · loading photos…'
                   : artState === 'offline'
