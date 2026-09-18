@@ -94,10 +94,16 @@ export function gearCost(state: GameState, card: GearCard): number {
   );
 }
 
+/**
+ * Flasks you could empty right now. A flask is filled from the stream you are
+ * standing in, not from the pack: the water has to be what your latest stop
+ * paid out, which keeps it available until one of your hikers walks on.
+ */
 export function usableBottles(player: Player) {
-  return player.bottles.filter(
-    (b) => !b.used && (player.resources.water ?? 0) >= (BOTTLES[b.kind].cost.water ?? 0),
-  );
+  return player.bottles.filter((b) => {
+    const cost = BOTTLES[b.kind].cost.water ?? 0;
+    return !b.used && (player.resources.water ?? 0) >= cost && player.waterThisTurn >= cost;
+  });
 }
 
 /* ----------------------------------------------------------------- payment */
@@ -170,6 +176,9 @@ export function gainResources(player: Player, gain: ResourceBag, log: string[]):
     if (base === 0) continue;
     const total = base + bonusGainFor(player, r);
     player.resources[r] = (player.resources[r] ?? 0) + total;
+    // Flasks may only be filled from freshly drawn water, so every credit has
+    // to say how much of it just arrived.
+    if (r === 'water') player.waterThisTurn += total;
     log.push(`${total} ${label(r)}`);
   }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { applyAction, createGame, DEFAULT_EXPANSIONS, legalMoves } from '../game/engine';
+import { applyAction, createGame, DEFAULT_EXPANSIONS, hydrate, legalMoves } from '../game/engine';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../game/data/sites';
 import { aiAction } from '../game/ai';
 import type { ExpansionFlags, GameAction, GameState } from '../game/types';
@@ -26,6 +26,7 @@ function loadSave(): SavePayload | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SavePayload;
     if (parsed.version !== 1 || !parsed.state?.players?.length) return null;
+    hydrate(parsed.state);
     return parsed;
   } catch {
     return null;

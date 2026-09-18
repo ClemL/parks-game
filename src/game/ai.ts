@@ -53,7 +53,7 @@ interface Weights {
 }
 
 const PROFILES: Record<AiPersonality, Weights> = {
-  // Ranger Ada: hoards resources and cashes them in for the biggest parks.
+  // Pikachu: hoards resources and cashes them in for the biggest parks.
   collector: {
     parkClaim: 2.8,
     reserve: 2.3,
@@ -68,7 +68,7 @@ const PROFILES: Record<AiPersonality, Weights> = {
     gearAppetite: 1.0,
     sunBias: 0.9,
   },
-  // Scout Bo: chases the camera, photos and gear, then picks off cheap parks.
+  // Eevee: chases the camera, photos and gear, then picks off cheap parks.
   photographer: {
     parkClaim: 2.1,
     reserve: 1.5,
@@ -83,7 +83,7 @@ const PROFILES: Record<AiPersonality, Weights> = {
     gearAppetite: 1.6,
     sunBias: 1.45,
   },
-  // Blazer Cy: tempo and denial - takes the site and the token you wanted.
+  // Charizard: tempo and denial - takes the site and the token you wanted.
   blazer: {
     parkClaim: 2.6,
     reserve: 2.6,

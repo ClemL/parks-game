@@ -146,21 +146,23 @@ describe('setup', () => {
 });
 
 describe('season tokens', () => {
-  it('puts one sun or water token on every site except the trailhead and the end', () => {
+  it('skips the trailhead, the first space out of it, and the end', () => {
     const state = createGame({ seed: 5 });
     expect(state.siteTokens[0]).toBeNull();
+    expect(state.siteTokens[1]).toBeNull();
     expect(state.siteTokens[state.trail.length - 1]).toBeNull();
-    const middle = state.siteTokens.slice(1, -1);
-    expect(middle).toHaveLength(state.trail.length - 2);
-    expect(middle.every((t) => t === 'sun' || t === 'water')).toBe(true);
+    const rest = state.siteTokens.slice(2, -1);
+    expect(rest).toHaveLength(state.trail.length - 3);
+    expect(rest.every((t) => t === 'sun' || t === 'water')).toBe(true);
   });
 
   it('gives the token to the first hiker there and to nobody after', () => {
     const state = createGame({ seed: 5 });
     state.seasonCard = null;
     state.tentSites = [];
-    // Pick a plain resource site so only its own payout and the token apply.
-    const target = state.trail.findIndex((k) => k === 'forest' || k === 'mountain');
+    // Pick a plain resource site past the bare first space, so only its own
+    // payout and the token apply.
+    const target = state.trail.findIndex((k, i) => i > 1 && (k === 'forest' || k === 'mountain'));
     const token = state.siteTokens[target]!;
     const sitePays = siteDef(state.trail[target]).gain?.[token] ?? 0;
     state.current = 0;
@@ -181,7 +183,8 @@ describe('season tokens', () => {
     state.siteTokens = state.siteTokens.map(() => null);
     state.phase = 'season-end';
     state = applyAction(state, { type: 'end-season' });
-    expect(state.siteTokens.slice(1, -1).every((t) => t !== null)).toBe(true);
+    expect(state.siteTokens.slice(2, -1).every((t) => t !== null)).toBe(true);
+    expect(state.siteTokens[1]).toBeNull();
   });
 });
 
@@ -294,6 +297,7 @@ describe('bottles', () => {
     const player = state.players[0];
     player.bottles = [{ id: 'b', kind: 'sun-flask', used: false }];
     player.resources = { sun: 0, water: 2, forest: 0, mountain: 0, wild: 0 };
+    player.waterThisTurn = 2;
     state.current = 0;
 
     expect(usableBottles(player)).toHaveLength(1);
@@ -310,6 +314,84 @@ describe('bottles', () => {
     const state = createGame({ seed: 32 });
     state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0 };
     expect(usableBottles(state.players[0])).toHaveLength(0);
+  });
+
+  it('fills only from water drawn this turn', () => {
+    const state = createGame({ seed: 34 });
+    const player = state.players[0];
+    player.bottles = [{ id: 'b', kind: 'sun-flask', used: false }];
+    // Water carried over from an earlier turn will not fill a flask.
+    player.resources = { sun: 0, water: 3, forest: 0, mountain: 0, wild: 0 };
+    player.waterThisTurn = 0;
+    state.current = 0;
+    expect(usableBottles(player)).toHaveLength(0);
+
+    const refused = applyAction(state, { type: 'use-bottle', bottleId: 'b' });
+    expect(refused.players[0].resources.water).toBe(3);
+    expect(refused.players[0].bottles[0].used).toBe(false);
+
+    // One water drawn this turn is enough for exactly one flask.
+    player.waterThisTurn = 1;
+    expect(usableBottles(player)).toHaveLength(1);
+    const used = applyAction(state, { type: 'use-bottle', bottleId: 'b' });
+    expect(used.players[0].bottles[0].used).toBe(true);
+    expect(used.players[0].resources.water).toBe(2);
+    expect(used.players[0].waterThisTurn).toBe(0);
+  });
+
+  it('counts the water a site pays out as drawn this turn', () => {
+    const state = createGame({ seed: 35 });
+    state.seasonCard = null;
+    state.tentSites = [];
+    state.current = 0;
+    // The Valley pays water; walking there should make a flask usable.
+    const valley = state.trail.findIndex((k, i) => i > 1 && k === 'valley');
+    if (valley < 0) return;
+    const after = applyAction(state, { type: 'move', hikerId: 'p0h0', to: valley });
+    expect(after.players[0].waterThisTurn).toBeGreaterThan(0);
+    expect(usableBottles(after.players[0]).length).toBeGreaterThan(0);
+  });
+
+  it('lets the water go stale as soon as the hiker walks on', () => {
+    const state = createGame({ seed: 36 });
+    state.seasonCard = null;
+    state.tentSites = [];
+    state.current = 0;
+    const valley = state.trail.findIndex((k, i) => i > 1 && k === 'valley');
+    if (valley < 0) return;
+
+    const mine = applyAction(state, { type: 'move', hikerId: 'p0h0', to: valley });
+    expect(mine.players[0].waterThisTurn).toBeGreaterThan(0);
+
+    // Round the table and back: the water this stop paid is still fresh, so the
+    // flask can be emptied at the top of the next turn.
+    let next = mine;
+    for (let step = 0; step < 60 && next.current !== 0; step++) {
+      const action = aiAction(next);
+      if (!action) break;
+      next = applyAction(next, action);
+    }
+    expect(next.current).toBe(0);
+    expect(next.phase).toBe('playing');
+    expect(next.players[0].waterThisTurn).toBeGreaterThan(0);
+    expect(usableBottles(next.players[0]).length).toBeGreaterThan(0);
+
+    // Walking on again is what ages it: the water stays in the pack, but no
+    // flask will take it. Walk to a dry site, so nothing refreshes the counter.
+    next.siteTokens = next.siteTokens.map(() => null);
+    const dry = legalMoves(next).find(
+      (m) => m.hikerId !== 'p0h0' && (siteDef(next.trail[m.to]).gain?.water ?? 0) === 0,
+    );
+    expect(dry, 'a dry site to walk to').toBeDefined();
+    const walked = applyAction(next, {
+      type: 'move',
+      hikerId: dry!.hikerId,
+      to: dry!.to,
+      useCampfire: dry!.useCampfire,
+    });
+    expect(walked.players[0].waterThisTurn).toBe(0);
+    expect((walked.players[0].resources.water ?? 0) > 0).toBe(true);
+    expect(usableBottles(walked.players[0])).toHaveLength(0);
   });
 
   it('refills every bottle at the season break', () => {

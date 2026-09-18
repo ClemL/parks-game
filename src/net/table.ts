@@ -1,4 +1,4 @@
-import { applyAction, createGame, CPU_SEATS } from '../game/engine';
+import { applyAction, createGame, CPU_SEATS, hydrate } from '../game/engine';
 import { aiAction } from '../game/ai';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../game/data/sites';
 import { viewFor, type GameView } from '../game/view';
@@ -229,7 +229,7 @@ export async function act(kv: Kv, request: ActRequest): Promise<StateResponse> {
   const version = Number((await kv.get(keys.version(table.code))) ?? '0');
   const raw = await kv.get(keys.state(table.code));
   if (!raw) throw new TableError('the game has not started', 409);
-  const state = JSON.parse(raw) as GameState;
+  const state = hydrate(JSON.parse(raw) as GameState);
 
   if (!mayAct(state, request.seat, request.action)) {
     throw new TableError('not that seat’s turn', 409);
@@ -266,7 +266,9 @@ export async function readState(
   }
 
   const raw = await kv.get(keys.state(table.code));
-  const view: GameView | undefined = raw ? viewFor(JSON.parse(raw) as GameState, seat) : undefined;
+  const view: GameView | undefined = raw
+    ? viewFor(hydrate(JSON.parse(raw) as GameState), seat)
+    : undefined;
   return {
     version,
     lobby: { code: table.code, started: raw !== null, seats: publicSeats(seats) },

@@ -106,7 +106,11 @@ function useBottle(state: GameState, bottleId: string): void {
   const bottle = player.bottles.find((b) => b.id === bottleId);
   if (!bottle || bottle.used) return;
   const def = BOTTLES[bottle.kind];
-  if (!spend(player, 'water', def.cost.water ?? 0)) return;
+  const cost = def.cost.water ?? 0;
+  // A flask takes freshly drawn water only, never what is already in the pack.
+  if (player.waterThisTurn < cost) return;
+  if (!spend(player, 'water', cost)) return;
+  player.waterThisTurn -= cost;
 
   const gained: string[] = [];
   gainResources(player, def.gain, gained);
@@ -140,6 +144,9 @@ function move(state: GameState, hikerId: string, to: number, useCampfire: boolea
     log(state, player.index, 'spent a campfire to share a site');
   }
 
+  // Walking on makes the last stop's water stale: a flask can only be filled
+  // from the water this stop pays out.
+  player.waterThisTurn = 0;
   hiker.position = to;
 
   if (to === state.trail.length - 1) {
@@ -803,6 +810,9 @@ function startNextSeason(state: GameState): void {
       if (gear.effect.kind === 'season-income') gainResources(player, gear.effect.gain, []);
     }
     enforceTokenLimit(state, player);
+    // Season income is not water drawn on a turn, and the season's first
+    // player is never handed their turn by endTurn, so clear the lot here.
+    player.waterThisTurn = 0;
   }
 
   state.current = state.firstPlayer;

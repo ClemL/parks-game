@@ -158,6 +158,12 @@ export interface Player {
   personality?: AiPersonality;
   color: string;
   resources: ResourceBag;
+  /**
+   * Water drawn at this player's latest stop. A flask may only be filled from
+   * water just collected, never from the pack, so the counter is cleared the
+   * moment one of their hikers walks on again.
+   */
+  waterThisTurn: number;
   bottles: Bottle[];
   campfires: number;
   /** True once this season's first hiker came home and re-lit the campfire. */

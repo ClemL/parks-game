@@ -34,7 +34,7 @@ describe('self-play statistics', () => {
     }
     console.log(`games with empty park row: ${emptyRow}/${games}; avg park deck left: ${(deckLeft / games).toFixed(1)}`);
     expect(emptyRow).toBe(0);
-    const names = ['collector(P0)', 'Ada/collector', 'Bo/photographer', 'Cy/blazer'];
+    const names = ['collector(P0)', 'Pikachu/collector', 'Eevee/photographer', 'Charizard/blazer'];
     for (let i = 0; i < 4; i++) {
       console.log(
         `${names[i].padEnd(18)} avgScore=${(totals[i] / games).toFixed(1)} parks=${(parks[i] / games).toFixed(2)} photos=${(photos[i] / games).toFixed(2)} gear=${(gear[i] / games).toFixed(2)} wins=${wins[i]}`,

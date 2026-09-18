@@ -32,8 +32,9 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           that site&rsquo;s action. Hikers never move backwards.
         </li>
         <li>
-          <b>Every site except the trailhead starts the season with a sun or water token on it.</b> The first hiker to
-          reach that site takes the token on top of the site&rsquo;s own action. Fresh tokens go out every season.
+          <b>Every site starts the season with a sun or water token on it, except the trailhead and the first space
+          out of it.</b> The first hiker to reach a site takes its token on top of the site&rsquo;s own action. Fresh
+          tokens go out every season.
         </li>
         <li>
           <b>Hikers cannot share a site.</b> The only way onto an occupied site is to spend a <b>campfire token</b> —
@@ -82,8 +83,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
       <h3>Bottles</h3>
       <ul>
         <li>
-          Everyone starts with one bottle. A bottle converts <b>1 water</b> into something else, <b>once per season</b>,
-          at any point on your turn.
+          Everyone starts with one bottle. A bottle converts <b>1 water</b> into something else, <b>once per
+          season</b>. A flask is filled from the stream you are standing in: only <b>the water your latest stop paid
+          out</b> will fill one, and it goes stale the moment a hiker walks on. Water already in your pack is no good
+          to it.
         </li>
         <li>Bottles refill at the season break, and a <b>Spring</b> site refills one on the spot.</li>
       </ul>
@@ -291,13 +294,13 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
       <h3>Your opponents</h3>
       <ul>
         <li>
-          <b>Ranger Ada</b> banks resources and converts them into the highest-value parks she can reach.
+          <b>Pikachu</b> banks resources and converts them into the highest-value parks it can reach.
         </li>
         <li>
-          <b>Scout Bo</b> chases the camera, builds a photo and gear engine, then picks off cheap parks.
+          <b>Eevee</b> chases the camera, builds a photo and gear engine, then picks off cheap parks.
         </li>
         <li>
-          <b>Blazer Cy</b> plays for tempo: season tokens, the first player token, and the site you were about to take.
+          <b>Charizard</b> plays for tempo: season tokens, the first player token, and the site you were about to take.
         </li>
       </ul>
       <p className="modal-note">

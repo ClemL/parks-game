@@ -33,12 +33,15 @@ export const SEASONS = 4;
  *  (and the high-contrast skin can swap in a colour-blind-safe set). */
 const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)'];
 
-/** The CPU roster, drawn on in order as the table grows. */
+/**
+ * The CPU roster, drawn on in order as the table grows. The pawns are drawn
+ * with the first letter of the name, so no two share an initial.
+ */
 export const CPU_SEATS: { name: string; personality: AiPersonality }[] = [
-  { name: 'Ranger Ada', personality: 'collector' },
-  { name: 'Scout Bo', personality: 'photographer' },
-  { name: 'Blazer Cy', personality: 'blazer' },
-  { name: 'Guide Dee', personality: 'collector' },
+  { name: 'Pikachu', personality: 'collector' },
+  { name: 'Eevee', personality: 'photographer' },
+  { name: 'Charizard', personality: 'blazer' },
+  { name: 'Snorlax', personality: 'collector' },
 ];
 
 /* ------------------------------------------------------------------ setup */
@@ -101,6 +104,7 @@ export function createGame(options: NewGameOptions = {}): GameState {
     color: PLAYER_COLORS[index],
     // Nightfall hands every hiker a wildlife token to start with.
     resources: { sun: 0, water: 0, forest: 0, mountain: 0, wild: expansions.nightfall ? 1 : 0 },
+    waterThisTurn: 0,
     bottles: [{ id: `p${index}b0`, kind: bottleDeck[index] ?? 'sun-flask', used: false }],
     campfires: CAMPFIRES_PER_SEASON,
     campfireRelit: false,
@@ -154,7 +158,9 @@ export function createGame(options: NewGameOptions = {}): GameState {
       {
         season: 1,
         player: -1,
-        text: 'Season 1 begins. Every site but the trailhead holds a sun or water token for whoever reaches it first.',
+        text:
+          'Season 1 begins. Every site past the first one out of the trailhead holds a sun or water token for ' +
+          'whoever reaches it first.',
       },
     ],
   };
@@ -198,11 +204,21 @@ export function buildTrail(
 }
 
 /** One sun or water token per site, everywhere but the trailhead and the end. */
+/**
+ * Fills in fields added to the state after a game was saved, so a game stored
+ * by an older build still runs rather than turning its counters into NaN.
+ */
+export function hydrate(state: GameState): GameState {
+  for (const player of state.players) player.waterThisTurn ??= 0;
+  return state;
+}
+
 export function seedSiteTokens(trail: SiteKind[], rng: number): [SiteToken[], number] {
   const tokens: SiteToken[] = [];
   let state = rng;
   for (let i = 0; i < trail.length; i++) {
-    if (i === 0 || i === trail.length - 1) {
+    // The trailhead, the first space out of it and the Trail End stay bare.
+    if (i <= 1 || i === trail.length - 1) {
       tokens.push(null);
       continue;
     }

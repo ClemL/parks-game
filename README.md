@@ -190,8 +190,9 @@ deliberate differences).
   scoring cards**.
 - On your turn you move **one hiker forward** any distance and take that site's action. Hikers
   never move backwards, and a turn always moves a hiker.
-- **Every site except the trailhead starts each season with a sun or water token on it.** The
-  first hiker to reach that site takes the token on top of the site's own payout.
+- **Every site starts each season with a sun or water token on it, bar the trailhead and the first
+  space out of it.** The first hiker to reach a site takes its token on top of the site's own
+  payout.
 - **Hikers cannot share a site.** The only way onto an occupied site is to spend a **campfire
   token**; the Trail Map gear waives the cost. Your campfire **re-lights when your first hiker
   reaches the Trail End**, so a well-timed season holds two shared sites.
@@ -242,6 +243,11 @@ A bottle converts **1 water into something else, once per season**: Sun Flask (�
 Flask (→ 1 mountain), Pine Flask (→ 1 tree). They refill at the season break. Everyone starts with
 one; more come from declining the camera.
 
+A flask is filled from the stream you are standing in: **only the water your latest stop paid out
+will fill one**. It stays available until one of your hikers walks on — so a stop that pays water
+lets you empty a flask on the spot or at the top of your next turn — and water already banked in
+your pack will not do. Each water drawn fills one flask, so a stop paying two water can empty two.
+
 ### Prizes for being first
 
 - The **first two players to buy gear each season** pay 1 sun less (two discounts at 4–5 players,
@@ -265,13 +271,12 @@ Where this build knowingly differs from the published game, and why:
 
 | Published rule | Here | Why |
 | --- | --- | --- |
-| No tokens sit on trail sites | Every site holds a sun or water token for the first hiker there | Requested house rule |
+| No tokens sit on trail sites | Every site past the first space out of the trailhead holds a sun or water token for the first hiker there | Requested house rule |
 | Vista: draw a canteen **or** take a photo | Camera Point: take the camera (+ optional photo) **or** take a bottle | Requested house rule; the camera moves on a site visit rather than on taking a photo |
 | Photo costs any 2 tokens, 1 with the camera | 2 sun, 1 with the camera, wildcards may substitute | Requested (sun-priced) |
 | Campfire is a token you flip, once per season | Same, as a counted token | Equivalent |
 | First hiker to the Trail End takes the first player marker | First player to **reserve** a park takes it | Requested house rule |
 | Each player drafts 1 of 2 dealt Year cards | Each player keeps **two** bonus cards, both scoring | Requested house rule |
-| A canteen is filled with water **gained that turn** | A bottle spends any water on your turn | Simpler to play solo; same once-per-season limit |
 | Leftover resources score nothing | 1 VP per 3 | House rule, kept from the first build |
 | Park costs include sun | Park costs are water, trees and mountain only | Sun had three uses and gear lost every contest; now sun means gear and photos |
 | Gear scores no points | Each gear card scores 2 VP | Without it the CPUs bought 0.6 gear cards a game out of 13 |
@@ -351,9 +356,9 @@ up by walking past sites.
 
 | Opponent | Style |
 | --- | --- |
-| **Ranger Ada** | Banks resources, converts them into the highest-value parks in reach. |
-| **Scout Bo** | Chases the camera, builds a photo and gear engine, then picks off cheap parks. |
-| **Blazer Cy** | Tempo and denial: season tokens, the first player token, and the site you wanted. |
+| **Pikachu** | Banks resources, converts them into the highest-value parks in reach. |
+| **Eevee** | Chases the camera, builds a photo and gear engine, then picks off cheap parks. |
+| **Charizard** | Tempo and denial: season tokens, the first player token, and the site you wanted. |
 
 All three price the twelve-token cap, the re-lit campfire, and the four advanced sites (they will
 trade away a dead resource, copy the best occupied site from an Overlook, and take the Ranger

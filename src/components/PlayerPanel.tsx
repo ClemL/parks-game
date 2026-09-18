@@ -169,8 +169,16 @@ export function PlayerPanel({
                     icon: def.icon,
                     lines: [
                       label,
+                      'Only the water their latest stop paid out will fill a flask.',
                       'One conversion per bottle per season; they refill at the season break.',
-                      { label: 'State', value: bottle.used ? 'used this season' : 'ready' },
+                      {
+                        label: 'State',
+                        value: bottle.used
+                          ? 'used this season'
+                          : player.waterThisTurn > 0
+                            ? 'ready'
+                            : 'needs freshly drawn water',
+                      },
                     ],
                   })
                 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, createGame } from './engine';
+import { applyAction, createGame, hydrate, legalMoves } from './engine';
 import { aiAction } from './ai';
 import { HIDDEN_BONUS, parkDeckLeft, reservedCount, viewFor } from './view';
 import type { GameState } from './types';
@@ -89,5 +89,26 @@ describe('per-seat views', () => {
     view.trail.push('forest');
     expect(state.players[0].resources.sun).not.toBe(99);
     expect(state.trail).toHaveLength(trailLength);
+  });
+});
+
+describe('older saves', () => {
+  it('fills in the fresh-water counter a previous build never wrote', () => {
+    const state = createGame({ seed: 8 });
+    // A game stored before flasks cared where the water came from.
+    const stored = JSON.parse(JSON.stringify(state)) as GameState;
+    for (const player of stored.players) delete (player as Partial<typeof player>).waterThisTurn;
+
+    const revived = hydrate(stored);
+    expect(revived.players.every((p) => p.waterThisTurn === 0)).toBe(true);
+    // And it plays on rather than turning the counter into NaN.
+    const moves = legalMoves(revived);
+    const next = applyAction(revived, {
+      type: 'move',
+      hikerId: moves[0].hikerId,
+      to: moves[0].to,
+      useCampfire: moves[0].useCampfire,
+    });
+    expect(Number.isFinite(next.players[0].waterThisTurn)).toBe(true);
   });
 });

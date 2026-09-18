@@ -127,7 +127,11 @@ export function KitBar({
               type="button"
               className={`kit-bottle${bottle.used ? ' bottle-used' : ''}${usable ? ' bottle-ready' : ''}`}
               disabled={bottle.used}
-              title={bottle.used ? `${def.name} — used this season` : `${def.name}: 1 water → ${gain}`}
+              title={
+                bottle.used
+                  ? `${def.name} — used this season`
+                  : `${def.name}: 1 freshly drawn water → ${gain}`
+              }
               onClick={() =>
                 usable
                   ? onUseBottle(bottle.id)
@@ -136,10 +140,17 @@ export function KitBar({
                       icon: def.icon,
                       lines: [
                         `1 water → ${gain}.`,
+                        'Only the water your latest stop paid out will fill a flask; it goes stale when a hiker walks on.',
                         'One conversion per bottle per season; they refill at the season break.',
                         {
                           label: 'State',
-                          value: bottle.used ? 'used this season' : canAct ? 'needs water' : 'ready',
+                          value: bottle.used
+                            ? 'used this season'
+                            : canAct
+                              ? player.waterThisTurn > 0
+                                ? 'ready'
+                                : 'needs freshly drawn water'
+                              : 'not your turn',
                         },
                       ],
                     })

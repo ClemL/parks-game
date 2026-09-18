@@ -114,7 +114,7 @@ function run(baselineSeats: number[], games = 40): Summary {
     }
     wins[state.finalScores![0].player] += 1;
   }
-  const label = ['seat0', 'Ada', 'Bo', 'Cy'];
+  const label = ['seat0', 'Pikachu', 'Eevee', 'Charizard'];
   for (let i = 0; i < 4; i++) {
     console.log(
       `${(baselineSeats.includes(i) ? `BASE-${label[i]}` : label[i]).padEnd(11)} score=${(totals[i] / games).toFixed(1)} parks=${(parks[i] / games).toFixed(2)} moves=${(turns[i] / games).toFixed(1)} photos=${(photos[i] / games).toFixed(2)} wins=${wins[i]}`,

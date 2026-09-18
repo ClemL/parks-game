@@ -525,43 +525,46 @@ test('stands the hikers on the cards in compact density', async ({ page }) => {
   expect(pawns.onCard).toBe(true);
 });
 
-test('stacks the hikers up the left edge of the card, offset', async ({ page }) => {
+test('clusters the hikers in the middle of the card, offset', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
 
   const stack = await page.evaluate(() => {
     const card = document.querySelector('.site-start .site-hit')!.getBoundingClientRect();
+    const name = document.querySelector('.site-start .site-name')!.getBoundingClientRect();
+    const icon = document.querySelector('.site-start .site-icon')!.getBoundingClientRect();
     const pawns = Array.from(document.querySelectorAll('.site-start .hiker')).map((p) =>
       p.getBoundingClientRect(),
     );
+    const middle = (box: DOMRect) => box.left + box.width / 2;
+    const span = {
+      left: Math.min(...pawns.map((p) => p.left)),
+      right: Math.max(...pawns.map((p) => p.right)),
+    };
     return {
       count: pawns.length,
       onCard: pawns.every((p) => p.top >= card.top - 1 && p.bottom <= card.bottom + 1),
-      // The stack hugs the left edge; only the trailhead is crowded enough to
-      // wrap a second column, and even that stays on the card.
-      hugsLeft: pawns[0].left - card.left < 10,
-      insideCard: pawns.every((p) => p.right <= card.right + 1),
-      // A column, not a row: each pawn sits below the one before it, overlapping
-      // it rather than spaced out. Checked on the first column, since the
-      // trailhead wraps.
-      descending: pawns.slice(0, 3).every((p, i) => i === 0 || p.top > pawns[i - 1].top),
-      overlaps: pawns.slice(0, 3).every((p, i) => i === 0 || p.top < pawns[i - 1].bottom),
-      // And each one leans a step further right, within its column.
-      stepped: pawns.slice(0, 3).every((p, i) => i === 0 || p.left > pawns[i - 1].left),
-      // The card's own label is clear of the stack.
-      labelClear:
-        document.querySelector('.site-start .site-name')!.getBoundingClientRect().left >
-        pawns[0].left,
+      insideCard: span.left >= card.left - 1 && span.right <= card.right + 1,
+      // The cluster is centred on the card, not pushed to one side.
+      offCentre: Math.abs((span.left + span.right) / 2 - middle(card)),
+      // And so are the card's own label and icon, still.
+      nameCentred: Math.abs(middle(name) - middle(card)) < 2,
+      iconCentred: Math.abs(middle(icon) - middle(card)) < 2,
+      // A row, overlapping, each pawn a step further down.
+      alongside: pawns.slice(0, 3).every((p, i) => i === 0 || p.left > pawns[i - 1].left),
+      overlaps: pawns.slice(0, 3).every((p, i) => i === 0 || p.left < pawns[i - 1].right),
+      stepped: pawns.slice(0, 3).every((p, i) => i === 0 || p.top > pawns[i - 1].top),
     };
   });
   expect(stack.count).toBeGreaterThanOrEqual(4);
   expect(stack.onCard).toBe(true);
-  expect(stack.hugsLeft).toBe(true);
   expect(stack.insideCard).toBe(true);
-  expect(stack.descending).toBe(true);
+  expect(stack.offCentre).toBeLessThan(3);
+  expect(stack.nameCentred).toBe(true);
+  expect(stack.iconCentred).toBe(true);
+  expect(stack.alongside).toBe(true);
   expect(stack.overlaps).toBe(true);
   expect(stack.stepped).toBe(true);
-  expect(stack.labelClear).toBe(true);
 });
 
 test('lets a click through a pawn to the card it stands on', async ({ page }) => {
@@ -649,4 +652,54 @@ test('lays out at phone width without sideways scroll', async ({ page }) => {
   await page.waitForSelector('.trail .site');
   const width = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(width).toBeLessThanOrEqual(400);
+});
+
+test('leaves the first space out of the trailhead bare', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const tokens = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.trail .site')).map(
+      (site) => site.querySelector('.site-token') !== null,
+    ),
+  );
+  // The trailhead, the space out of it and the Trail End carry nothing; every
+  // other site starts the season with a token on it.
+  expect(tokens[0]).toBe(false);
+  expect(tokens[1]).toBe(false);
+  expect(tokens[tokens.length - 1]).toBe(false);
+  expect(tokens.slice(2, -1).every(Boolean)).toBe(true);
+});
+
+test('fills a flask only from the water a stop just paid out', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  // Nothing has been drawn yet, so no flask is offered.
+  const bottle = page.locator('.kit .kit-bottle').first();
+  await expect(bottle).not.toHaveClass(/bottle-ready/);
+  await bottle.click();
+  await expect(page.locator('.info-sheet')).toContainText('latest stop paid out');
+  await expect(page.locator('.info-sheet')).toContainText('needs freshly drawn water');
+  await page.locator('.info-sheet .notice-close').click();
+
+  // Stop somewhere that pays water and the flask can take it. A tent site asks
+  // first, and its own action is the first option, so take that.
+  const wet = page.locator('.site-target.site-valley .site-hit, .site-target.site-waterfall .site-hit');
+  if ((await wet.count()) === 0) test.skip(true, 'no water site reachable on this trail');
+  await wet.first().click();
+  if (await page.locator('.modal .choice').count()) {
+    await page.locator('.modal .choice').first().click();
+  }
+  await expect(page.locator('.kit .kit-bottle.bottle-ready').first()).toBeVisible({ timeout: 20000 });
+
+  // Emptying it spends that water and uses the flask up for the season.
+  await page.locator('.kit .kit-bottle.bottle-ready').first().click();
+  await expect(page.locator('.kit .kit-bottle.bottle-used').first()).toBeVisible({ timeout: 15000 });
 });
