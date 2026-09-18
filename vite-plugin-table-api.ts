@@ -1,16 +1,18 @@
 import type { Connect, PluginOption, ViteDevServer, PreviewServer } from 'vite';
 import { handle } from './src/net/routes';
-import { kvFromEnv } from './src/net/kv';
+import { kvFromEnv, multiplayerOff } from './src/net/kv';
 
 /**
  * Serves the table routes during `npm run dev` and `vite preview`, where no
  * Vercel runtime exists. It calls the same dispatcher the deployed functions
  * call, and with no Upstash credentials in the environment it runs against the
  * in-process store — so table mode works offline, on a laptop, with no account.
+ *
+ * The store is resolved per request, never while the config is being read: this
+ * plugin is loaded by `vite build` too, and a build must not depend on, or fall
+ * over, the runtime environment.
  */
 export function tableApi(): PluginOption {
-  const kv = kvFromEnv(process.env);
-
   const middleware: Connect.NextHandleFunction = (req, res, next) => {
     const url = new URL(req.url ?? '/', 'http://table.local');
     if (!url.pathname.startsWith('/api/')) return next();
@@ -27,13 +29,13 @@ export function tableApi(): PluginOption {
           body = {};
         }
       }
-      handle(kv, {
+      handle(kvFromEnv(process.env), {
         method: req.method ?? 'GET',
         route,
         query: Object.fromEntries(url.searchParams),
         headers: req.headers as Record<string, string | undefined>,
         body,
-      })
+      }, multiplayerOff(process.env))
         .then((reply) => {
           res.statusCode = reply.status;
           res.setHeader('content-type', 'application/json');

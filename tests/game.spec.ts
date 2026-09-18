@@ -370,8 +370,11 @@ test('is installable and caches itself for offline play', async ({ page }) => {
   expect(manifest?.name).toBe('Trailside Seasons');
   expect(manifest?.display).toBe('standalone');
   expect(manifest?.icons?.length).toBeGreaterThanOrEqual(2);
-  const sw = await page.evaluate(() => fetch('./sw.js').then((r) => r.ok));
-  expect(sw).toBe(true);
+  const sw = await page.evaluate(() => fetch('./sw.js').then((r) => r.text()));
+  expect(sw).toContain('addEventListener');
+  // The table routes are live, per-seat state: a cached answer would hand a
+  // phone a stale board and its poll would never see the table move again.
+  expect(sw).toMatch(/pathname\.includes\('\/api\/'\)/);
 });
 
 test('keeps the action bar in reach on a phone', async ({ page }) => {

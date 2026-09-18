@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handle, type ApiRequest } from '../src/net/routes';
-import { kvFromEnv } from '../src/net/kv';
+import { kvFromEnv, multiplayerOff } from '../src/net/kv';
 
 /**
  * Adapter between a Vercel Node function and the shared dispatcher. Each route
@@ -17,13 +17,7 @@ export function vercelRoute(route: string) {
       headers: req.headers as Record<string, string | undefined>,
       body: typeof req.body === 'string' ? safeJson(req.body) : (req.body ?? (await readBody(req))),
     };
-    let reply;
-    try {
-      reply = await handle(kvFromEnv(process.env), request);
-    } catch (error) {
-      // A missing store is a deployment problem, not a bad request: say which.
-      reply = { status: 503, body: { error: error instanceof Error ? error.message : 'no store' } };
-    }
+    const reply = await handle(kvFromEnv(process.env), request, multiplayerOff(process.env));
     res.statusCode = reply.status;
     res.setHeader('content-type', 'application/json');
     // Table state is per-request and secret-bearing: never let a CDN hold it.

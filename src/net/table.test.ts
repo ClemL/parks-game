@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { act, createTable, joinTable, mayAct, readState, startTable, TableError } from './table';
-import { kvFromEnv, memoryKv, type Kv } from './kv';
+import { kvFromEnv, memoryKv, multiplayerOff, type Kv } from './kv';
 import { handle } from './routes';
 import { legalMoves } from '../game/engine';
 import { HIDDEN_BONUS } from '../game/view';
@@ -269,12 +269,39 @@ describe('the store it picks', () => {
     const a = kvFromEnv({});
     const b = kvFromEnv({});
     expect(a).toBe(b);
+    expect(multiplayerOff({})).toBeNull();
   });
 
-  it('refuses to run on a deployment with no Redis behind it', () => {
-    expect(() => kvFromEnv({ VERCEL: '1' })).toThrow(/UPSTASH_REDIS_REST_URL/);
-    // Either variable pair is enough.
-    expect(() => kvFromEnv({ VERCEL: '1', UPSTASH_REDIS_REST_URL: 'u', UPSTASH_REDIS_REST_TOKEN: 't' })).not.toThrow();
-    expect(() => kvFromEnv({ VERCEL: '1', KV_REST_API_URL: 'u', KV_REST_API_TOKEN: 't' })).not.toThrow();
+  it('switches table mode off on a deployment with no Redis behind it', () => {
+    // Never throws: a missing store must not take a build or a page down.
+    expect(kvFromEnv({ VERCEL: '1' })).toBeNull();
+    expect(multiplayerOff({ VERCEL: '1' })).toMatch(/UPSTASH_REDIS_REST_URL/);
+    // Either variable pair brings it back.
+    for (const env of [
+      { VERCEL: '1', UPSTASH_REDIS_REST_URL: 'u', UPSTASH_REDIS_REST_TOKEN: 't' },
+      { VERCEL: '1', KV_REST_API_URL: 'u', KV_REST_API_TOKEN: 't' },
+    ]) {
+      expect(kvFromEnv(env)).not.toBeNull();
+      expect(multiplayerOff(env)).toBeNull();
+    }
+  });
+
+  it('reports itself through /api/health, and declines the rest politely', async () => {
+    const on = await handle(kv, { method: 'GET', route: 'health', query: {}, body: {} });
+    expect(on).toEqual({ status: 200, body: { multiplayer: true } });
+
+    const reason = multiplayerOff({ VERCEL: '1' })!;
+    const off = await handle(null, { method: 'GET', route: 'health', query: {}, body: {} }, reason);
+    expect(off.status).toBe(200);
+    expect(off.body).toEqual({ multiplayer: false, reason });
+
+    // Every other route says the same thing rather than blowing up.
+    const refused = await handle(
+      null,
+      { method: 'POST', route: 'table', query: {}, body: { seats: 4, expansions } },
+      reason,
+    );
+    expect(refused.status).toBe(503);
+    expect(refused.body).toEqual({ multiplayer: false, error: reason });
   });
 });

@@ -23,17 +23,39 @@ export interface ApiReply {
   body: unknown;
 }
 
+/** Said when the environment has not explained itself. */
+export const MULTIPLAYER_OFF = 'Table mode is switched off on this deployment.';
+
 const number = (value: string | undefined): number | undefined =>
   value === undefined || value === '' || Number.isNaN(Number(value)) ? undefined : Number(value);
 
 /**
  * One dispatcher for every table route, so the Vercel functions and the local
  * dev server run exactly the same code path.
+ *
+ * `kv` is null when table mode is switched off for want of a store. That is a
+ * state, not a failure: /api/health answers it plainly so the app can hide
+ * multiplayer, and the other routes decline politely rather than throwing.
  */
-export async function handle(kv: Kv, request: ApiRequest): Promise<ApiReply> {
+export async function handle(
+  kv: Kv | null,
+  request: ApiRequest,
+  offReason?: string | null,
+): Promise<ApiReply> {
   try {
     const body = (request.body ?? {}) as Record<string, unknown>;
     const post = request.method === 'POST';
+
+    if (request.route === 'health') {
+      return {
+        status: 200,
+        body: { multiplayer: kv !== null, ...(kv ? {} : { reason: offReason ?? MULTIPLAYER_OFF }) },
+      };
+    }
+
+    if (!kv) {
+      return { status: 503, body: { multiplayer: false, error: offReason ?? MULTIPLAYER_OFF } };
+    }
 
     if (request.route === 'table' && post) {
       return { status: 200, body: await createTable(kv, body as unknown as CreateRequest) };

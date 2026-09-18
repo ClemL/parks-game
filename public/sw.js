@@ -4,9 +4,11 @@
  *
  * - navigations: network first, falling back to the cached shell
  * - same-origin assets: cache first, refreshed in the background
+ * - the table routes: never touched — a cached answer would hand a phone a
+ *   stale board, and the poll would never see the table move
  * - everything else (the Wikipedia art lookup): straight to the network
  */
-const CACHE = 'trailside-v1';
+const CACHE = 'trailside-v2';
 const SHELL = './';
 
 self.addEventListener('install', (event) => {
@@ -34,6 +36,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Table state is live and per-seat: it must never be served from a cache.
+  if (url.pathname.includes('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

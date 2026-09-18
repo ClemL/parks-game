@@ -47,8 +47,13 @@ these pairs is present:
 
 With neither pair set, the routes fall back to an in-process store. That is exactly what you want
 locally — `npm run dev` runs table mode with no account and no network — and exactly what you do
-not want on Vercel, where each function instance would hold its own copy of the table. Set the
-variables before you play a real game on a deployment.
+not want on a deployment, where each function instance would hold its own copy of the table.
+
+So on a deployment with no store, **table mode switches itself off**: `GET /api/health` answers
+`{"multiplayer": false}` with the reason, the app stops offering the Table mode button, and anyone
+opening `#/table` or a seat link gets a short explanation and a way back to the single-device game.
+Nothing fails, the build is untouched, and adding the variables turns it back on with no code
+change.
 
 Costs, for a sense of scale: five devices polling a version key is about 9,000 Redis commands per
 45-minute session, against a 500,000-command monthly free tier — roughly 50 sessions a month for
@@ -133,7 +138,12 @@ table is waiting on that device, 3s otherwise, and stops entirely while the scre
 authoritative game state lives in Redis and only ever changes inside `POST /api/act`, which checks
 that the seat is really on the clock, applies the move with the same pure reducer the solo game
 uses, plays out any CPU turns behind it, and writes back with a Lua compare-and-set. There is no
-undo in table mode: the server is the only copy of the truth.
+undo in table mode: the server is the only copy of the truth. The service worker leaves `/api/`
+alone, since a cached board would freeze a phone on a turn that has already been played.
+
+**Where it is unavailable** — a static host, the offline single-file build, a deployment with no
+Redis store — the app asks `/api/health` once, finds no table server, and quietly does not offer
+table mode. Single-device play is unaffected in every one of those cases.
 
 ## Skins and layout
 

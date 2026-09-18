@@ -17,6 +17,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The deployment build runs with VERCEL set and, on a fresh project, no
+      # Redis credentials. Table mode switches itself off there; the build must
+      # not notice.
+      - name: Build as a deployment with no Redis store
+        run: npm run build
+        env:
+          VERCEL: '1'
       - run: npm test
 
   e2e:

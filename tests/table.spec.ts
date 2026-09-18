@@ -175,3 +175,31 @@ test('keeps each hand secret from the table and from the other seats', async ({ 
 
   for (const phone of phones) await phone.close();
 });
+
+test('offers table mode only where a table can actually run', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+
+  // The dev server carries the routes, so the button is there.
+  await expect(page.getByRole('button', { name: 'Table mode' })).toBeVisible();
+  await expect(page.locator('.topbar')).toContainText('Table mode');
+
+  // With the routes gone — a static host, or a deployment with no store — the
+  // app drops multiplayer instead of failing at it.
+  await page.route('**/api/health', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ multiplayer: false, error: 'Table mode is switched off on this deployment.' }),
+    }),
+  );
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await expect(page.getByRole('button', { name: 'Table mode' })).toHaveCount(0);
+
+  // And reaching the surface by its link explains itself rather than erroring.
+  await page.goto('/#/table');
+  await expect(page.locator('.table-setup')).toContainText('off here');
+  await page.getByRole('button', { name: 'Play on this device' }).click();
+  await expect(page.locator('.trail .site').first()).toBeVisible();
+});

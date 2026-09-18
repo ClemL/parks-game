@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import App from './App';
+import { useMultiplayer } from './hooks/useMultiplayer';
 
 // The table and hand surfaces only load when they are asked for, so single
 // device play stays a small download.
@@ -22,6 +23,7 @@ export function surfaceFromHash(hash: string): Surface {
 
 export default function Root() {
   const [surface, setSurface] = useState<Surface>(() => surfaceFromHash(window.location.hash));
+  const multiplayer = useMultiplayer();
 
   useEffect(() => {
     const onHash = () => setSurface(surfaceFromHash(window.location.hash));
@@ -29,7 +31,31 @@ export default function Root() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  if (surface === 'solo') return <App onTableMode={() => (window.location.hash = '#/table')} />;
+  if (surface === 'solo') {
+    // Multiplayer is only offered where it can actually work.
+    return (
+      <App
+        onTableMode={
+          multiplayer.state === 'on' ? () => (window.location.hash = '#/table') : undefined
+        }
+      />
+    );
+  }
+
+  if (multiplayer.state === 'off') {
+    return (
+      <div className="app">
+        <section className="panel table-setup">
+          <h2>Table mode is off here</h2>
+          <p className="muted">{multiplayer.reason}</p>
+          <button type="button" className="primary" onClick={() => (window.location.hash = '')}>
+            Play on this device
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <Suspense fallback={<p className="muted loading-surface">Loading…</p>}>
       {surface === 'table' ? <TableApp /> : <HandApp />}

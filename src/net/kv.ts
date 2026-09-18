@@ -122,24 +122,36 @@ export function upstashKv(url: string, token: string): Kv {
 }
 
 /**
- * Upstash when its credentials are present, otherwise the in-process store.
+ * Why table mode is unavailable in this environment, or null when it is fine.
  *
- * The fallback is what makes `npm run dev` work with no account, but on a
- * deployment it would be a trap: each function instance would hold its own
- * copy of the table, so a phone and the tablet could land on different games.
- * There it refuses instead of pretending.
+ * The in-process fallback is what makes `npm run dev` and the tests work with
+ * no account, but on a deployment it would be a trap: each function instance
+ * would hold its own copy of the table, so a phone and the tablet could land on
+ * different games. There, table mode simply switches itself off — single-device
+ * play is the whole game either way, and nothing should fail over it.
  */
-export function kvFromEnv(env: Record<string, string | undefined>): Kv {
+export function multiplayerOff(env: Record<string, string | undefined>): string | null {
+  const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL;
+  const token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) return null;
+  if (!env.VERCEL) return null;
+  return (
+    'Table mode is switched off here: it needs a Redis store. Set UPSTASH_REDIS_REST_URL and ' +
+    'UPSTASH_REDIS_REST_TOKEN (add "Upstash for Redis" from the Vercel Marketplace) and it comes back. ' +
+    'Single-device play needs nothing.'
+  );
+}
+
+/**
+ * Upstash when its credentials are present, the in-process store when that is
+ * safe, and null when table mode is off. It never throws: a missing store must
+ * not take a build or a page down with it.
+ */
+export function kvFromEnv(env: Record<string, string | undefined>): Kv | null {
   const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
   if (url && token) return upstashKv(url, token);
-  if (env.VERCEL) {
-    throw new Error(
-      'Table mode needs a Redis store: set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN ' +
-        '(add "Upstash for Redis" from the Vercel Marketplace). Single-device play needs nothing.',
-    );
-  }
-  return sharedMemoryKv();
+  return multiplayerOff(env) === null ? sharedMemoryKv() : null;
 }
 
 /** One in-process store per server process, so every route shares it. */

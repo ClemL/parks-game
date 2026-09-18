@@ -30,7 +30,13 @@ async function send<T>(path: string, init?: RequestInit & { token?: string }): P
 const post = <T>(path: string, body: unknown): Promise<T> =>
   send<T>(path, { method: 'POST', body: JSON.stringify(body) });
 
+export interface Health {
+  multiplayer: boolean;
+  reason?: string;
+}
+
 export const api = {
+  health: () => send<Health>('/api/health'),
   createTable: (request: CreateRequest) => post<CreatedTable>('/api/table', request),
   join: (request: JoinRequest) => post<Lobby>('/api/join', request),
   start: (request: StartRequest) => post<StateResponse>('/api/start', request),
