@@ -2530,9 +2530,71 @@ button.bottle:disabled {
 
 /* --------------------------------------------------------------- the phone */
 
+/* The phone: one column, the hand leading, the shared board a tap below. */
 .hand-app {
   max-width: 560px;
   margin: 0 auto;
+}
+
+.hand-board,
+.hand-private {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.hand-subhead {
+  margin: 14px 0 6px;
+  font-family: var(--display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+/* A desktop seat is the same hand with room to spare, so the shared board sits
+   beside it rather than under it. Nothing private moves: the left column is
+   what the table shows anyway. */
+@media (min-width: 900px) {
+  .hand-app {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+    grid-template-areas:
+      'bar bar'
+      'turn turn'
+      'kit kit'
+      'board private';
+    align-items: start;
+    gap: 12px 14px;
+  }
+
+  .hand-app > .hand-bar {
+    grid-area: bar;
+  }
+
+  .hand-app > .hand-turn {
+    grid-area: turn;
+  }
+
+  .hand-app > .kit {
+    grid-area: kit;
+    margin-top: 0;
+  }
+
+  .hand-app > .hand-board {
+    grid-area: board;
+  }
+
+  .hand-app > .hand-private {
+    grid-area: private;
+  }
+
+  /* The modals and the error strip stay full width under both columns. */
+  .hand-app > .table-error {
+    grid-column: 1 / -1;
+  }
 }
 
 .hand-bar {

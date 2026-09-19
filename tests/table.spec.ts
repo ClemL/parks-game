@@ -203,3 +203,58 @@ test('offers table mode only where a table can actually run', async ({ page }) =
   await page.getByRole('button', { name: 'Play on this device' }).click();
   await expect(page.locator('.trail .site').first()).toBeVisible();
 });
+
+test('seats a desktop the same as a phone, with room for the board beside it', async ({
+  page,
+  browser,
+}) => {
+  const links = await openTable(page, 4);
+
+  // The same seat link, opened on a wide screen.
+  const desktop = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await desktop.goto(links[0]);
+  await desktop.locator('.hand-name input').fill('Clem');
+  await desktop.getByRole('button', { name: 'Take this seat' }).click();
+
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await phone.goto(links[1]);
+  await phone.locator('.hand-name input').fill('Kris');
+  await phone.getByRole('button', { name: 'Take this seat' }).click();
+
+  await page.getByRole('button', { name: 'Start the game' }).click();
+  await expect(desktop.locator('.hand-board .site').first()).toBeVisible({ timeout: 15000 });
+
+  // Desktop: the shared board sits beside the hand, not under it, and the park
+  // row and gear shop are open — there is room, so nothing needs hunting for.
+  const wide = await desktop.evaluate(() => {
+    const board = document.querySelector('.hand-board')!.getBoundingClientRect();
+    const hand = document.querySelector('.hand-private')!.getBoundingClientRect();
+    return { beside: board.right <= hand.left + 1, boardWidth: Math.round(board.width) };
+  });
+  expect(wide.beside).toBe(true);
+  expect(wide.boardWidth).toBeGreaterThan(500);
+  expect(await desktop.locator('.hand-board .park-card').count()).toBeGreaterThan(0);
+  expect(await desktop.locator('.hand-board .gear-card').count()).toBeGreaterThan(0);
+
+  // Phone: one column, and the offer folded away so the hand leads.
+  await expect(phone.locator('.hand-board')).toBeVisible({ timeout: 15000 });
+  const narrow = await phone.evaluate(() => {
+    const board = document.querySelector('.hand-board')!.getBoundingClientRect();
+    const hand = document.querySelector('.hand-private')!.getBoundingClientRect();
+    return { stacked: hand.top >= board.bottom - 1, wide: document.documentElement.scrollWidth };
+  });
+  expect(narrow.stacked).toBe(true);
+  expect(narrow.wide).toBeLessThanOrEqual(390);
+  await expect(phone.locator('.hand-board .park-card')).toHaveCount(0);
+
+  // Both seats read their own bonus cards and nobody else's; the table reads
+  // none at all, which is what makes it safe to leave face up in the middle.
+  for (const seat of [desktop, phone]) {
+    expect(await seat.locator('.hand-private .bonus').count()).toBeGreaterThan(0);
+  }
+  await expect(page.locator('.bonus')).toHaveCount(0);
+  expect(await page.locator('.bonus-hidden').count()).toBeGreaterThan(0);
+
+  await desktop.close();
+  await phone.close();
+});

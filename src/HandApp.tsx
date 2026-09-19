@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { KitBar } from './components/KitBar';
 import { PlayerPanel } from './components/PlayerPanel';
 import { TrailView } from './components/TrailView';
-import { DecisionModal, ScoreboardModal } from './components/Modals';
+import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal } from './components/Modals';
+import { ParkCardView } from './components/ParkCardView';
 import { Panel } from './components/Panel';
 import { useTable, type TableSession } from './hooks/useTable';
 import { useUi } from './hooks/useUi';
 import { api } from './net/client';
-import { siteDef, SEASONS } from './game/engine';
+import { canClaim, siteDef, SEASONS } from './game/engine';
+import { parkDeckLeft } from './game/view';
 import { PARKS } from './game/data/parks';
 import { loadParkArt, type ArtMap } from './art/parkArt';
 
@@ -49,6 +51,13 @@ export default function HandApp() {
   /** Your own hand leads the screen, so it does not start folded. */
   const [handOpen, setHandOpen] = useState(true);
   const [tableOpen, setTableOpen] = useState(false);
+  /**
+   * A phone leads with the hand and keeps the shared board a tap away; a
+   * desktop has room for both at once, so it opens with the board showing.
+   */
+  const [boardOpen, setBoardOpen] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches,
+  );
   const [art, setArt] = useState<ArtMap>({});
 
   const table = useTable(joined && session ? session : null);
@@ -166,11 +175,25 @@ export default function HandApp() {
         onUseBottle={(bottleId) => void table.act({ type: 'use-bottle', bottleId })}
       />
 
-      {mine && !pending && view.phase === 'playing' && (
-        <Panel title="Where to?" open={ui.isOpen('trail')} onToggle={() => ui.toggle('trail')}>
-          <p className="muted hand-hint">
-            Pick a hiker, then a site — or move it on the table. Either way it is the same board.
-          </p>
+      <section className="hand-board">
+        <Panel
+          title={mine && !pending ? 'Where to?' : 'The trail'}
+          open={ui.isOpen('trail')}
+          onToggle={() => ui.toggle('trail')}
+          badge={
+            <span className="season-badge">
+              {SEASON_NAMES[view.season - 1]}
+              <span className="season-count" aria-hidden="true">
+                {view.season}/{SEASONS}
+              </span>
+            </span>
+          }
+        >
+          {mine && !pending && view.phase === 'playing' && (
+            <p className="muted hand-hint">
+              Pick a hiker, then a site — or move it on the table. Either way it is the same board.
+            </p>
+          )}
           <TrailView
             state={view}
             moves={table.moves}
@@ -184,12 +207,43 @@ export default function HandApp() {
                 useCampfire: option.useCampfire,
               })
             }
-            interactive={!table.busy}
+            interactive={mine && !pending && view.phase === 'playing' && !table.busy}
             seat={session.seat}
           />
         </Panel>
-      )}
 
+        {/* What is on offer, so a move can be planned without looking up at the
+            table. Folded away on a phone, open where there is room. */}
+        <Panel
+          title="On offer"
+          open={boardOpen}
+          onToggle={() => setBoardOpen((open) => !open)}
+          summary={`${view.parkRow.length} parks · ${view.gearRow.length} gear`}
+          meta={<span className="muted">{parkDeckLeft(view)} in the deck</span>}
+        >
+          <div className="card-strip">
+            {view.parkRow.map((park) => (
+              <ParkCardView
+                key={park.id}
+                park={park}
+                art={art}
+                affordable={canClaim(view, me, park)}
+                bison={view.bison !== null && view.parkRow[view.bison]?.id === park.id}
+              />
+            ))}
+          </div>
+          <h3 className="hand-subhead">Gear shop</h3>
+          <GearShelf state={view} />
+          {view.campsites.length > 0 && (
+            <>
+              <h3 className="hand-subhead">Campsites</h3>
+              <CampsiteBoard state={view} />
+            </>
+          )}
+        </Panel>
+      </section>
+
+      <section className="hand-private">
       <PlayerPanel
         player={me}
         state={view}
@@ -227,6 +281,7 @@ export default function HandApp() {
             ))}
         </div>
       </Panel>
+      </section>
 
       {table.error && (
         <p className="table-error" role="status">

@@ -136,8 +136,12 @@ bar, or go straight to `#/table`.
   *"Kris is deciding: Camera Point"*.
 - **Each phone** holds what only that player should see: their resources, their bottles and gear,
   their reserved parks and their bonus cards — and the **decision prompts their own moves open**.
-  The rest of the table's public state is one fold away, closed by default. A phone can also move
-  its own hikers, so a player can play entirely from their hand if they prefer.
+  The trail is there to move on, and the park row, gear shop and campsites are one fold away so a
+  turn can be planned without looking up. The other seats' public holdings are another fold. A
+  phone can move its own hikers, so a player can play entirely from their hand if they prefer.
+- **A desktop seat** is the same hand with room to spare: the shared board sits *beside* the hand
+  rather than under it, with the offer already open. Same seat link, same secrets — the layout is
+  the only difference, and it switches at 900px.
 
 **Secrets.** Nothing reaches a device that the player is not entitled to. The park deck's order and
 the RNG cursor never leave the server (the cursor would predict every future draw, and so would the
