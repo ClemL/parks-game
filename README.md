@@ -35,15 +35,31 @@ Or from a terminal: `npm i -g vercel && vercel login && vercel --prod`.
 `vercel.json` pins the Vite preset, the `dist` output, and rewrites everything except `/api/*` to
 the app.
 
-### Environment variables
+### Turning table mode on
 
-Single-device play needs none. **Table mode** keeps each table in Redis, and reads whichever of
-these pairs is present:
+Single-device play needs no database and no accounts. **Table mode** keeps each table in Redis, and
+one command provisions one:
+
+```bash
+npm run redis
+```
+
+That posts to Upstash's agent endpoint, which mints a database with no signup and no console
+clicking, writes the credentials into `.env.local` (gitignored), and prints both the values to set
+on Vercel and a console URL. **Claim the database from that URL within three days or it is
+deleted.** The idempotency key is kept in `.upstash-key.local`, so running the command again
+returns the same database rather than a second one — which is also how to re-fetch the credentials
+if you lose them.
+
+Then set the same two variables on the deployment (Vercel → Settings → Environment Variables) and
+redeploy. The routes read whichever of these pairs is present:
 
 | Variable | Notes |
 | --- | --- |
-| `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | Add *Upstash for Redis* from the Vercel Marketplace and both are injected for you |
+| `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | What `npm run redis` writes; also what the Vercel Marketplace integration injects |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | The names the old Vercel KV integration used; still honoured |
+
+Never commit either. `.env.local` and `.upstash-key.local` are both covered by `.gitignore`.
 
 With neither pair set, the routes fall back to an in-process store. That is exactly what you want
 locally — `npm run dev` runs table mode with no account and no network — and exactly what you do
@@ -140,6 +156,10 @@ that the seat is really on the clock, applies the move with the same pure reduce
 uses, plays out any CPU turns behind it, and writes back with a Lua compare-and-set. There is no
 undo in table mode: the server is the only copy of the truth. The service worker leaves `/api/`
 alone, since a cached board would freeze a phone on a turn that has already been played.
+
+That compare-and-set is the one piece with no second chance, so it is tested twice: against a
+stand-in that pins the REST wire format, and against a real `redis-server` running the actual Lua —
+including two writers racing for the same version, where exactly one gets through.
 
 **Where it is unavailable** — a static host, the offline single-file build, a deployment with no
 Redis store — the app asks `/api/health` once, finds no table server, and quietly does not offer
@@ -434,6 +454,8 @@ src/hooks/useTable.ts       table mode: the polling transport
 src/hooks/useDragPawn.ts    dragging a hiker to its next site
 src/net/table.ts            table lifecycle, seat authority, the CPU driver
 src/net/kv.ts               the Redis slice used, over Upstash REST or in process
+src/net/upstash.test.ts     the REST client against an Upstash-shaped stand-in
+src/net/upstash-redis.test.ts  the same client against a real Redis, Lua and all
 src/net/routes.ts           one dispatcher, shared by Vercel and the dev server
 src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone
 api/                        five Vercel functions, one line each over routes.ts
@@ -441,6 +463,7 @@ tests/game.spec.ts          browser tests, single device (Playwright)
 tests/table.spec.ts         browser tests, a tablet and phones together
 scripts/fetch-park-art.mjs  downloads park photographs for self-hosting
 scripts/build-artifact.mjs  bundles the build into one self-contained page
+scripts/start-redis.mjs     provisions the table-mode database in one command
 ```
 
 ## Commands
@@ -451,6 +474,7 @@ npm test           # rules, redaction and table-authority tests, plus the CPU be
 npm run test:e2e   # browser tests against the production bundle
 npm run build      # type-check and bundle to dist/
 npm run art        # download park photographs into public/parks/ (needs Wikipedia access)
+npm run redis      # provision the Redis database table mode needs, into .env.local
 ```
 
 CI runs the build, the unit tests and the browser tests on every push.

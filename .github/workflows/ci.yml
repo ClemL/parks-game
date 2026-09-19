@@ -9,6 +9,20 @@ jobs:
   unit:
     name: Build and unit tests
     runs-on: ubuntu-latest
+    # Table mode's compare-and-set is a Lua script, and the only way to know it
+    # holds under two writers is to run it on a real Redis.
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      REDIS_PORT: 6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

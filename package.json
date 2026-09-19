@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false",
     "test:e2e": "playwright test",
-    "art": "node scripts/fetch-park-art.mjs"
+    "art": "node scripts/fetch-park-art.mjs",
+    "redis": "node scripts/start-redis.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
