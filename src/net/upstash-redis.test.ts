@@ -73,63 +73,54 @@ function parse(buffer: Buffer, at = 0): { value: unknown; end: number } | null {
   throw new Error(`unparsed reply: ${buffer.toString('utf8', at, at + 40)}`);
 }
 
-/** One connection, one command at a time — this is a test, not a pool. */
+/**
+ * One connection per command.
+ *
+ * Sharing a socket was wrong in a way worth remembering: two commands in flight
+ * at once both wrote to it and both listened to it, so each waiter resolved with
+ * whichever reply it happened to parse first. The compare-and-set test read
+ * Redis's [1, -1] as [1, 1] and reported that two writers had got through, which
+ * looked like a broken lock and was a broken test client. A connection of its
+ * own cannot misattribute a reply to anybody.
+ */
 function redisClient(port: number) {
-  let socket: Socket | null = null;
-  const connect = async (): Promise<Socket> => {
-    if (socket && !socket.destroyed) return socket;
-    const pending = createConnection({ port, host: '127.0.0.1' });
-    try {
-      await new Promise<void>((resolve, reject) => {
-        pending.once('connect', resolve);
-        pending.once('error', reject);
-      });
-    } catch (error) {
-      // A half-open socket must not be kept, or every retry reuses the failure.
-      pending.destroy();
-      socket = null;
-      throw error;
-    }
-    socket = pending;
-    return socket;
-  };
+  const open = new Set<Socket>();
 
   return {
     async call(command: (string | number)[]): Promise<unknown> {
-      const connection = await connect();
-      return new Promise((resolve, reject) => {
-        let buffer = Buffer.alloc(0);
-        const onData = (chunk: Buffer) => {
-          buffer = Buffer.concat([buffer, chunk]);
-          let reply;
-          try {
-            reply = parse(buffer);
-          } catch (error) {
-            cleanup();
-            reject(error);
-            return;
-          }
-          if (!reply) return;
-          cleanup();
-          if (reply.value instanceof Error) reject(reply.value);
-          else resolve(reply.value);
-        };
-        const onError = (error: Error) => {
-          cleanup();
-          reject(error);
-        };
-        const cleanup = () => {
-          connection.off('data', onData);
-          connection.off('error', onError);
-        };
-        connection.on('data', onData);
-        connection.on('error', onError);
-        connection.write(resp(command));
-      });
+      const connection = createConnection({ port, host: '127.0.0.1' });
+      open.add(connection);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          connection.once('connect', resolve);
+          connection.once('error', reject);
+        });
+        return await new Promise((resolve, reject) => {
+          let buffer = Buffer.alloc(0);
+          connection.on('data', (chunk: Buffer) => {
+            buffer = Buffer.concat([buffer, chunk]);
+            let reply;
+            try {
+              reply = parse(buffer);
+            } catch (error) {
+              reject(error);
+              return;
+            }
+            if (!reply) return;
+            if (reply.value instanceof Error) reject(reply.value);
+            else resolve(reply.value);
+          });
+          connection.on('error', reject);
+          connection.write(resp(command));
+        });
+      } finally {
+        open.delete(connection);
+        connection.destroy();
+      }
     },
     close() {
-      socket?.destroy();
-      socket = null;
+      for (const connection of open) connection.destroy();
+      open.clear();
     },
   };
 }
@@ -193,6 +184,19 @@ beforeEach(async () => {
 });
 
 describe.skipIf(!redisAvailable)('against a real Redis', () => {
+  it('hands every concurrent command its own reply', async () => {
+    // The guard on the mistake above: run commands with different answers at
+    // once and check each caller got the one meant for it, not its neighbour's.
+    await client.call(['SET', 'mine', 'yours']);
+    const answers = await Promise.all([
+      client.call(['GET', 'mine']),
+      client.call(['GET', 'absent']),
+      client.call(['INCR', 'counter']),
+      client.call(['GET', 'mine']),
+    ]);
+    expect(answers).toEqual(['yours', null, 1, 'yours']);
+  });
+
   it('runs the compare-and-set script, expiries and all', async () => {
     const kv = upstashKv(base, TOKEN);
     const prefix = keys.table('REAL1');
@@ -229,8 +233,15 @@ describe.skipIf(!redisAvailable)('against a real Redis', () => {
       kv.casState(prefix, 0, '{"by":"a"}', TABLE_TTL_SECONDS),
       kv.casState(prefix, 0, '{"by":"b"}', TABLE_TTL_SECONDS),
     ]);
-    expect([a, b].filter((result) => result !== null)).toHaveLength(1);
+    // One writer is told the new version, the other is turned away outright.
+    // Which of them wins is Redis's business, so assert the pair, not an order.
+    expect([a, b].filter((result) => result === 1)).toHaveLength(1);
+    expect([a, b].filter((result) => result === null)).toHaveLength(1);
     expect(await client.call(['GET', keys.version('REAL3')])).toBe('1');
+    // And the board that survived is one of the two, not a mixture.
+    expect(['{"by":"a"}', '{"by":"b"}']).toContain(
+      await client.call(['GET', keys.state('REAL3')]),
+    );
   });
 
   it('plays a table through from the deal to a move', async () => {
