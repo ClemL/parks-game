@@ -75,6 +75,29 @@ Costs, for a sense of scale: five devices polling a version key is about 9,000 R
 45-minute session, against a 500,000-command monthly free tier — roughly 50 sessions a month for
 nothing, and about two cents a session after that.
 
+## The film
+
+The board opens with **How it plays**: a three-and-a-half minute hand-drawn film that walks
+through the whole game — the trail, the sites paying out, campfires, the camera, the Trail End,
+the parks, the four seasons, scoring, and playing round a table. Watch it and you know how to
+play.
+
+It is not a video. There is no file to download and nothing to stream: every frame is drawn onto a
+canvas in plain JavaScript, from paper textures and pencil lines generated on the spot. That keeps
+it about 15 KB gzipped, it works offline, and it costs nothing to host.
+
+- **No audio at all**, so it never surprises anyone. The narration is **subtitles** — real text in
+  the document rather than pixels, so a screen reader reads them, they can be selected, and a
+  browser can translate them.
+- **Read it instead** prints the entire script with timestamps; clicking one jumps there. Under
+  `prefers-reduced-motion` the script is shown without being asked.
+- The scrubber has chapter names, and every frame is a **pure function of the clock** — the same
+  second always draws the same picture, grain and pencil wobble included, so seeking is exact.
+- It stops drawing when it scrolls out of view or the tab is hidden.
+
+Fold it away from its heading and it stays folded; the ▶ Film button in the top bar brings it
+back.
+
 ## Playing
 
 - **2 to 5 seats** — you plus one to four CPU hikers, chosen in the top bar and applied on the next
@@ -461,6 +484,15 @@ src/net/kv.ts               the Redis slice used, over Upstash REST or in proces
 src/net/upstash.test.ts     the REST client against an Upstash-shaped stand-in
 src/net/upstash-redis.test.ts  the same client against a real Redis, Lua and all
 src/net/routes.ts           one dispatcher, shared by Vercel and the dev server
+src/film/rand.ts            seeded noise, so the film draws the same way every time
+src/film/ink.ts             pencil lines, rough fills, and the boil that makes them shimmer
+src/film/paper.ts           torn sheets, fibres, tape, grain
+src/film/props.ts           the cast: hikers, pines, mountains, cards, a camera, a flask
+src/film/stage.ts           ground, hills, the trail, the board, the weather
+src/film/scenes.ts          the thirteen scenes and every caption
+src/film/player.ts          the timeline: which scene, the dissolve, the grain
+src/film/Film.tsx           the player people actually use
+film-preview.html           a dev harness for the film; ?t=64 draws one second
 src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone
 api/                        five Vercel functions, one line each over routes.ts
 tests/game.spec.ts          browser tests, single device (Playwright)

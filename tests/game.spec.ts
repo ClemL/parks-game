@@ -706,3 +706,72 @@ test('fills a flask only from the water a stop just paid out', async ({ page }) 
   await page.locator('.kit .kit-bottle.bottle-ready').first().click();
   await expect(page.locator('.kit .kit-bottle.bottle-used').first()).toBeVisible({ timeout: 15000 });
 });
+
+test('plays a hand-drawn film about the game, with subtitles', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.film-canvas');
+
+  // It opens as a poster with an invitation, not as a blank box. (The panel
+  // heading carries the same words, so ask for the one over the picture.)
+  await expect(page.locator('.film-play')).toContainText('How it plays');
+  await expect(page.locator('.film-length')).toContainText('3:');
+  await expect(page.locator('.film-length')).toContainText('no sound');
+
+  // The canvas is actually painted, not an empty element.
+  const painted = await page.locator('.film-canvas').evaluate((canvas) => {
+    const ctx = (canvas as HTMLCanvasElement).getContext('2d')!;
+    const { data } = ctx.getImageData(0, 0, (canvas as HTMLCanvasElement).width, 60);
+    const seen = new Set<string>();
+    for (let i = 0; i < data.length; i += 4) seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+    return seen.size;
+  });
+  expect(painted).toBeGreaterThan(20);
+
+  // Playing advances the clock and puts a subtitle up as real text.
+  await page.locator('.film-play').click();
+  await expect(page.locator('.film-caption')).toBeVisible();
+  await expect(page.locator('.film-caption')).not.toBeEmpty();
+  await page.waitForTimeout(1200);
+  await expect(page.locator('.film-time').first()).not.toHaveText('0:00');
+
+  // Scrubbing lands on the right chapter.
+  await page.locator('.film-scrub input').fill('150');
+  await expect(page.locator('.film-chapter')).toHaveText(/season/i);
+  await expect(page.locator('.film-time').first()).toHaveText('2:30');
+
+  // Every frame is a pure function of the clock, so the same moment draws the
+  // same picture — which is what makes the scrubber trustworthy. Pause first,
+  // or the running loop moves the clock on between the two captures.
+  await page.getByRole('button', { name: 'Pause' }).click();
+  const shot = async () =>
+    page.locator('.film-canvas').evaluate((canvas) => (canvas as HTMLCanvasElement).toDataURL());
+  await page.locator('.film-scrub input').fill('64');
+  const first = await shot();
+  await page.locator('.film-scrub input').fill('120');
+  await page.locator('.film-scrub input').fill('64');
+  expect(await shot()).toBe(first);
+
+  // And the whole script can be read instead of watched.
+  await page.getByRole('button', { name: 'Read it instead' }).click();
+  const lines = page.locator('.film-script li');
+  expect(await lines.count()).toBeGreaterThan(30);
+  await expect(lines.first()).toContainText('four seasons');
+  await lines.nth(20).locator('button').click();
+  await expect(page.locator('.film-caption')).not.toBeEmpty();
+});
+
+test('folds the film away and leaves the board alone', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.film-canvas');
+  const heading = page.locator('.panel-toggle', { hasText: 'How it plays' });
+  await heading.click();
+  await expect(page.locator('.film-canvas')).toHaveCount(0);
+  await expect(page.locator('.panel-summary').first()).toContainText('walk through the whole game');
+  // The fold sticks, so it is not in the way every time you come back.
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await expect(page.locator('.film-canvas')).toHaveCount(0);
+  // And the top bar can always bring it back.
+  await page.locator('.topbar').getByRole('button', { name: /Film/ }).click();
+  await expect(page.locator('.film-canvas')).toBeVisible();
+});

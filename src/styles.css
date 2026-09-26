@@ -2686,3 +2686,240 @@ button.bottle:disabled {
   border: 1px solid var(--line);
   font-size: 15px;
 }
+
+/* ================================================================== the film */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.film {
+  display: grid;
+  gap: 8px;
+}
+
+/* The picture, with its torn-paper edge and its own shadow. */
+.film-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #efe4cb;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.film-frame:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.film-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The poster state: one big invitation over the title frame. */
+/* The invitation sits low, so the title card behind it stays readable. */
+.film-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 7%;
+  gap: 10px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #1d2a22 8%, transparent),
+    color-mix(in srgb, #1d2a22 52%, transparent)
+  );
+  color: #fdf6e7;
+  font-family: var(--display);
+  font-size: 23px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.film-play:hover .film-play-mark {
+  transform: scale(1.06);
+}
+
+.film-play-mark {
+  transition: transform 0.18s ease;
+}
+
+.film-play-mark {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #2b2118;
+  font-size: 28px;
+  padding-left: 6px;
+  box-shadow: 0 6px 20px rgba(20, 16, 10, 0.45);
+}
+
+.film-length {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--body);
+  font-size: 13px;
+  opacity: 0.85;
+  letter-spacing: 0.04em;
+}
+
+.film-end {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: color-mix(in srgb, #1d2a22 62%, transparent);
+  color: #fdf6e7;
+  font-family: var(--display);
+  font-size: 26px;
+}
+
+.film-end p {
+  margin: 0;
+}
+
+.film-end-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Subtitles: text in the document, sitting over the bottom of the picture. */
+.film-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 3.2%;
+  transform: translateX(-50%);
+  max-width: 88%;
+  margin: 0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #1d2a22 76%, transparent);
+  color: #fdf6e7;
+  font-size: clamp(13px, 1.55vw, 19px);
+  line-height: 1.35;
+  text-align: center;
+  text-wrap: balance;
+  backdrop-filter: blur(2px);
+}
+
+.film-caption-empty {
+  display: none;
+}
+
+/* The controls, which look like the rest of the board rather than a video tag. */
+.film-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.film-button {
+  background: var(--moss);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  min-width: 40px;
+}
+
+.film-button:hover {
+  border-color: var(--accent);
+}
+
+.film-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.film-scrub {
+  flex: 1 1 140px;
+  display: flex;
+  min-width: 0;
+}
+
+.film-scrub input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.film-chapter {
+  font-family: var(--display);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.film-script-toggle {
+  margin-left: auto;
+}
+
+/* The whole script, for anyone who would rather read than watch. */
+.film-script {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  list-style: none;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.film-script li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.film-script button {
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+@media (max-width: 720px) {
+  .film-play {
+    font-size: 19px;
+  }
+
+  .film-play-mark {
+    width: 58px;
+    height: 58px;
+    font-size: 22px;
+  }
+
+  .film-chapter,
+  .film-time-total {
+    display: none;
+  }
+}

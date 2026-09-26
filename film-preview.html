@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>film preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" />
+    <style>body { margin: 0; background: #1d2a22; } canvas { display: block; margin: 0 auto; }</style>
+  </head>
+  <body>
+    <!--
+      A harness for working on the film, outside the app: `npm run dev`, then
+      open /film-preview.html. Add ?t=64 to draw that second and stop, which is
+      how each frame gets checked while the scenes are written.
+      Not part of the build: vite only bundles index.html.
+    -->
+    <canvas id="sheet" width="1280" height="720"></canvas>
+    <script type="module" src="/src/film/contact.ts"></script>
+  </body>
+</html>

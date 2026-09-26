@@ -7,6 +7,7 @@ import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModa
 import { Notice, Panel } from './components/Panel';
 import { InfoSheet } from './components/InfoSheet';
 import { KitBar } from './components/KitBar';
+import { Film } from './film/Film';
 import { THEMES, useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
@@ -184,6 +185,19 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
           <button type="button" className="ghost" onClick={() => setShowRules(true)}>
             Rules
           </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              ui.setAll(['film'], true);
+              requestAnimationFrame(() =>
+                document.querySelector('.film')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+              );
+            }}
+            title="A short film about how the game works"
+          >
+            ▶ Film
+          </button>
           {onTableMode && (
             <button
               type="button"
@@ -277,6 +291,17 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
 
       <main className="layout">
         <div className="board">
+          {/* What the game is, before anybody has to read a rule. */}
+          <Panel
+            title="How it plays"
+            open={ui.isOpen('film')}
+            onToggle={() => ui.toggle('film')}
+            summary="A three and a half minute walk through the whole game — no sound, subtitled."
+            meta={<span className="muted">3:32 · silent</span>}
+          >
+            <Film />
+          </Panel>
+
           <Panel
             title="The trail"
             open={ui.isOpen('trail')}
