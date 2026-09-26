@@ -180,9 +180,9 @@ test('offers table mode only where a table can actually run', async ({ page }) =
   await page.goto('/');
   await page.waitForSelector('.trail .site');
 
-  // The dev server carries the routes, so the button is there.
-  await expect(page.getByRole('button', { name: 'Table mode' })).toBeVisible();
-  await expect(page.locator('.topbar')).toContainText('Table mode');
+  // The dev server carries the routes, so the button is there, in the menu.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.locator('.menu').getByRole('button', { name: 'Table mode' })).toBeVisible();
 
   // With the routes gone — a static host, or a deployment with no store — the
   // app drops multiplayer instead of failing at it.
@@ -195,6 +195,8 @@ test('offers table mode only where a table can actually run', async ({ page }) =
   );
   await page.reload();
   await page.waitForSelector('.trail .site');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.locator('.menu')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Table mode' })).toHaveCount(0);
 
   // And reaching the surface by its link explains itself rather than erroring.

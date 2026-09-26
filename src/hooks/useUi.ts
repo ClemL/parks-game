@@ -22,8 +22,6 @@ export type ThemeId = (typeof THEMES)[number]['id'];
 export type Density = 'comfortable' | 'compact';
 
 export type PanelId =
-  /** The film that explains the game. */
-  | 'film'
   | 'trail'
   | 'parks'
   | 'campsites'

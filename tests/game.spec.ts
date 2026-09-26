@@ -1,10 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * End-to-end cover for the flows unit tests cannot reach: the decision modals,
  * the expansion toggles, undo, and resuming a saved game. The bot plays the
  * human seat by clicking whatever the board offers.
  */
+
+/** Options and new-game settings live behind the menu button. */
+async function openMenu(page: Page) {
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.locator('.menu')).toBeVisible();
+}
 
 test('plays a full game through every decision modal', async ({ page }) => {
   const errors: string[] = [];
@@ -132,8 +138,10 @@ test('turning both expansions off deals a base-game board', async ({ page }) => 
   await page.goto('/');
   await page.waitForSelector('.trail .site');
 
-  for (const box of await page.locator('.expansions input').all()) await box.uncheck();
+  await openMenu(page);
+  for (const box of await page.locator('.menu .expansions input').all()) await box.uncheck();
   await page.getByRole('button', { name: 'New game' }).click();
+  await expect(page.locator('.menu')).toHaveCount(0);
   await page.waitForTimeout(300);
 
   await expect(page.locator('.site-tent')).toHaveCount(0);
@@ -148,12 +156,15 @@ test('turning both expansions off deals a base-game board', async ({ page }) => 
 test('seats two to five players', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
-  await page.locator('.speed select').last().selectOption('2');
+  const players = page.locator('label', { hasText: 'Players' }).locator('select');
+  await openMenu(page);
+  await players.selectOption('2');
   await page.getByRole('button', { name: 'New game' }).click();
   await page.waitForTimeout(300);
   await expect(page.locator('aside .player')).toHaveCount(2);
 
-  await page.locator('.speed select').last().selectOption('5');
+  await openMenu(page);
+  await players.selectOption('5');
   await page.getByRole('button', { name: 'New game' }).click();
   await page.waitForTimeout(300);
   await expect(page.locator('aside .player')).toHaveCount(5);
@@ -161,7 +172,9 @@ test('seats two to five players', async ({ page }) => {
 
 test('the rules panel documents the expansions', async ({ page }) => {
   await page.goto('/');
+  await openMenu(page);
   await page.getByRole('button', { name: 'Rules' }).click();
+  await expect(page.locator('.menu')).toHaveCount(0);
   await page.waitForSelector('.rules-table');
   // Headings are upper-cased by CSS, so compare case-insensitively.
   const text = (await page.locator('.modal-body').innerText()).toLowerCase();
@@ -221,10 +234,11 @@ test('closes the notices with their X, and the dismissal sticks', async ({ page 
     await expect(page.locator('.notice.season-card')).toHaveCount(0);
   }
 
-  // The dismissal sticks across a reload; Setup is where it comes back from.
+  // The dismissal sticks across a reload; the menu is where it comes back from.
   await page.reload();
   await page.waitForSelector('.trail .site');
   await expect(page.locator('.notice.hint')).toHaveCount(0);
+  await openMenu(page);
   await expect(page.locator('label', { hasText: 'Turn hints' }).locator('input')).not.toBeChecked();
 });
 
@@ -243,7 +257,7 @@ test('folds a player away to a one-line summary', async ({ page }) => {
   await expect(opponent.locator('.chip').first()).toBeVisible();
 });
 
-test('opens on a phone with the reference material folded and setup behind a button', async ({ page }) => {
+test('opens on a phone with the reference material folded and the menu behind a button', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.waitForSelector('.trail .site');
@@ -257,12 +271,14 @@ test('opens on a phone with the reference material folded and setup behind a but
   // The trail itself stays open.
   await expect(page.locator('.trail .site').first()).toBeVisible();
 
-  // The controls hide behind Setup.
-  await expect(page.locator('.setup-toggle')).toBeVisible();
-  await expect(page.locator('.topbar-actions')).toBeHidden();
-  await page.locator('.setup-toggle').click();
-  await expect(page.locator('.topbar-actions')).toBeVisible();
+  // The controls hide behind the menu button, and the menu fits the screen.
+  await expect(page.getByRole('button', { name: 'New game' })).toHaveCount(0);
+  await openMenu(page);
   await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+  const width = await page.locator('.menu').evaluate((menu) => menu.getBoundingClientRect().width);
+  expect(width).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Close menu' }).click();
+  await expect(page.locator('.menu')).toHaveCount(0);
 });
 
 test('switches skins and remembers the choice', async ({ page }) => {
@@ -275,6 +291,7 @@ test('switches skins and remembers the choice', async ({ page }) => {
   const root = page.locator('html');
   await expect(root).toHaveAttribute('data-theme', 'trailside');
 
+  await openMenu(page);
   const skin = page.locator('label', { hasText: 'Skin' }).locator('select');
   for (const theme of ['parchment', 'wpa', 'nightfall', 'contrast']) {
     await skin.selectOption(theme);
@@ -332,6 +349,7 @@ test('density and season tint reach the document', async ({ page }) => {
 
   const root = page.locator('html');
   await expect(root).toHaveAttribute('data-season', '1');
+  await openMenu(page);
   await page.locator('label', { hasText: 'Density' }).locator('select').selectOption('compact');
   await expect(root).toHaveAttribute('data-density', 'compact');
 
@@ -468,7 +486,7 @@ test('clicking your turn switches the active hiker', async ({ page }) => {
   expect(await selected()).toBe(before);
 });
 
-test('puts the turn hints switch in Setup', async ({ page }) => {
+test('puts the turn hints switch in the menu', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.trail .site');
   await page.evaluate(() => localStorage.clear());
@@ -477,6 +495,7 @@ test('puts the turn hints switch in Setup', async ({ page }) => {
 
   const toggle = page.locator('label', { hasText: 'Turn hints' }).locator('input');
   await expect(page.locator('.notice.hint')).toBeVisible();
+  await openMenu(page);
   await toggle.uncheck();
   await expect(page.locator('.notice.hint')).toHaveCount(0);
   // No stray restore link left behind on the board.
@@ -511,6 +530,7 @@ test('stands the hikers on the cards in compact density', async ({ page }) => {
     page.evaluate(() => Math.round(document.querySelector('.trail')!.getBoundingClientRect().height));
   const comfortable = await trailHeight();
 
+  await openMenu(page);
   await page.locator('label', { hasText: 'Density' }).locator('select').selectOption('compact');
   await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
   const compact = await trailHeight();
@@ -709,9 +729,11 @@ test('fills a flask only from the water a stop just paid out', async ({ page }) 
 
 test('plays a hand-drawn film about the game, with subtitles', async ({ page }) => {
   await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
   await page.waitForSelector('.film-canvas');
 
-  // It opens as a poster with an invitation, not as a blank box. (The panel
+  // It opens as a poster with an invitation, not as a blank box. (The menu
   // heading carries the same words, so ask for the one over the picture.)
   await expect(page.locator('.film-play')).toContainText('How it plays');
   await expect(page.locator('.film-length')).toContainText('3:');
@@ -760,18 +782,15 @@ test('plays a hand-drawn film about the game, with subtitles', async ({ page }) 
   await expect(page.locator('.film-caption')).not.toBeEmpty();
 });
 
-test('folds the film away and leaves the board alone', async ({ page }) => {
+test('keeps the film in the menu, off the board', async ({ page }) => {
   await page.goto('/');
-  await page.waitForSelector('.film-canvas');
-  const heading = page.locator('.panel-toggle', { hasText: 'How it plays' });
-  await heading.click();
-  await expect(page.locator('.film-canvas')).toHaveCount(0);
-  await expect(page.locator('.panel-summary').first()).toContainText('walk through the whole game');
-  // The fold sticks, so it is not in the way every time you come back.
-  await page.reload();
   await page.waitForSelector('.trail .site');
   await expect(page.locator('.film-canvas')).toHaveCount(0);
-  // And the top bar can always bring it back.
-  await page.locator('.topbar').getByRole('button', { name: /Film/ }).click();
-  await expect(page.locator('.film-canvas')).toBeVisible();
+
+  await openMenu(page);
+  await expect(page.locator('.menu .film-canvas')).toBeVisible();
+  // Escape closes the menu, and the film goes with it.
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.menu')).toHaveCount(0);
+  await expect(page.locator('.film-canvas')).toHaveCount(0);
 });
