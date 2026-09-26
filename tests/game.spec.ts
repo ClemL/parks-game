@@ -711,6 +711,16 @@ test('plays a hand-drawn film about the game, with subtitles', async ({ page }) 
   await page.goto('/');
   await page.waitForSelector('.film-canvas');
 
+  // It closes the page: under the log, under the board, under everything.
+  const order = await page.evaluate(() => {
+    const film = document.querySelector('.film-strip')!.getBoundingClientRect();
+    const log = document.querySelector('.log-strip')!.getBoundingClientRect();
+    const board = document.querySelector('.board')!.getBoundingClientRect();
+    return { belowLog: film.top >= log.bottom - 1, belowBoard: film.top >= board.bottom - 1 };
+  });
+  expect(order.belowLog).toBe(true);
+  expect(order.belowBoard).toBe(true);
+
   // It opens as a poster with an invitation, not as a blank box. (The panel
   // heading carries the same words, so ask for the one over the picture.)
   await expect(page.locator('.film-play')).toContainText('How it plays');

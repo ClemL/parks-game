@@ -291,17 +291,6 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
 
       <main className="layout">
         <div className="board">
-          {/* What the game is, before anybody has to read a rule. */}
-          <Panel
-            title="How it plays"
-            open={ui.isOpen('film')}
-            onToggle={() => ui.toggle('film')}
-            summary="A three and a half minute walk through the whole game — no sound, subtitled."
-            meta={<span className="muted">3:32 · silent</span>}
-          >
-            <Film />
-          </Panel>
-
           <Panel
             title="The trail"
             open={ui.isOpen('trail')}
@@ -481,6 +470,20 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
                 </li>
               ))}
           </ol>
+        </Panel>
+      </section>
+
+      {/* Last on the page: what the game is, for anyone who wants it explained
+          rather than played. */}
+      <section className="film-strip">
+        <Panel
+          title="How it plays"
+          open={ui.isOpen('film')}
+          onToggle={() => ui.toggle('film')}
+          summary="A three and a half minute walk through the whole game — no sound, subtitled."
+          meta={<span className="muted">3:32 · silent</span>}
+        >
+          <Film />
         </Panel>
       </section>
 

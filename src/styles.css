@@ -2687,6 +2687,11 @@ button.bottle:disabled {
   font-size: 15px;
 }
 
+/* The film closes the page, under the log. */
+.film-strip {
+  margin-top: 16px;
+}
+
 /* ================================================================== the film */
 
 .visually-hidden {
