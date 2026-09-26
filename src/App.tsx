@@ -7,8 +7,8 @@ import { CampsiteBoard, DecisionModal, GearShelf, ScoreboardModal, SeasonEndModa
 import { Notice, Panel } from './components/Panel';
 import { InfoSheet } from './components/InfoSheet';
 import { KitBar } from './components/KitBar';
-import { Film } from './film/Film';
-import { THEMES, useUi } from './hooks/useUi';
+import { GameMenu } from './components/GameMenu';
+import { useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
 import { parkDeckLeft } from './game/view';
@@ -81,7 +81,7 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
   const [artState, setArtState] = useState<'loading' | 'ready' | 'local' | 'offline'>('loading');
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
-  const [setupOpen, setSetupOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const ui = useUi(state.season);
 
   useEffect(() => {
@@ -164,121 +164,30 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="ghost setup-toggle"
-          aria-expanded={setupOpen}
-          onClick={() => setSetupOpen((open) => !open)}
-        >
-          ⚙ Setup
-        </button>
-
-        <div className={`topbar-actions${setupOpen ? ' topbar-actions-open' : ''}`}>
-          <label className="speed">
-            CPU speed
-            <select value={game.speed} onChange={(e) => game.setSpeed(e.target.value as typeof game.speed)}>
-              <option value="slow">Slow</option>
-              <option value="normal">Normal</option>
-              <option value="fast">Fast</option>
-            </select>
-          </label>
-          <button type="button" className="ghost" onClick={() => setShowRules(true)}>
-            Rules
-          </button>
+        <div className="topbar-actions">
           <button
             type="button"
-            className="ghost"
-            onClick={() => {
-              ui.setAll(['film'], true);
-              requestAnimationFrame(() =>
-                document.querySelector('.film')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-              );
-            }}
-            title="A short film about how the game works"
-          >
-            ▶ Film
-          </button>
-          {onTableMode && (
-            <button
-              type="button"
-              className="ghost"
-              onClick={onTableMode}
-              title="Play round a tablet, with everyone's hand on their own phone"
-            >
-              Table mode
-            </button>
-          )}
-          <button type="button" className="ghost" onClick={() => setShowCredits(true)}>
-            Credits
-          </button>
-          <label className="speed" title="Board skin">
-            Skin
-            <select value={ui.theme} onChange={(e) => ui.setTheme(e.target.value as typeof ui.theme)}>
-              {THEMES.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="speed" title="Tighter spacing and smaller cards">
-            Density
-            <select value={ui.density} onChange={(e) => ui.setDensity(e.target.value as typeof ui.density)}>
-              <option value="comfortable">Comfortable</option>
-              <option value="compact">Compact</option>
-            </select>
-          </label>
-          <label className="expansions" title="Show the one-line prompt above the trail">
-            <input
-              type="checkbox"
-              checked={!ui.hintsHidden}
-              onChange={(e) => (e.target.checked ? ui.showHints() : ui.hideHints())}
-            />
-            Turn hints
-          </label>
-          <label className="expansions" title="Tint the board's highlight colour with the season">
-            <input type="checkbox" checked={ui.seasonTint} onChange={(e) => ui.setSeasonTint(e.target.checked)} />
-            Season tint
-          </label>
-          <label className="speed" title="Seats at the table: you plus CPU hikers. Applied on a new game.">
-            Players
-            <select value={game.seats} onChange={(e) => game.setSeats(Number(e.target.value))}>
-              {[2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="expansions" role="group" aria-label="Expansions, applied on a new game">
-            <label title="Nightfall: tents and campsites, a starting wildcard, and wildcards that cover two resources">
-              <input
-                type="checkbox"
-                checked={game.expansions.nightfall}
-                onChange={(e) => game.setExpansions({ ...game.expansions, nightfall: e.target.checked })}
-              />
-              Nightfall
-            </label>
-            <label title="Wildlife: four more advanced sites, the wandering bison, and extra season cards">
-              <input
-                type="checkbox"
-                checked={game.expansions.wildlife}
-                onChange={(e) => game.setExpansions({ ...game.expansions, wildlife: e.target.checked })}
-              />
-              Wildlife
-            </label>
-          </span>
-          <button
-            type="button"
-            className="ghost"
+            className="ghost topbar-undo"
             onClick={game.undo}
             disabled={!game.canUndo}
             title="Step back to before your last move"
           >
             Undo
           </button>
-          <button type="button" className="primary" onClick={() => game.newGame()}>
-            New game
+          <button
+            type="button"
+            className="ghost menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="game-menu"
+            aria-label="Menu"
+            title="How it plays, options and new game"
+            onClick={() => setMenuOpen(true)}
+          >
+            <span className="menu-bars" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
           </button>
         </div>
       </header>
@@ -291,17 +200,6 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
 
       <main className="layout">
         <div className="board">
-          {/* What the game is, before anybody has to read a rule. */}
-          <Panel
-            title="How it plays"
-            open={ui.isOpen('film')}
-            onToggle={() => ui.toggle('film')}
-            summary="A three and a half minute walk through the whole game — no sound, subtitled."
-            meta={<span className="muted">3:32 · silent</span>}
-          >
-            <Film />
-          </Panel>
-
           <Panel
             title="The trail"
             open={ui.isOpen('trail')}
@@ -529,6 +427,16 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
       )}
       {state.phase === 'season-end' && <SeasonEndModal state={state} onContinue={() => dispatch({ type: 'end-season' })} />}
       {state.phase === 'game-over' && <ScoreboardModal state={state} onNewGame={() => game.newGame()} />}
+      {menuOpen && (
+        <GameMenu
+          game={game}
+          ui={ui}
+          onClose={() => setMenuOpen(false)}
+          onRules={() => setShowRules(true)}
+          onCredits={() => setShowCredits(true)}
+          onTableMode={onTableMode}
+        />
+      )}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
       {showCredits && <CreditsModal onClose={() => setShowCredits(false)} credits={credits} />}
       <InfoSheet />
