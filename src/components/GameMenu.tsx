@@ -96,6 +96,13 @@ export function GameMenu({
                 ))}
               </select>
             </label>
+            <label className="menu-field" title="Drawings made for the game, or photographs from Wikipedia">
+              Park art
+              <select value={ui.parkArt} onChange={(e) => ui.setParkArt(e.target.value as typeof ui.parkArt)}>
+                <option value="illustrated">Illustrations</option>
+                <option value="photos">Photographs</option>
+              </select>
+            </label>
             <label className="menu-field" title="Tighter spacing and smaller cards">
               Density
               <select value={ui.density} onChange={(e) => ui.setDensity(e.target.value as typeof ui.density)}>

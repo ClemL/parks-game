@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ParkArtStyle } from '../art/useParkArt';
 
 /**
  * Layout preferences: which sections are collapsed, and which of the standing
@@ -42,6 +43,8 @@ interface UiPrefs {
   density: Density;
   /** The board's highlight follows the season unless this is off. */
   seasonTint: boolean;
+  /** Park cards show drawings, or photographs fetched from Wikipedia. */
+  parkArt: ParkArtStyle;
 }
 
 /** Phones open with the reference material folded away. */
@@ -54,6 +57,7 @@ function defaults(): UiPrefs {
     theme: 'trailside',
     density: narrow ? 'compact' : 'comfortable',
     seasonTint: true,
+    parkArt: 'illustrated',
   };
 }
 
@@ -70,6 +74,7 @@ function read(): UiPrefs {
       theme: THEMES.some((t) => t.id === parsed.theme) ? (parsed.theme as ThemeId) : base.theme,
       density: parsed.density === 'compact' || parsed.density === 'comfortable' ? parsed.density : base.density,
       seasonTint: parsed.seasonTint !== false,
+      parkArt: parsed.parkArt === 'photos' ? 'photos' : 'illustrated',
     };
   } catch {
     return defaults();
@@ -149,6 +154,8 @@ export function useUi(season?: number) {
     setTheme: (theme: ThemeId) => setPrefs((c) => ({ ...c, theme })),
     density: prefs.density,
     setDensity: (density: Density) => setPrefs((c) => ({ ...c, density })),
+    parkArt: prefs.parkArt,
+    setParkArt: (parkArt: ParkArtStyle) => setPrefs((c) => ({ ...c, parkArt })),
     seasonTint: prefs.seasonTint,
     setSeasonTint: (seasonTint: boolean) => setPrefs((c) => ({ ...c, seasonTint })),
   };

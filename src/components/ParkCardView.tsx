@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import type { ParkCard } from '../game/types';
 import type { ArtMap } from '../art/parkArt';
-import { GeneratedParkArt } from '../art/generated';
+import { IllustratedParkArt } from '../art/illustrated';
+import { SCENES } from '../art/scenes';
 import { costLabel, CostRow, RESOURCE_LABEL } from './Bits';
 import { useInfo } from './InfoSheet';
 
 export function ParkArt({ park, art }: { park: ParkCard; art: ArtMap }) {
   const entry = art[park.wikiTitle];
   const [failed, setFailed] = useState(false);
-  if (!entry || failed) return <GeneratedParkArt park={park} />;
+  if (!entry || failed) return <IllustratedParkArt park={park} />;
   return (
     <img
       className="park-art-img"
@@ -50,6 +51,7 @@ export function ParkCardView({
         { label: 'Cost', value: costLabel(park.cost) },
         { label: 'State', value: park.state },
         { label: 'Terrain', value: park.tags.join(', ') },
+        ...(!art[park.wikiTitle] && SCENES[park.id] ? [{ label: 'Pictured', value: SCENES[park.id].view }] : []),
         ...(reservedBy ? [{ label: 'Reserved by', value: reservedBy }] : []),
         ...(bison ? ['The bison is here: visiting trades a resource for a wildcard.'] : []),
         `Wildcards ${RESOURCE_LABEL.wild} pay for any resource in this cost.`,

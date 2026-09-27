@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>park art preview</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #1d2a22; color: #eee; font: 12px system-ui, sans-serif; }
+      .sheet { display: grid; grid-template-columns: repeat(auto-fill, 260px); gap: 14px; }
+      .cell .art { width: 260px; height: 162px; border-radius: 8px; overflow: hidden; }
+      .cell .card { width: 150px; height: 92px; margin-top: 4px; border-radius: 6px; overflow: hidden; display: inline-block; }
+      .cell .mini { width: 76px; height: 40px; margin: 4px 0 0 6px; border-radius: 4px; overflow: hidden; display: inline-block; }
+      .park-art-svg { width: 100%; height: 100%; display: block; }
+      b { display: block; margin-top: 4px; }
+    </style>
+  </head>
+  <body>
+    <!--
+      A harness for the park illustrations, outside the app: `npm run dev`, then
+      open /park-art-preview.html. Add ?only=yosemite,zion to narrow it.
+      Each park draws large, at card size, and at compact size.
+      Not part of the build: vite only bundles index.html.
+    -->
+    <div id="root"></div>
+    <script type="module" src="/src/art/contact.tsx"></script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
 import { ParkCardView } from './components/ParkCardView';
@@ -12,8 +12,7 @@ import type { CreatedTable } from './net/protocol';
 import { canClaim, siteDef, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { MAX_PLAYERS, MIN_PLAYERS } from './game/data/sites';
-import { PARKS } from './game/data/parks';
-import { loadParkArt, type ArtMap } from './art/parkArt';
+import { useParkArt } from './art/useParkArt';
 import type { ExpansionFlags } from './game/types';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
@@ -49,7 +48,6 @@ export default function TableApp() {
   const [setupError, setSetupError] = useState<string | null>(null);
   const [shown, setShown] = useState<number[]>([]);
   const [answerHere, setAnswerHere] = useState(false);
-  const [art, setArt] = useState<ArtMap>({});
 
   const table = useTable(
     session ? { code: session.code, seat: null, token: session.hostToken } : null,
@@ -57,11 +55,7 @@ export default function TableApp() {
   const { view, lobby } = table;
   const ui = useUi(view?.season ?? 1);
 
-  useEffect(() => {
-    loadParkArt(PARKS.map((p) => ({ id: p.id, wikiTitle: p.wikiTitle })))
-      .then(setArt)
-      .catch(() => setArt({}));
-  }, []);
+  const { art } = useParkArt(ui.parkArt);
 
   const open = async () => {
     setOpening(true);
