@@ -9,11 +9,11 @@ import { useTable } from './hooks/useTable';
 import { useUi } from './hooks/useUi';
 import { api, ApiError } from './net/client';
 import type { CreatedTable } from './net/protocol';
-import { canClaim, siteDef, SEASONS } from './game/engine';
+import { canClaim, DEFAULT_HOUSE_RULES, pendingLabel, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { MAX_PLAYERS, MIN_PLAYERS } from './game/data/sites';
 import { useParkArt } from './art/useParkArt';
-import type { ExpansionFlags } from './game/types';
+import type { ExpansionFlags, HouseRules } from './game/types';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const HOST_KEY = 'parks-table-host-v1';
@@ -44,6 +44,7 @@ export default function TableApp() {
   const [session, setSession] = useState<HostSession | null>(loadHost);
   const [seatsWanted, setSeatsWanted] = useState(4);
   const [expansions, setExpansions] = useState<ExpansionFlags>({ nightfall: true, wildlife: true });
+  const [houseRules, setHouseRules] = useState<HouseRules>(DEFAULT_HOUSE_RULES);
   const [opening, setOpening] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [shown, setShown] = useState<number[]>([]);
@@ -61,7 +62,7 @@ export default function TableApp() {
     setOpening(true);
     setSetupError(null);
     try {
-      const created: CreatedTable = await api.createTable({ seats: seatsWanted, expansions });
+      const created: CreatedTable = await api.createTable({ seats: seatsWanted, expansions, houseRules });
       const next: HostSession = {
         code: created.lobby.code,
         hostToken: created.hostToken,
@@ -143,6 +144,24 @@ export default function TableApp() {
               Wildlife
             </label>
           </span>
+          <span className="expansions" role="group" aria-label="House rules">
+            <label title="A reserve may take the unseen top card of the park deck">
+              <input
+                type="checkbox"
+                checked={houseRules.blindReserve}
+                onChange={(e) => setHouseRules({ ...houseRules, blindReserve: e.target.checked })}
+              />
+              Reserve from the deck
+            </label>
+            <label title="Season 1's advanced site is always the Ranger Station">
+              <input
+                type="checkbox"
+                checked={houseRules.rangerFirst}
+                onChange={(e) => setHouseRules({ ...houseRules, rangerFirst: e.target.checked })}
+              />
+              Ranger Station first
+            </label>
+          </span>
           <button type="button" className="primary" onClick={open} disabled={opening}>
             {opening ? 'Opening…' : 'Open the table'}
           </button>
@@ -221,7 +240,7 @@ export default function TableApp() {
         color={active?.color ?? 'var(--line)'}
         detail={
           pending
-            ? `${pendingSeat!.name} is deciding: ${siteDef(view.trail[pending.siteIndex]).name}`
+            ? `${pendingSeat!.name} is deciding: ${pendingLabel(view)}`
             : view.phase === 'season-end'
               ? 'Season complete'
               : view.phase === 'game-over'

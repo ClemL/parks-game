@@ -11,7 +11,7 @@ import { GameMenu } from './components/GameMenu';
 import { Film } from './film/Film';
 import { useUi } from './hooks/useUi';
 import { CreditsModal, RulesModal } from './components/RulesModal';
-import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
+import { bisonPark, campsiteDef, canClaim, gearCost, pendingLabel, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { PARKS } from './game/data/parks';
 import { useParkArt } from './art/useParkArt';
@@ -126,7 +126,7 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
     if (state.phase === 'game-over') return 'The year is over — see the final scores.';
     if (state.phase === 'season-end') return `Season ${state.season} is complete.`;
     if (!isHumanTurn) return `${activePlayer.name} is choosing a move…`;
-    if (state.pending) return `Resolve ${siteDef(state.trail[state.pending.siteIndex]).name}.`;
+    if (state.pending) return `Resolve ${pendingLabel(state)}.`;
     if (moves.length === 0) return 'Both of your hikers are home for the season.';
     const fireOnly = moves.every((m) => m.useCampfire);
     if (fireOnly) return 'Every open site is taken — spend your campfire to share one, or walk to the Trail End.';
@@ -301,7 +301,7 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
             summary={state.gearRow.map((g) => `${g.name} (${gearCost(state, g)}☀️)`).join(' · ')}
             meta={
               <span className="muted">
-                Trail End / Ranger Station
+                Bought at the Trail End
                 {state.gearDiscountsLeft > 0 ? ` · ${state.gearDiscountsLeft} discount left` : ''}
               </span>
             }

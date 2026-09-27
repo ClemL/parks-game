@@ -8,7 +8,7 @@ import { Panel } from './components/Panel';
 import { useTable, type TableSession } from './hooks/useTable';
 import { useUi } from './hooks/useUi';
 import { api } from './net/client';
-import { canClaim, siteDef, SEASONS } from './game/engine';
+import { canClaim, pendingLabel, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { useParkArt } from './art/useParkArt';
 
@@ -157,7 +157,7 @@ export default function HandApp() {
             ? 'Season over. The table is tallying up.'
             : mine
               ? pending
-                ? `Your decision: ${siteDef(view.trail[pending.siteIndex]).name}`
+                ? `Your decision: ${pendingLabel(view)}`
                 : 'Your turn — move a hiker'
               : `Waiting on ${waitingOn?.name ?? 'the table'}`}
       </section>

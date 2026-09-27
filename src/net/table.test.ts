@@ -152,13 +152,13 @@ describe('table authority', () => {
     expect(after.view!.pending?.player).toBe(0);
 
     await expect(
-      act(kv, { code, seat: 1, token: created.seatTokens[1].token, action: { type: 'trail-end', option: 'rest' } }),
+      act(kv, { code, seat: 1, token: created.seatTokens[1].token, action: { type: 'trail-end', option: 'skip' } }),
     ).rejects.toThrow(/turn/);
     const resolved = await act(kv, {
       code,
       seat: 0,
       token: created.seatTokens[0].token,
-      action: { type: 'trail-end', option: 'rest' },
+      action: { type: 'trail-end', option: 'skip' },
     });
     expect(resolved.view!.pending).toBeNull();
   });

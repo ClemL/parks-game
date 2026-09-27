@@ -32,9 +32,9 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           that site&rsquo;s action. Hikers never move backwards.
         </li>
         <li>
-          <b>Every site starts the season with a sun or water token on it, except the trailhead and the first space
-          out of it.</b> The first hiker to reach a site takes its token on top of the site&rsquo;s own action. Fresh
-          tokens go out every season.
+          <b>The season&rsquo;s weather puts a sun or water token on every site from the second one out of the
+          trailhead</b>, alternating sun and water. The first hiker to reach a site takes its token on top of the
+          site&rsquo;s own action. Fresh tokens go out every season.
         </li>
         <li>
           <b>Hikers cannot share a site.</b> The only way onto an occupied site is to spend a <b>campfire token</b> —
@@ -47,23 +47,25 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         </li>
         <li>
           Reaching the <b>Trail End</b> retires that hiker for the season and gives it exactly one action: visit a park,
-          reserve a park, buy gear, take a photo, or rest for 1 sun. When all hikers are home, the season ends.
+          reserve a park, or buy gear. When all hikers are home, whoever holds the camera may take one last photo, and
+          the season ends.
         </li>
       </ul>
 
       <h3>Resources</h3>
       <ul>
         <li>
-          Water 💧, trees 🌲 and mountain ⛰️ pay for park cards. <b>Sun ☀️ buys gear and photos</b> and
-          is never part of a park&rsquo;s cost.
+          Water 💧, trees 🌲 and mountain ⛰️ pay for park cards. <b>Sun ☀️ buys gear</b> and is never part of a
+          park&rsquo;s cost. Photos take <b>any tokens</b>.
         </li>
         <li>
           <b>Wildlife 🐾 is not a resource you spend on a specific cost — it is a wildcard</b> that pays for any one
-          resource. No park asks for it by name.
+          resource, parks and photos alike. No park asks for it by name, and it never buys gear.
         </li>
         <li>
           Resources <b>carry over between seasons</b>, but nobody may finish a turn holding more than{' '}
-          <b>{TOKEN_LIMIT} tokens</b> — the overflow is returned, sun first.
+          <b>{TOKEN_LIMIT} tokens</b>. The limit is checked only at the end of your turn, and you choose what to hand
+          back.
         </li>
       </ul>
 
@@ -71,13 +73,16 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
       <ul>
         <li>
           One camera exists. A hiker stopping at a <b>Camera Point</b> either takes it — and may immediately shoot for{' '}
-          {PHOTO_COST_DISCOUNTED} sun — or leaves it and takes a <b>bottle</b> instead.
+          {PHOTO_COST_DISCOUNTED} token — or leaves it and takes a <b>bottle</b> instead.
         </li>
         <li>
-          A photo costs <b>{PHOTO_COST} sun</b> normally and <b>{PHOTO_COST_DISCOUNTED} sun while you hold the camera</b>,
-          and wildcards can cover part of the price. Each photo scores 1 VP, or 2 VP with the Photo Album.
+          A photo costs <b>{PHOTO_COST} tokens of any kind</b>, or <b>{PHOTO_COST_DISCOUNTED} while you hold the
+          camera</b>; you pick which tokens. Each photo scores 1 VP, or 2 VP with the Photo Album.
         </li>
-        <li>The next hiker to visit a Camera Point takes the camera from whoever has it. Ending your trail lets you shoot again.</li>
+        <li>
+          The next hiker to visit a Camera Point takes the camera from whoever has it. <b>Whoever holds it when the
+          season ends</b> may take one more photo.
+        </li>
       </ul>
 
       <h3>Bottles</h3>
@@ -119,6 +124,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           The <b>first player to reserve a park each season</b> takes the <b>first player token</b>: they lead the next
           season, and whoever holds it at the end scores 1 VP.
         </li>
+        <li>
+          A reserve takes a face-up park, or — with the <b>Reserve from the deck</b> house rule, on by default — the
+          unseen top card of the park deck.
+        </li>
       </ul>
 
       <h3>Scoring</h3>
@@ -127,11 +136,10 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         <li>Each photo scores 1 VP, or 2 VP with the Photo Album.</li>
         <li>Your two hidden <b>bonus cards</b> score at the end of the game.</li>
         <li>The first player token scores 1 VP.</li>
-        <li>Each gear card you own scores 2 VP.</li>
+        <li>Gear scores nothing: it is worth what its effect earns you.</li>
         <li>Leftover resources score 1 VP per 3 (house rule).</li>
         <li>
-          Park cards cost 2–7 resources and score 2–5 VP. <b>No park asks for sun</b> — sun buys gear
-          and photos.
+          Park cards cost 2–7 resources and score 2–5 VP. <b>No park asks for sun</b> — sun buys gear.
         </li>
         <li>Ties go to the most parks, then the most photos.</li>
       </ul>
@@ -170,8 +178,9 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
 
       <h3>Advanced sites — one more joins the trail each season</h3>
       <p className="modal-note">
-        Season 1 always uses the Ranger Station; the rest of the pool is shuffled and only three are drawn, so no two
-        games offer the same set.
+        The advanced sites join in a random order. With Wildlife the pool doubles and only four are drawn, so no two
+        games offer the same set. The <b>Ranger Station first</b> house rule makes it season 1&rsquo;s site every
+        game.
       </p>
       <table className="rules-table">
         <tbody>

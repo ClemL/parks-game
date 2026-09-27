@@ -843,3 +843,30 @@ test('draws every park card, with photographs as an option', async ({ page }) =>
   await page.keyboard.press('Escape');
   await expect(page.locator('.panel', { hasText: 'Park row' })).not.toContainText('photos');
 });
+
+test('offers the house rules with the new-game settings', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
+
+  const deck = page.locator('label', { hasText: 'Reserve from the deck' }).locator('input');
+  const ranger = page.locator('label', { hasText: 'Ranger Station first' }).locator('input');
+  // The published reserve is on; the Ranger Station pin is off.
+  await expect(deck).toBeChecked();
+  await expect(ranger).not.toBeChecked();
+
+  await ranger.check();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await page.waitForSelector('.trail .site');
+  // Season 1 now always holds the Ranger Station.
+  await expect(page.locator('.site', { hasText: 'Ranger Station' })).toHaveCount(1);
+
+  // And the choice is remembered.
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
+  await expect(ranger).toBeChecked();
+});

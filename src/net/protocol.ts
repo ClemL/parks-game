@@ -1,4 +1,4 @@
-import type { ExpansionFlags, GameAction } from '../game/types';
+import type { ExpansionFlags, GameAction, HouseRules } from '../game/types';
 import type { GameView } from '../game/view';
 
 /** How a seat is filled. An open seat becomes a CPU when the game starts. */
@@ -36,6 +36,8 @@ export interface StateResponse {
 export interface CreateRequest {
   seats: number;
   expansions: ExpansionFlags;
+  /** Optional rules; tables opened by older clients leave them out. */
+  houseRules?: Partial<HouseRules>;
 }
 
 export interface JoinRequest {

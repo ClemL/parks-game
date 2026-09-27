@@ -10,6 +10,7 @@ import {
   bagTotal,
   bottleDef,
   canAffordPhoto,
+  canReserveTop,
   claimableParks,
   effectiveCost,
   gearCost,
@@ -22,7 +23,7 @@ import {
   usableBottles,
 } from './engine';
 import { BONUS_CARDS } from './data/bonuses';
-import { FIRST_PLAYER_VP, GEAR_VP, TOKEN_LIMIT } from './data/sites';
+import { FIRST_PLAYER_VP, TOKEN_LIMIT } from './data/sites';
 import { scoringView } from './scoring';
 import type {
   AiPersonality,
@@ -268,11 +269,12 @@ function bestCampsite(
   return ranked[0] ?? null;
 }
 
-/** Value of the best park or gear action, wherever it is offered. */
+/** Value of the best park action (and gear, at the Trail End). */
 function bestParkOrGearValue(
   state: GameState,
   player: Player,
   values: Record<Resource, number>,
+  withGear: boolean,
 ): number {
   const w = weightsFor(player);
   const options: number[] = [0];
@@ -295,21 +297,27 @@ function bestParkOrGearValue(
     const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
     options.push((reserve * 0.42 + prize) * (w.reserve / 2.3));
   }
+  if (canReserveTop(state)) options.push(blindReserveScore(state, player));
 
-  const gear = affordableGear(state, player.index)
-    .map((g) => gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5)
-    .sort((a, b) => b - a)[0];
-  if (gear !== undefined) options.push(gear);
+  if (withGear) {
+    const gear = affordableGear(state, player.index)
+      .map((g) => gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5)
+      .sort((a, b) => b - a)[0];
+    if (gear !== undefined) options.push(gear);
+  }
 
   return Math.max(...options);
 }
 
-function bestTrailEndValue(state: GameState, player: Player, values: Record<Resource, number>): number {
+/** Reserving the deck's top card: an average park, sight unseen. */
+function blindReserveScore(state: GameState, player: Player): number {
   const w = weightsFor(player);
-  const options: number[] = [bestParkOrGearValue(state, player, values)];
-  if (canAffordPhoto(state, player.index)) options.push(w.photo * photoValue(player) * 0.6);
-  options.push(values.sun * 0.5);
-  return Math.max(...options);
+  const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
+  return (3.4 * 0.42 + prize) * (w.reserve / 2.3) * 0.92;
+}
+
+function bestTrailEndValue(state: GameState, player: Player, values: Record<Resource, number>): number {
+  return bestParkOrGearValue(state, player, values, true);
 }
 
 function siteValue(
@@ -371,9 +379,9 @@ function siteValue(
       break;
     }
     case 'adv-park':
-      // The Ranger Station is the Trail End's park and gear menu, mid-trail,
-      // and it does not retire the hiker.
-      value += bestParkOrGearValue(state, player, values);
+      // The Ranger Station is the Trail End's park actions, mid-trail, and it
+      // does not retire the hiker.
+      value += bestParkOrGearValue(state, player, values, false);
       break;
     case 'adv-copy': {
       const best = copyableSites(state, player.index)
@@ -497,8 +505,8 @@ function gearValue(
 ): number {
   const w = weightsFor(player);
   const seasonsLeft = 5 - state.season;
-  // Every gear card is worth points on its own now, on top of its effect.
-  const keepValue = GEAR_VP * 0.55;
+  // Gear scores nothing itself: it is worth only what its effect earns.
+  const keepValue = 0;
   switch (card.effect.kind) {
     case 'bonus-on-gain':
       return keepValue + values[card.effect.resource] * 0.9 * seasonsLeft * 0.45;
@@ -597,31 +605,24 @@ function copyDecision(state: GameState, player: Player): GameAction {
     : { type: 'copy-skip' };
 }
 
-/** The Ranger Station: the Trail End's park and gear menu, mid-trail. */
+/** The Ranger Station: the Trail End's park actions, mid-trail. */
 function parkOrGearDecision(state: GameState, player: Player): GameAction {
-  const choice = parkOrGearChoice(state, player);
-  return choice ? { ...choice, type: 'park-or-gear' } : { type: 'park-or-gear', option: 'skip' };
+  const choice = parkOrGearChoice(state, player, false);
+  if (!choice || choice.option === 'buy-gear') return { type: 'park-or-gear', option: 'skip' };
+  return { ...choice, option: choice.option, type: 'park-or-gear' };
 }
 
-/** Shared ranking of the claim / reserve / buy options. */
-function parkOrGearChoice(
-  state: GameState,
-  player: Player,
-): {
-  option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
+type ParkChoice = {
+  option: 'claim-park' | 'reserve-park' | 'reserve-top' | 'buy-gear' | 'chance-park';
   parkId?: string;
   gearId?: string;
-} | null {
+};
+
+/** Shared ranking of the claim / reserve / buy options. */
+function parkOrGearChoice(state: GameState, player: Player, withGear: boolean): ParkChoice | null {
   const w = weightsFor(player);
   const values = resourceValues(state, player);
-  const options: {
-    score: number;
-    choice: {
-      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
-      parkId?: string;
-      gearId?: string;
-    };
-  }[] = [];
+  const options: { score: number; choice: ParkChoice }[] = [];
 
   const claim = claimableParks(state, player.index)
     .map((p) => ({ p, score: p.vp + bonusSynergy(state, player, p) }))
@@ -645,9 +646,15 @@ function parkOrGearChoice(
     });
   }
 
-  const gear = affordableGear(state, player.index)
-    .map((g) => ({ g, score: gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5 }))
-    .sort((a, b) => b.score - a.score)[0];
+  if (canReserveTop(state) && player.reserved.length < 2 && state.season < 4) {
+    options.push({ score: blindReserveScore(state, player), choice: { option: 'reserve-top' } });
+  }
+
+  const gear = withGear
+    ? affordableGear(state, player.index)
+        .map((g) => ({ g, score: gearValue(state, player, g, values) * w.gearAppetite - gearCost(state, g) * 0.5 }))
+        .sort((a, b) => b.score - a.score)[0]
+    : undefined;
   if (gear && gear.score > 0.5) {
     options.push({ score: gear.score, choice: { option: 'buy-gear', gearId: gear.g.id } });
   }
@@ -661,55 +668,25 @@ function parkOrGearChoice(
   return options[0]?.choice ?? null;
 }
 
+/** The Trail End: one park action or gear, or pass when none is worth it. */
 function trailEndDecision(state: GameState, player: Player): GameAction {
-  const w = weightsFor(player);
-  const values = resourceValues(state, player);
-  const options: { action: GameAction; score: number }[] = [];
-
-  const parkOrGear = parkOrGearChoice(state, player);
-  if (parkOrGear) {
-    options.push({
-      action: { ...parkOrGear, type: 'trail-end' },
-      score: parkOrGearValueOf(state, player, values, parkOrGear),
-    });
-  }
-
-  if (canAffordPhoto(state, player.index)) {
-    options.push({
-      action: { type: 'trail-end', option: 'photo' },
-      score: w.photo * photoValue(player) * 0.6,
-    });
-  }
-
-  options.push({ action: { type: 'trail-end', option: 'rest' }, score: values.sun * 0.5 });
-  options.sort((a, b) => b.score - a.score);
-  return options[0].action;
+  const choice = parkOrGearChoice(state, player, true);
+  return choice ? { ...choice, type: 'trail-end' } : { type: 'trail-end', option: 'skip' };
 }
 
-/** Score a specific park/gear choice so it can compete with photo and rest. */
-function parkOrGearValueOf(
-  state: GameState,
-  player: Player,
-  values: Record<Resource, number>,
-  choice: {
-    option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park';
-    parkId?: string;
-    gearId?: string;
-  },
-): number {
-  const w = weightsFor(player);
-  if (choice.option === 'claim-park') {
-    const park = claimableParks(state, player.index).find((p) => p.id === choice.parkId);
-    return park ? (park.vp + bonusSynergy(state, player, park)) * w.parkClaim * 0.5 : 0;
+/** Over the limit: hand back whatever this CPU values least. */
+function discardDecision(state: GameState, player: Player): GameAction {
+  const values = resourceValues(state, player);
+  const left = { ...player.resources };
+  const resources: Partial<Record<Resource, number>> = {};
+  const over = tokenCount(player) - TOKEN_LIMIT;
+  for (let n = 0; n < over; n++) {
+    const pick = RESOURCES.filter((r) => (left[r] ?? 0) > 0).sort((a, b) => values[a] - values[b])[0];
+    if (!pick) break;
+    left[pick] = (left[pick] ?? 0) - 1;
+    resources[pick] = (resources[pick] ?? 0) + 1;
   }
-  if (choice.option === 'chance-park') return 3.6 * w.parkClaim * 0.42;
-  if (choice.option === 'reserve-park') {
-    const park = reservableParks(state).find((p) => p.id === choice.parkId);
-    const prize = state.firstPlayerTokenClaimed ? 0 : FIRST_PLAYER_VP + 1.2;
-    return park ? ((park.vp + bonusSynergy(state, player, park)) * 0.42 + prize) * (w.reserve / 2.3) : 0;
-  }
-  const card = affordableGear(state, player.index).find((g) => g.id === choice.gearId);
-  return card ? gearValue(state, player, card, values) * w.gearAppetite - gearCost(state, card) * 0.5 : 0;
+  return { type: 'discard', resources };
 }
 
 /** Bottles convert spare water; use one when the output is worth more. */
@@ -749,6 +726,11 @@ export function aiAction(state: GameState): GameAction | null {
         return copyDecision(state, player);
       case 'park-or-gear':
         return parkOrGearDecision(state, player);
+      case 'discard':
+        return discardDecision(state, player);
+      case 'season-photo':
+        // A closing photo is a point for a single token or two; take it.
+        return { type: 'season-photo', take: canAffordPhoto(state, player.index) };
       default:
         break;
     }
@@ -763,9 +745,9 @@ export function aiAction(state: GameState): GameAction | null {
           .slice(0, 2)
           .map((t) => t.need.sun),
       );
-      const left = (player.resources.sun ?? 0) - photoCost(state, player.index);
+      const left = tokenCount(player) - photoCost(state, player.index);
       const full = tokenCount(player) >= TOKEN_LIMIT - 1;
-      return { type: 'camera-photo', take: left >= earmark || full || w.photo >= 2 };
+      return { type: 'camera-photo', take: left >= earmark + 3 || full || w.photo >= 2 };
     }
     if (state.pending.kind === 'camera') return cameraDecision(state, player);
     return trailEndDecision(state, player);

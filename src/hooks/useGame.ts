@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { applyAction, createGame, DEFAULT_EXPANSIONS, hydrate, legalMoves } from '../game/engine';
+import { applyAction, createGame, DEFAULT_EXPANSIONS, DEFAULT_HOUSE_RULES, hydrate, legalMoves } from '../game/engine';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../game/data/sites';
 import { aiAction } from '../game/ai';
-import type { ExpansionFlags, GameAction, GameState } from '../game/types';
+import type { ExpansionFlags, GameAction, GameState, HouseRules } from '../game/types';
 
 export type Speed = 'slow' | 'normal' | 'fast';
 
@@ -17,6 +17,8 @@ interface SavePayload {
   seed: number;
   players: number;
   expansions: ExpansionFlags;
+  /** Absent from saves made before house rules existed. */
+  houseRules?: HouseRules;
   state: GameState;
 }
 
@@ -54,6 +56,7 @@ export function useGame(initialSeed?: number) {
 
   const [seed, setSeed] = useState(() => saved?.seed ?? initialSeed ?? (Date.now() & 0x7fffffff));
   const [expansions, setExpansions] = useState<ExpansionFlags>(saved?.expansions ?? DEFAULT_EXPANSIONS);
+  const [houseRules, setHouseRules] = useState<HouseRules>({ ...DEFAULT_HOUSE_RULES, ...saved?.houseRules });
   const [seats, setSeats] = useState(saved?.players ?? 4);
   const [state, setState] = useState<GameState>(
     () => saved?.state ?? createGame({ seed, expansions: DEFAULT_EXPANSIONS, players: 4 }),
@@ -112,10 +115,10 @@ export function useGame(initialSeed?: number) {
       setSeed(value);
       setResumed(false);
       setLastCpuMove(null);
-      setState(createGame({ seed: value, expansions, players: seats }));
+      setState(createGame({ seed: value, expansions, houseRules, players: seats }));
       setSelectedHiker(null);
     },
-    [expansions, seats],
+    [expansions, houseRules, seats],
   );
 
   const human = state.players[0];
@@ -124,8 +127,8 @@ export function useGame(initialSeed?: number) {
 
   // Save after every change so a refresh resumes the game.
   useEffect(() => {
-    writeSave({ version: 1, seed, players: state.players.length, expansions, state });
-  }, [state, seed, expansions]);
+    writeSave({ version: 1, seed, players: state.players.length, expansions, houseRules, state });
+  }, [state, seed, expansions, houseRules]);
 
   useEffect(() => {
     if (state.phase === 'game-over') clearSave();
@@ -221,6 +224,8 @@ export function useGame(initialSeed?: number) {
     setSpeed,
     expansions,
     setExpansions,
+    houseRules,
+    setHouseRules,
     seats,
     setSeats: (n: number) => setSeats(Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, n))),
     dispatch,

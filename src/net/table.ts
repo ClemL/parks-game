@@ -2,7 +2,7 @@ import { applyAction, createGame, CPU_SEATS, hydrate } from '../game/engine';
 import { aiAction } from '../game/ai';
 import { MAX_PLAYERS, MIN_PLAYERS } from '../game/data/sites';
 import { viewFor, type GameView } from '../game/view';
-import type { ExpansionFlags, GameAction, GameState } from '../game/types';
+import type { ExpansionFlags, GameAction, GameState, HouseRules } from '../game/types';
 import { keys, TABLE_TTL_SECONDS, type Kv } from './kv';
 import type {
   ActRequest,
@@ -35,6 +35,7 @@ interface TableRecord {
   hostToken: string;
   seatCount: number;
   expansions: ExpansionFlags;
+  houseRules?: HouseRules;
   /** Kept server-side for the whole game: it would predict every future draw. */
   seed: number;
   createdAt: number;
@@ -98,6 +99,11 @@ export async function createTable(kv: Kv, request: CreateRequest): Promise<Creat
     hostToken: secret(),
     seatCount,
     expansions: request.expansions,
+    // Only booleans get through, each defaulting to the published rule.
+    houseRules: {
+      blindReserve: request.houseRules?.blindReserve !== false,
+      rangerFirst: request.houseRules?.rangerFirst === true,
+    },
     seed: Math.floor(Math.random() * 0x7fffffff),
     createdAt: Date.now(),
   };
@@ -149,7 +155,12 @@ export async function startTable(kv: Kv, request: StartRequest): Promise<StateRe
   if (await kv.get(keys.state(table.code))) throw new TableError('already started', 409);
 
   const seats = await readSeats(kv, table);
-  let state = createGame({ seed: table.seed, expansions: table.expansions, players: table.seatCount });
+  let state = createGame({
+    seed: table.seed,
+    expansions: table.expansions,
+    houseRules: table.houseRules,
+    players: table.seatCount,
+  });
 
   let cpus = 0;
   for (const [index, seat] of seats.entries()) {

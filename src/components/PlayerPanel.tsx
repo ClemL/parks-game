@@ -63,7 +63,7 @@ export function PlayerPanel({
           </span>
         )}
         {state.cameraHolder === player.index && (
-          <span className="badge badge-camera" title="Holds the camera — photos cost 1 sun">
+          <span className="badge badge-camera" title="Holds the camera — photos cost 1 token, and one more photo when the season ends">
             📷
           </span>
         )}
@@ -107,7 +107,7 @@ export function PlayerPanel({
               icon: '📸',
               lines: [
                 'Each photo scores 1 VP, or 2 VP with the Photo Album.',
-                'A photo costs 2 sun, or 1 while you hold the camera.',
+                'A photo costs 2 tokens of any kind, or 1 while you hold the camera.',
                 { label: 'Taken', value: String(player.photos) },
               ],
             })

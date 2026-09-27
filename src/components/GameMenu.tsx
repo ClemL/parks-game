@@ -163,6 +163,30 @@ export function GameMenu({
                 Wildlife
               </label>
             </div>
+            <div className="house-rules" role="group" aria-label="House rules">
+              <label
+                className="menu-check"
+                title="A reserve may take the unseen top card of the park deck instead of a face-up park"
+              >
+                <input
+                  type="checkbox"
+                  checked={game.houseRules.blindReserve}
+                  onChange={(e) => game.setHouseRules({ ...game.houseRules, blindReserve: e.target.checked })}
+                />
+                Reserve from the deck
+              </label>
+              <label
+                className="menu-check"
+                title="Season 1's advanced site is always the Ranger Station instead of a random one"
+              >
+                <input
+                  type="checkbox"
+                  checked={game.houseRules.rangerFirst}
+                  onChange={(e) => game.setHouseRules({ ...game.houseRules, rangerFirst: e.target.checked })}
+                />
+                Ranger Station first
+              </label>
+            </div>
           </div>
           <div className="menu-row">
             <button type="button" className="primary" onClick={then(() => game.newGame())}>

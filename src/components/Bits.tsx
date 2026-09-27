@@ -20,11 +20,11 @@ export const RESOURCE_LABEL: Record<Resource, string> = {
 };
 
 const RESOURCE_USE: Record<Resource, string> = {
-  sun: 'Buys gear and photos. No park asks for sun.',
+  sun: 'Buys gear, and pays for photos like any token. No park asks for sun.',
   water: 'Pays park costs, fills bottles and pays the Overlook.',
   forest: 'Pays park costs.',
   mountain: 'Pays park costs.',
-  wild: 'Pays for any resource, and two of them each once Nightfall is in play.',
+  wild: 'Pays for any resource or part of a photo, and two of them each once Nightfall is in play. Never buys gear.',
 };
 
 export function ResourceChip({

@@ -686,6 +686,11 @@ button:disabled {
   gap: 8px;
 }
 
+.menu-fields .house-rules {
+  display: grid;
+  gap: 8px;
+}
+
 .menu-row,
 .menu-more {
   display: flex;
@@ -1953,6 +1958,48 @@ button.bottle:disabled {
   border-top: 1px solid var(--line);
   background: var(--surface-2);
   border-radius: 0 0 14px 14px;
+}
+
+/* A button row sitting directly above a strip of cards needs a gap. */
+.modal .choice-grid + .card-strip {
+  margin-top: 10px;
+}
+
+/* Choosing tokens: a photo's price, or what goes back over the limit. */
+.token-picker {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.token-picker li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.token-picker-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token-picker-step button {
+  min-width: 34px;
+  padding: 4px 0;
+}
+
+.token-picker-step output {
+  min-width: 1.4em;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .choice-grid {
