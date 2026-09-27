@@ -27,6 +27,10 @@ test('plays a full game through every decision modal', async ({ page }) => {
 
   const modalsSeen = new Set<string>();
   let clicks = 0;
+  // Consecutive looks at a dialog that offered nothing to press. A dialog can
+  // change under the bot between two queries (a closing photo hands straight
+  // to the end-of-season dialog), so only a dialog that stays empty fails.
+  let empty = 0;
 
   for (let step = 0; step < 4000; step++) {
     if (await page.locator('.scores').count()) break;
@@ -51,7 +55,13 @@ test('plays a full game through every decision modal', async ({ page }) => {
       else if (pick === 1 && (await gear.count())) await gear.first().click({ timeout: 5000 });
       else if ((await choices.count()) > 0) await choices.first().click({ timeout: 5000 });
       else if (await parks.count()) await parks.first().click({ timeout: 5000 });
-      else throw new Error(`modal with no available action: ${[...modalsSeen].join(', ')}`);
+      else {
+        empty += 1;
+        if (empty > 25) throw new Error(`modal with no available action: ${[...modalsSeen].join(', ')}`);
+        await page.waitForTimeout(120);
+        continue;
+      }
+      empty = 0;
       continue;
     }
 
