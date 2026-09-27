@@ -108,20 +108,26 @@ export function validPhotoPayment(state: GameState, playerIndex: number, pay: Re
  */
 export function defaultPhotoPayment(state: GameState, playerIndex: number): ResourceBag | null {
   const player = state.players[playerIndex];
-  let owed = photoCost(state, playerIndex);
-  const pay: ResourceBag = {};
+  const cost = photoCost(state, playerIndex);
+  const cover = wildCoverage(state);
+  const plainHeld = COST_RESOURCES.reduce((sum, r) => sum + (player.resources[r] ?? 0), 0);
+  // As few wildcards as will close the gap, and only the plain tokens still
+  // owed after them, so the suggestion never overpays.
+  const wild = plainHeld >= cost ? 0 : Math.ceil((cost - plainHeld) / cover);
+  if (wild > (player.resources.wild ?? 0)) return null;
+  let owed = Math.max(0, cost - wild * cover);
+  const pay: ResourceBag = wild > 0 ? { wild } : {};
   const left = { ...player.resources };
   while (owed > 0) {
-    const plain = COST_RESOURCES.filter((r) => (left[r] ?? 0) > 0).sort((a, b) => {
+    const pick = COST_RESOURCES.filter((r) => (left[r] ?? 0) > 0).sort((a, b) => {
       if (a === 'sun') return -1;
       if (b === 'sun') return 1;
       return (left[b] ?? 0) - (left[a] ?? 0);
     })[0];
-    const pick: Resource | undefined = plain ?? ((left.wild ?? 0) > 0 ? 'wild' : undefined);
     if (!pick) return null;
     left[pick] = (left[pick] ?? 0) - 1;
     pay[pick] = (pay[pick] ?? 0) + 1;
-    owed -= pick === 'wild' ? wildCoverage(state) : 1;
+    owed -= 1;
   }
   return pay;
 }

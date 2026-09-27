@@ -6,6 +6,7 @@ import {
   campfireAllowance,
   canAffordPhoto,
   canClaimChance,
+  defaultPhotoPayment,
   claimableParks,
   copyableSites,
   createGame,
@@ -706,6 +707,28 @@ describe('resources', () => {
     const shot = applyAction(next, { type: 'camera-photo', take: true, pay: { forest: 1 } });
     expect(shot.players[0].photos).toBe(1);
     expect(shot.players[0].resources).toMatchObject({ water: 2, forest: 0, wild: 1 });
+  });
+
+  it('suggests a photo payment the engine will accept, however the pack is made up', () => {
+    for (const nightfall of [false, true]) {
+      const state = createGame({ seed: 56, expansions: { nightfall, wildlife: false } });
+      state.seasonCard = null;
+      for (const holder of [0, 1]) {
+        state.cameraHolder = holder;
+        for (const pack of [
+          { sun: 1, wild: 1 },
+          { wild: 1 },
+          { wild: 2 },
+          { water: 1, wild: 1 },
+          { sun: 3 },
+          { forest: 1, mountain: 1 },
+        ]) {
+          state.players[0].resources = { sun: 0, water: 0, forest: 0, mountain: 0, wild: 0, ...pack };
+          const pay = defaultPhotoPayment(state, 0);
+          if (pay) expect(validPhotoPayment(state, 0, pay), JSON.stringify({ nightfall, holder, pack })).toBe(true);
+        }
+      }
+    }
   });
 
   it('prices a photo at two tokens of any kind without the camera, wildcards included', () => {

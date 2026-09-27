@@ -321,8 +321,10 @@ export function DecisionModal({
   // own, so only offer the step back on a fresh arrival.
   const back = pending.copied || pending.kind === 'bison' ? undefined : onBack;
 
+  const pickerKey = `${pending.kind}:${pending.stage ?? ''}:${state.log.length}:${RESOURCES.map((r) => player.resources[r] ?? 0).join(',')}`;
   const photoPicker = (type: 'camera-photo' | 'season-photo', declineLabel: string) => (
     <TokenPicker
+      key={pickerKey}
       held={player.resources}
       initial={defaultPhotoPayment(state, player.index) ?? {}}
       valid={(pay) => validPhotoPayment(state, player.index, pay)}
@@ -350,9 +352,10 @@ export function DecisionModal({
           back.
         </p>
         <TokenPicker
+          key={pickerKey}
           held={player.resources}
           initial={defaultDiscard(state, player.index)}
-          valid={(pick) => bagSize(pick) === over}
+          valid={(pick) => bagSize(pick) === over && RESOURCES.every((r) => (pick[r] ?? 0) <= (player.resources[r] ?? 0))}
           confirmLabel={(pick) =>
             bagSize(pick) === over ? `Hand back ${tokens(pick)}` : `Pick ${over} (${bagSize(pick)} chosen)`
           }
