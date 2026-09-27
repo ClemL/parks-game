@@ -446,7 +446,18 @@ site.
 
 ## Park artwork
 
-Art is resolved in three steps, best first:
+Every park card carries an **illustration drawn for the game**: a flat, screen-print style SVG of
+the view the park is best known for — Tunnel View at Yosemite, Delicate Arch against the La Sals,
+Grand Prismatic steaming, the Moulton barn under the Tetons, a bear at Brooks Falls, Fort Jefferson
+in its turquoise moat, the Gateway Arch at dusk. All 63 parks, base game and expansions, have one.
+They are part of the bundle (about 25 KB gzipped for the lot), need no network, and scale to any
+card size. Tap a card and its sheet names the view it shows.
+
+The drawings are built from a small kit in `src/art/kit.tsx` — skies, ridgelines, pines, water and
+reflections, a few animals — and one scene per park in `src/art/scenes/`. `npm run dev` and open
+`/park-art-preview.html` to see every scene at full, card and compact size.
+
+**Menu → Options → Park art → Photographs** swaps them for photographs, resolved best first:
 
 1. **Self-hosted.** Run `npm run art` and commit what it writes: `public/parks/<id>.jpg` plus a
    `credits.json` carrying each image's artist and license. The app then serves its own images and
@@ -454,12 +465,11 @@ Art is resolved in three steps, best first:
    the container this was built in cannot reach Wikimedia.
 2. **Wikipedia at runtime.** Without those files the browser asks the English Wikipedia API for
    each park's lead image (CORS-enabled) and caches the answer in `localStorage` for 30 days.
-3. **Generated scenery.** Any park that resolves to nothing draws vector artwork keyed to its
-   palette and terrain tags, so the board is never incomplete.
+3. **The drawing.** Any park that resolves to no photograph keeps its illustration.
 
-Either way the artist and license of every photograph shown is listed under **Credits** in the app.
-Many are works of the U.S. National Park Service and in the public domain; others are Creative
-Commons.
+Nothing is fetched while illustrations are chosen. With photographs on, the artist and license of
+every photograph shown is listed under **Credits** in the app. Many are works of the U.S. National
+Park Service and in the public domain; others are Creative Commons.
 
 ## Project layout
 
@@ -475,7 +485,7 @@ src/game/view.ts            per-seat redaction: what one device is allowed to se
 src/game/engine.test.ts     rules tests
 src/dev/                    CPU strength benchmarks, run by npm test
 src/components/             board, trail, player panels, modals, seat QR codes
-src/art/                    local art, Wikipedia fallback, generated scenery
+src/art/                    park illustrations (kit + scenes), photo loading, fallback scenery
 src/hooks/useGame.ts        solo game state, save/undo, the CPU turn driver
 src/hooks/useTable.ts       table mode: the polling transport
 src/hooks/useDragPawn.ts    dragging a hiker to its next site

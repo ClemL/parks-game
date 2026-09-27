@@ -810,3 +810,36 @@ test('sends you from the menu down to the film', async ({ page }) => {
   });
   expect(inView).toBe(true);
 });
+
+test('draws every park card, with photographs as an option', async ({ page }) => {
+  // Keep Wikipedia out of it: with no photos to be had, the drawings stay.
+  await page.route('**/en.wikipedia.org/**', (route) => route.abort());
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  const row = page.locator('.panel .card-strip .park-card');
+  expect(await row.count()).toBeGreaterThanOrEqual(3);
+  await expect(row.locator('.park-art-svg')).toHaveCount(await row.count());
+  await expect(row.locator('.park-art-img')).toHaveCount(0);
+  await expect(row.first().locator('.park-art-svg')).toHaveAttribute('aria-label', /^Illustration of /);
+
+  // Asking for photographs fetches them; when that fails the drawings hold.
+  await openMenu(page);
+  const style = page.locator('label', { hasText: 'Park art' }).locator('select');
+  await style.selectOption('photos');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.panel', { hasText: 'Park row' })).toContainText('photos unavailable');
+  await expect(row.first().locator('.park-art-svg')).toBeVisible();
+
+  // And the choice is remembered.
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
+  await expect(style).toHaveValue('photos');
+  await style.selectOption('illustrated');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.panel', { hasText: 'Park row' })).not.toContainText('photos');
+});

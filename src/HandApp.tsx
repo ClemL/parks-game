@@ -10,8 +10,7 @@ import { useUi } from './hooks/useUi';
 import { api } from './net/client';
 import { canClaim, siteDef, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
-import { PARKS } from './game/data/parks';
-import { loadParkArt, type ArtMap } from './art/parkArt';
+import { useParkArt } from './art/useParkArt';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const HAND_KEY = 'parks-hand-v1';
@@ -58,17 +57,12 @@ export default function HandApp() {
   const [boardOpen, setBoardOpen] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches,
   );
-  const [art, setArt] = useState<ArtMap>({});
 
   const table = useTable(joined && session ? session : null);
   const { view } = table;
   const ui = useUi(view?.season ?? 1);
 
-  useEffect(() => {
-    loadParkArt(PARKS.map((p) => ({ id: p.id, wikiTitle: p.wikiTitle })))
-      .then(setArt)
-      .catch(() => setArt({}));
-  }, []);
+  const { art } = useParkArt(ui.parkArt);
 
   // A seat that has been claimed before rejoins without asking again.
   useEffect(() => {

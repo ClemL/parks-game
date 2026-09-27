@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useGame } from './hooks/useGame';
 import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
@@ -14,7 +14,7 @@ import { CreditsModal, RulesModal } from './components/RulesModal';
 import { bisonPark, campsiteDef, canClaim, gearCost, SEASONS, siteDef } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { PARKS } from './game/data/parks';
-import { loadParkArt, type ArtMap } from './art/parkArt';
+import { useParkArt } from './art/useParkArt';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 
@@ -78,29 +78,12 @@ function TurnPill({
 export default function App({ onTableMode }: { onTableMode?: () => void }) {
   const game = useGame();
   const { state, moves, isHumanTurn, selectedHiker, dispatch } = game;
-  const [art, setArt] = useState<ArtMap>({});
-  const [artState, setArtState] = useState<'loading' | 'ready' | 'local' | 'offline'>('loading');
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const ui = useUi(state.season);
 
-  useEffect(() => {
-    let alive = true;
-    loadParkArt(PARKS.map((p) => ({ id: p.id, wikiTitle: p.wikiTitle })))
-      .then((result) => {
-        if (!alive) return;
-        setArt(result);
-        const entries = Object.values(result);
-        setArtState(
-          entries.length === 0 ? 'offline' : entries.some((e) => e.local) ? 'local' : 'ready',
-        );
-      })
-      .catch(() => alive && setArtState('offline'));
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { art, artState } = useParkArt(ui.parkArt);
 
   const credits = useMemo(
     () =>
@@ -273,7 +256,7 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
                 {artState === 'loading'
                   ? ' · loading photos…'
                   : artState === 'offline'
-                    ? ' · generated artwork'
+                    ? ' · photos unavailable, showing drawings'
                     : artState === 'local'
                       ? ' · bundled photos'
                       : ''}
@@ -421,7 +404,9 @@ export default function App({ onTableMode }: { onTableMode?: () => void }) {
       <footer className="footer">
         <span>Seed {game.seed}</span>
         <span className="footer-note">
-          Park photographs from Wikipedia / Wikimedia Commons — see{' '}
+          {ui.parkArt === 'photos'
+            ? 'Park photographs from Wikipedia / Wikimedia Commons — see '
+            : 'Park illustrations drawn for this game — see '}
           <button type="button" className="link" onClick={() => setShowCredits(true)}>
             credits
           </button>

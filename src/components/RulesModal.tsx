@@ -321,9 +321,11 @@ export function CreditsModal({
   return (
     <Modal title="Art credits" onClose={onClose} wide>
       <p className="modal-note">
-        Park photographs are fetched from the English Wikipedia at runtime (the lead image of each park&rsquo;s article) and
-        cached in your browser. Many are works of the U.S. National Park Service and in the public domain; others carry the
-        Creative Commons license shown below. Parks without a resolvable photo use generated vector scenery instead.
+        The park illustrations are original drawings made for this game, each after the view its park is best known
+        for. Set <b>Park art</b> to <b>Photographs</b> in the menu to show photos instead: those are fetched from the
+        English Wikipedia (the lead image of each park&rsquo;s article) and cached in your browser. Many are works of the
+        U.S. National Park Service and in the public domain; others carry the Creative Commons license shown below. A park
+        without a resolvable photo keeps its drawing.
       </p>
       <table className="rules-table">
         <tbody>
@@ -346,7 +348,7 @@ export function CreditsModal({
           {credits.length === 0 && (
             <tr>
               <td colSpan={4} className="muted">
-                No photographs loaded — every card is showing generated artwork.
+                No photographs loaded — the cards are showing their illustrations.
               </td>
             </tr>
           )}
