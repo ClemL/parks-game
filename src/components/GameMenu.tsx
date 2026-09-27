@@ -66,8 +66,7 @@ export function GameMenu({
           <p className="muted menu-note">A three and a half minute walk through the whole game — no sound, subtitled.</p>
           <div className="menu-row">
             <button type="button" className="primary menu-watch" onClick={then(onWatchFilm)}>
-              ▶ Watch the film
-              <span className="menu-sub">3:32 · silent</span>
+              ▶ Watch a Video
             </button>
             <button type="button" className="ghost" onClick={then(onRules)}>
               Rules
@@ -101,6 +100,14 @@ export function GameMenu({
               <select value={ui.parkArt} onChange={(e) => ui.setParkArt(e.target.value as typeof ui.parkArt)}>
                 <option value="illustrated">Illustrations</option>
                 <option value="photos">Photographs</option>
+              </select>
+            </label>
+            <label className="menu-field" title="Pictures on the trail sites and campsites">
+              Site art
+              <select value={ui.siteArt} onChange={(e) => ui.setSiteArt(e.target.value as typeof ui.siteArt)}>
+                <option value="illustrated">Illustrations</option>
+                <option value="photos">Photographs</option>
+                <option value="none">None</option>
               </select>
             </label>
             <label className="menu-field" title="Tighter spacing and smaller cards">

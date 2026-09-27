@@ -771,8 +771,9 @@ button.link {
 
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 4px 10px;
   margin-bottom: 10px;
 }
 
@@ -848,7 +849,6 @@ button.link {
 }
 
 .notice.hint .notice-text,
-.notice.season-card .notice-text,
 .notice.resumed .notice-text {
   font-size: inherit;
 }
@@ -1086,6 +1086,71 @@ button.turn-switch:hover {
   filter: saturate(0.75);
 }
 
+/* A site's picture fills the tile and fades into the card behind its name. */
+.site-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.site-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--card) 35%, transparent) 0%,
+    transparent 22%,
+    transparent 38%,
+    color-mix(in srgb, var(--card) 92%, transparent) 70%,
+    var(--card-2) 100%
+  );
+}
+
+.site-start .site-art::after,
+.site-finish .site-art::after {
+  background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--art-bg) 92%, transparent) 72%);
+}
+
+.site-art-svg,
+.site-art-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.site-hit > .site-index,
+.site-hit > .site-icon,
+.site-hit > .site-name {
+  position: relative;
+  z-index: 1;
+}
+
+.site-hit > .site-token,
+.site-hit > .site-fire-badge {
+  z-index: 1;
+}
+
+/* The index sits on the picture, so it gets a paper chip to stand on. */
+.site-art ~ .site-index {
+  padding: 0 5px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+}
+
+/* On a campsite card the picture is a band across the top. */
+.campsite-art {
+  display: block;
+  height: 64px;
+  margin: -10px -10px 4px;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
+}
+
 .site-index {
   font-size: 10px;
   letter-spacing: 0.09em;
@@ -1161,19 +1226,15 @@ button.turn-switch:hover {
   }
 }
 
-.season-card {
-  padding: 8px 11px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 4%, transparent));
-  border: 1px solid var(--season-line);
-  border-radius: 8px;
-  font-size: 13px;
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
+/* The season card rides beside the season badge in the trail heading. */
+.panel-note {
+  flex: 1 1 16em;
+  min-width: 0;
 }
 
-.season-card-icon {
-  font-size: 15px;
+.season-card {
+  font-size: 13px;
+  color: var(--text);
 }
 
 .site-tent-badge {
@@ -1894,6 +1955,8 @@ button.bottle:disabled {
   border-radius: 14px;
   box-shadow: var(--shadow-modal);
   width: min(560px, 100%);
+  /* A grid item otherwise grows to its widest child: keep it to the screen. */
+  min-width: 0;
   max-height: min(86vh, 900px);
   display: flex;
   flex-direction: column;
@@ -1958,6 +2021,58 @@ button.bottle:disabled {
   border-top: 1px solid var(--line);
   background: var(--surface-2);
   border-radius: 0 0 14px 14px;
+}
+
+/* The park decisions: your kit, who holds what, and a visit/reserve toggle. */
+.modal .kit {
+  margin: 0 0 10px;
+  box-shadow: none;
+  background: var(--surface-top, var(--surface));
+}
+
+.holders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.holders .player-dot {
+  margin: 0 4px 0 2px;
+}
+
+.mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.mode-toggle button {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 650;
+  text-align: center;
+}
+
+.mode-toggle button.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mode-count {
+  font-size: 11.5px;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 /* A button row sitting directly above a strip of cards needs a gap. */

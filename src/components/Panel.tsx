@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 export function Panel({
   title,
   badge,
+  note,
   meta,
   open,
   onToggle,
@@ -13,6 +14,8 @@ export function Panel({
   title: string;
   /** Sits inside the heading itself, for status that belongs to the title. */
   badge?: ReactNode;
+  /** A line of text beside the heading, outside the fold toggle. */
+  note?: ReactNode;
   /** Right-hand status text or element, shown whether open or folded. */
   meta?: ReactNode;
   open: boolean;
@@ -31,6 +34,7 @@ export function Panel({
           <h2>{title}</h2>
           {badge}
         </button>
+        {note && <span className="panel-note">{note}</span>}
         {meta && <span className="panel-meta">{meta}</span>}
       </div>
       {open ? children : summary ? <div className="panel-summary">{summary}</div> : null}

@@ -228,12 +228,6 @@ test('closes the notices with their X, and the dismissal sticks', async ({ page 
   await page.locator('.notice.hint .notice-close').click();
   await expect(page.locator('.notice.hint')).toHaveCount(0);
 
-  const seasonCard = page.locator('.notice.season-card');
-  if (await seasonCard.count()) {
-    await seasonCard.locator('.notice-close').click();
-    await expect(page.locator('.notice.season-card')).toHaveCount(0);
-  }
-
   // The dismissal sticks across a reload; the menu is where it comes back from.
   await page.reload();
   await page.waitForSelector('.trail .site');
@@ -798,7 +792,7 @@ test('sends you from the menu down to the film', async ({ page }) => {
   // one copy of the way to it, not a second copy of the film.
   await openMenu(page);
   await expect(page.locator('.menu .film-canvas')).toHaveCount(0);
-  await page.getByRole('button', { name: /Watch the film/ }).click();
+  await page.getByRole('button', { name: /Watch a Video/ }).click();
 
   // The menu gets out of the way, the panel is open, and the film is in view.
   await expect(page.locator('.menu')).toHaveCount(0);
@@ -869,4 +863,38 @@ test('offers the house rules with the new-game settings', async ({ page }) => {
   await page.waitForSelector('.trail .site');
   await openMenu(page);
   await expect(ranger).toBeChecked();
+});
+
+test('pictures the trail sites and campsites, or leaves them bare', async ({ page }) => {
+  await page.route('**/en.wikipedia.org/**', (route) => route.abort());
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  // Illustrations by default, on every tile and campsite card.
+  const tiles = page.locator('.trail .site');
+  await expect(page.locator('.trail .site-art svg')).toHaveCount(await tiles.count());
+  await expect(page.locator('.campsite .campsite-art svg')).toHaveCount(await page.locator('.campsite').count());
+
+  await openMenu(page);
+  const style = page.locator('label', { hasText: 'Site art' }).locator('select');
+  await style.selectOption('none');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.site-art, .campsite-art')).toHaveCount(0);
+
+  // Photographs that cannot be fetched leave the drawings in place.
+  await openMenu(page);
+  await style.selectOption('photos');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.trail .site-art svg')).toHaveCount(await tiles.count());
+});
+
+test('keeps opponents’ bonus cards out of sight entirely', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await expect(page.locator('.bonus-hidden')).toHaveCount(0);
+  // Your own two cards are still there to read.
+  await expect(page.locator('aside .player').first().locator('.bonus')).toHaveCount(2);
 });

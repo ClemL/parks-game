@@ -111,8 +111,8 @@ back.
 - **Your kit sits across the top** — resources, the token count, campfires, photos, bottles and
   gear on one line, with the bottles usable straight from there. Your own panel keeps the parks,
   reservations and bonus cards.
-- **The season is named in the trail heading** — a `Spring 1/4` label beside the title — rather
-  than shown as a row of four pips.
+- **The season is named in the trail heading** — a `Spring 1/4` label beside the title, with the
+  season card's name and effect on the same line — rather than shown as a row of four pips.
 - **Clicking the turn indicator switches your hiker**, in the trail heading or the phone action
   bar. It shows which of your two hikers currently holds the highlight.
 - **The trail log closes the board**, below every player panel.
@@ -128,11 +128,14 @@ back.
 - **Every section folds away** — tap its heading. A folded section keeps a one-line summary (which
   campsites are out, what the gear shop is selling, the last log line), and each player folds to
   their resource chips plus a one-liner. What you fold is remembered.
-- **The notices close** — the turn hint, the season card and the resume banner each have an X. The
-  hint has a switch in Setup to bring it back; a closed season card returns when the next season
-  deals its own.
+- **The notices close** — the turn hint and the resume banner each have an X, and the hint has a
+  switch in the menu to bring it back.
+- **The Trail End and Ranger Station show your kit** at the top of their panel, say who holds the
+  first player token and the camera, and put the parks in one row with a **Visit / Reserve**
+  toggle rather than two rows of the same cards.
+- **Other players' bonus cards are not shown at all** until the scoreboard reveals them.
 - **On a phone** the board opens with the campsites, gear shop, trail log and CPU seats already
-  folded, and the setup controls tucked behind a **Setup** button. That is about a third less
+  folded, and the settings tucked behind the **☰ menu** button. That is about a third less
   scrolling than the fully open board, before you fold anything yourself.
 
 ## Table mode
@@ -427,7 +430,7 @@ Ferrata, fatigue, the Chalet, Conservation Projects) rather than modules that bo
 Researching the expansions turned up a base-game element that was missing here entirely: one
 **season card** is revealed from that season's own deck at the start of each season, and its effect
 runs all season — weather that pays a bonus resource on top of a site's payout, or a discount on
-parks, photos or gear. It is shown above the trail. Its weather pattern is what puts the sun and
+parks, photos or gear. It is shown in the trail heading beside the season. Its weather pattern is what puts the sun and
 water tokens on the trail sites (see **Fidelity notes**).
 
 ## The CPU opponents
@@ -469,6 +472,20 @@ of Chance park when nothing on the board beats it.
 Scores run higher than a published game mostly because of the two scoring bonus cards and the
 leftover-resource points (see **Fidelity notes**); a wildcard covering two resources under Nightfall
 adds to it.
+
+## Site and campsite artwork
+
+Every trail site — the trailhead, the six basic sites, all eight advanced sites and the Trail End —
+and every Nightfall campsite has its own small illustration in the same style as the parks: a
+signpost at the trailhead, a falls dropping into its pool, a camera on its tripod at a viewpoint, a
+fire lookout above the forest, a telescope under the Milky Way. On a trail tile the picture fills
+the card and fades into it behind the site's name; on a campsite card it is a band across the top.
+
+**Menu → Options → Site art** chooses **Illustrations** (the default), **Photographs** or
+**None**. Photographs are the lead images of Wikipedia articles picked for each site (`Waterfall`,
+`Fire lookout tower`, `Bird hide`…, listed in `src/art/siteArt.tsx`), fetched only when chosen and
+credited alongside the park photos; a site whose article has no usable image keeps its drawing.
+The scenes live in `src/art/sites.tsx` and appear on `/park-art-preview.html` below the parks.
 
 ## Park artwork
 

@@ -1,4 +1,4 @@
-import type { Resource, ResourceBag } from '../game/types';
+import type { Resource, ResourceBag, SeasonCardDef } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { useInfo } from './InfoSheet';
 import type { Flash } from '../hooks/useFlash';
@@ -106,5 +106,14 @@ export function costLabel(cost: ResourceBag): string {
     RESOURCES.filter((r) => (cost[r] ?? 0) > 0)
       .map((r) => `${cost[r]} ${RESOURCE_LABEL[r]}`)
       .join(', ') || 'free'
+  );
+}
+
+/** The season card in play, as one line beside the season badge. */
+export function SeasonCardLine({ card }: { card: SeasonCardDef }) {
+  return (
+    <span className="season-card" title={card.text}>
+      <b>{card.name}</b> — {card.text}
+    </span>
   );
 }

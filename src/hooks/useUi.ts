@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ParkArtStyle } from '../art/useParkArt';
+import type { SiteArtStyle } from '../art/siteArt';
 
 /**
  * Layout preferences: which sections are collapsed, and which of the standing
@@ -37,14 +38,14 @@ interface UiPrefs {
   collapsed: string[];
   /** True once the turn hint has been closed. */
   hintsHidden: boolean;
-  /** The season whose card was closed; a new season shows its own card. */
-  seasonCardClosed: number | null;
   theme: ThemeId;
   density: Density;
   /** The board's highlight follows the season unless this is off. */
   seasonTint: boolean;
   /** Park cards show drawings, or photographs fetched from Wikipedia. */
   parkArt: ParkArtStyle;
+  /** Trail sites and campsites: drawings, photographs, or no picture at all. */
+  siteArt: SiteArtStyle;
 }
 
 /** Phones open with the reference material folded away. */
@@ -53,11 +54,11 @@ function defaults(): UiPrefs {
   return {
     collapsed: narrow ? ['campsites', 'gear', 'log', 'player-1', 'player-2', 'player-3', 'player-4'] : [],
     hintsHidden: false,
-    seasonCardClosed: null,
     theme: 'trailside',
     density: narrow ? 'compact' : 'comfortable',
     seasonTint: true,
     parkArt: 'illustrated',
+    siteArt: 'illustrated',
   };
 }
 
@@ -70,11 +71,11 @@ function read(): UiPrefs {
     return {
       collapsed: Array.isArray(parsed.collapsed) ? parsed.collapsed : [],
       hintsHidden: parsed.hintsHidden === true,
-      seasonCardClosed: typeof parsed.seasonCardClosed === 'number' ? parsed.seasonCardClosed : null,
       theme: THEMES.some((t) => t.id === parsed.theme) ? (parsed.theme as ThemeId) : base.theme,
       density: parsed.density === 'compact' || parsed.density === 'comfortable' ? parsed.density : base.density,
       seasonTint: parsed.seasonTint !== false,
       parkArt: parsed.parkArt === 'photos' ? 'photos' : 'illustrated',
+      siteArt: parsed.siteArt === 'photos' || parsed.siteArt === 'none' ? parsed.siteArt : 'illustrated',
     };
   } catch {
     return defaults();
@@ -147,8 +148,6 @@ export function useUi(season?: number) {
     hintsHidden: prefs.hintsHidden,
     hideHints: () => setPrefs((c) => ({ ...c, hintsHidden: true })),
     showHints: () => setPrefs((c) => ({ ...c, hintsHidden: false })),
-    seasonCardClosed: prefs.seasonCardClosed,
-    closeSeasonCard: (which: number) => setPrefs((c) => ({ ...c, seasonCardClosed: which })),
     theme: prefs.theme,
     resolvedTheme: resolveTheme(prefs.theme),
     setTheme: (theme: ThemeId) => setPrefs((c) => ({ ...c, theme })),
@@ -156,6 +155,8 @@ export function useUi(season?: number) {
     setDensity: (density: Density) => setPrefs((c) => ({ ...c, density })),
     parkArt: prefs.parkArt,
     setParkArt: (parkArt: ParkArtStyle) => setPrefs((c) => ({ ...c, parkArt })),
+    siteArt: prefs.siteArt,
+    setSiteArt: (siteArt: SiteArtStyle) => setPrefs((c) => ({ ...c, siteArt })),
     seasonTint: prefs.seasonTint,
     setSeasonTint: (seasonTint: boolean) => setPrefs((c) => ({ ...c, seasonTint })),
   };

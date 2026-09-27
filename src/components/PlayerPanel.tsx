@@ -233,6 +233,7 @@ export function PlayerPanel({
         </span>
       </div>
 
+      {(revealBonuses || player.isHuman) && player.bonusCards.some((id) => bonusCardById(id)) && (
       <div className="player-row">
         <span className="player-label">Bonus cards</span>
         <span className="bonus-list">
@@ -256,6 +257,7 @@ export function PlayerPanel({
           })}
         </span>
       </div>
+      )}
         </>
       )}
       {!open && (

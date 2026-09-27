@@ -179,8 +179,15 @@ async function loadLocalArt(parks: { id: string; wikiTitle: string }[]): Promise
 export async function loadParkArt(parks: { id: string; wikiTitle: string }[]): Promise<ArtMap> {
   const local = await loadLocalArt(parks);
   if (local) return local;
+  return loadWikipediaArt(parks.map((p) => p.wikiTitle));
+}
 
-  const titles = parks.map((p) => p.wikiTitle);
+/**
+ * The lead image of each named English Wikipedia article, with attribution,
+ * cached in the browser for a month. Titles that resolve to nothing are simply
+ * missing from the map.
+ */
+export async function loadWikipediaArt(titles: string[]): Promise<ArtMap> {
   const cached = readCache();
   if (cached && titles.every((t) => t in cached || cached[t] === null)) return cached;
 
