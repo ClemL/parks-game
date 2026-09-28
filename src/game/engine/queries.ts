@@ -6,7 +6,7 @@ import {
   type ParkCard,
 } from '../types';
 import { CAMPSITES, campsiteCapacity } from '../data/campsites';
-import { SITES } from '../data/sites';
+import { SITES, TOKEN_LIMIT } from '../data/sites';
 import {
   canClaim,
   chanceSeason,
@@ -152,4 +152,31 @@ export function canClaimChance(state: GameState, playerIndex: number): boolean {
   if (!park) return false;
   const player = state.players[playerIndex];
   return planPayment(player, effectiveCost(player, park, state), wildCoverage(state)) !== null;
+}
+
+/** The blind reserve house rule: the top card of the park deck, sight unseen. */
+export function canReserveTop(state: GameState): boolean {
+  return state.houseRules?.blindReserve === true && parkDeckCount(state) > 0;
+}
+
+/** Cards left in the deck, whether this is a full state or a redacted view. */
+function parkDeckCount(state: GameState): number {
+  const redacted = (state as GameState & { redacted?: { parkDeckCount: number } }).redacted;
+  return redacted ? redacted.parkDeckCount : state.parkDeck.length;
+}
+
+/** Tokens a player must hand back before their turn can end. */
+export function tokensOverLimit(state: GameState, playerIndex: number): number {
+  const player = state.players[playerIndex];
+  const held = Object.values(player.resources).reduce((sum, n) => sum + (n ?? 0), 0);
+  return Math.max(0, held - TOKEN_LIMIT);
+}
+
+/** What a pending decision is about, for status lines. */
+export function pendingLabel(state: GameState): string {
+  const pending = state.pending;
+  if (!pending) return '';
+  if (pending.kind === 'discard') return 'handing back tokens over the limit';
+  if (pending.kind === 'season-photo') return "the season's closing photo";
+  return SITES[state.trail[pending.siteIndex]].name;
 }

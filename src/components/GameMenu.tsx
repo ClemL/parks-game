@@ -66,8 +66,7 @@ export function GameMenu({
           <p className="muted menu-note">A three and a half minute walk through the whole game — no sound, subtitled.</p>
           <div className="menu-row">
             <button type="button" className="primary menu-watch" onClick={then(onWatchFilm)}>
-              ▶ Watch the film
-              <span className="menu-sub">3:32 · silent</span>
+              ▶ Watch a Video
             </button>
             <button type="button" className="ghost" onClick={then(onRules)}>
               Rules
@@ -101,6 +100,14 @@ export function GameMenu({
               <select value={ui.parkArt} onChange={(e) => ui.setParkArt(e.target.value as typeof ui.parkArt)}>
                 <option value="illustrated">Illustrations</option>
                 <option value="photos">Photographs</option>
+              </select>
+            </label>
+            <label className="menu-field" title="Pictures on the trail sites and campsites">
+              Site art
+              <select value={ui.siteArt} onChange={(e) => ui.setSiteArt(e.target.value as typeof ui.siteArt)}>
+                <option value="illustrated">Illustrations</option>
+                <option value="photos">Photographs</option>
+                <option value="none">None</option>
               </select>
             </label>
             <label className="menu-field" title="Tighter spacing and smaller cards">
@@ -161,6 +168,30 @@ export function GameMenu({
                   onChange={(e) => game.setExpansions({ ...game.expansions, wildlife: e.target.checked })}
                 />
                 Wildlife
+              </label>
+            </div>
+            <div className="house-rules" role="group" aria-label="House rules">
+              <label
+                className="menu-check"
+                title="A reserve may take the unseen top card of the park deck instead of a face-up park"
+              >
+                <input
+                  type="checkbox"
+                  checked={game.houseRules.blindReserve}
+                  onChange={(e) => game.setHouseRules({ ...game.houseRules, blindReserve: e.target.checked })}
+                />
+                Reserve from the deck
+              </label>
+              <label
+                className="menu-check"
+                title="Season 1's advanced site is always the Ranger Station instead of a random one"
+              >
+                <input
+                  type="checkbox"
+                  checked={game.houseRules.rangerFirst}
+                  onChange={(e) => game.setHouseRules({ ...game.houseRules, rangerFirst: e.target.checked })}
+                />
+                Ranger Station first
               </label>
             </div>
           </div>

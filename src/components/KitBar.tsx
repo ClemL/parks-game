@@ -1,7 +1,7 @@
 import type { GameState } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { bottleDef, campfireAllowance, tokenCount, usableBottles } from '../game/engine';
-import { GEAR_VP, TOKEN_LIMIT } from '../game/data/sites';
+import { TOKEN_LIMIT } from '../game/data/sites';
 import { ChipCount, ResourceChip } from './Bits';
 import { useInfo } from './InfoSheet';
 import { useCountFlashes } from '../hooks/useFlash';
@@ -178,7 +178,7 @@ export function KitBar({
                 info.show({
                   title: gear.name,
                   icon: gear.icon,
-                  lines: [gear.text, { label: 'Scores', value: `${GEAR_VP} VP` }],
+                  lines: [gear.text, 'Gear scores no points: it is worth what its effect earns you.'],
                 })
               }
             >

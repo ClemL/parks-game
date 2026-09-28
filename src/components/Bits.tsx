@@ -1,4 +1,4 @@
-import type { Resource, ResourceBag } from '../game/types';
+import type { Resource, ResourceBag, SeasonCardDef } from '../game/types';
 import { RESOURCES } from '../game/types';
 import { useInfo } from './InfoSheet';
 import type { Flash } from '../hooks/useFlash';
@@ -20,11 +20,11 @@ export const RESOURCE_LABEL: Record<Resource, string> = {
 };
 
 const RESOURCE_USE: Record<Resource, string> = {
-  sun: 'Buys gear and photos. No park asks for sun.',
+  sun: 'Buys gear, and pays for photos like any token. No park asks for sun.',
   water: 'Pays park costs, fills bottles and pays the Overlook.',
   forest: 'Pays park costs.',
   mountain: 'Pays park costs.',
-  wild: 'Pays for any resource, and two of them each once Nightfall is in play.',
+  wild: 'Pays for any resource or part of a photo, and two of them each once Nightfall is in play. Never buys gear.',
 };
 
 export function ResourceChip({
@@ -106,5 +106,14 @@ export function costLabel(cost: ResourceBag): string {
     RESOURCES.filter((r) => (cost[r] ?? 0) > 0)
       .map((r) => `${cost[r]} ${RESOURCE_LABEL[r]}`)
       .join(', ') || 'free'
+  );
+}
+
+/** The season card in play, as one line beside the season badge. */
+export function SeasonCardLine({ card }: { card: SeasonCardDef }) {
+  return (
+    <span className="season-card" title={card.text}>
+      <b>{card.name}</b> — {card.text}
+    </span>
   );
 }

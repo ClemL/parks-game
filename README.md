@@ -111,8 +111,8 @@ back.
 - **Your kit sits across the top** — resources, the token count, campfires, photos, bottles and
   gear on one line, with the bottles usable straight from there. Your own panel keeps the parks,
   reservations and bonus cards.
-- **The season is named in the trail heading** — a `Spring 1/4` label beside the title — rather
-  than shown as a row of four pips.
+- **The season is named in the trail heading** — a `Spring 1/4` label beside the title, with the
+  season card's name and effect on the same line — rather than shown as a row of four pips.
 - **Clicking the turn indicator switches your hiker**, in the trail heading or the phone action
   bar. It shows which of your two hikers currently holds the highlight.
 - **The trail log closes the board**, below every player panel.
@@ -128,11 +128,14 @@ back.
 - **Every section folds away** — tap its heading. A folded section keeps a one-line summary (which
   campsites are out, what the gear shop is selling, the last log line), and each player folds to
   their resource chips plus a one-liner. What you fold is remembered.
-- **The notices close** — the turn hint, the season card and the resume banner each have an X. The
-  hint has a switch in Setup to bring it back; a closed season card returns when the next season
-  deals its own.
+- **The notices close** — the turn hint and the resume banner each have an X, and the hint has a
+  switch in the menu to bring it back.
+- **The Trail End and Ranger Station show your kit** at the top of their panel, say who holds the
+  first player token and the camera, and put the parks in one row with a **Visit / Reserve**
+  toggle rather than two rows of the same cards.
+- **Other players' bonus cards are not shown at all** until the scoreboard reveals them.
 - **On a phone** the board opens with the campsites, gear shop, trail log and CPU seats already
-  folded, and the setup controls tucked behind a **Setup** button. That is about a third less
+  folded, and the settings tucked behind the **☰ menu** button. That is about a third less
   scrolling than the fully open board, before you fold anything yourself.
 
 ## Table mode
@@ -247,16 +250,17 @@ deliberate differences).
   scoring cards**.
 - On your turn you move **one hiker forward** any distance and take that site's action. Hikers
   never move backwards, and a turn always moves a hiker.
-- **Every site starts each season with a sun or water token on it, bar the trailhead and the first
-  space out of it.** The first hiker to reach a site takes its token on top of the site's own
-  payout.
+- **The season's weather puts a sun or water token on every site from the second one out of the
+  trailhead**, alternating sun and water from a random start. The first hiker to reach a site takes
+  its token on top of the site's own payout.
 - **Hikers cannot share a site.** The only way onto an occupied site is to spend a **campfire
   token**; the Trail Map gear waives the cost. Your campfire **re-lights when your first hiker
   reaches the Trail End**, so a well-timed season holds two shared sites.
 - Reaching the **Trail End** retires that hiker and gives it one action: visit a park, reserve a
-  park, buy gear, take a photo, or rest for 1 sun.
-- A season ends when every hiker is home. Resources carry over; **nobody may end a turn holding
-  more than 12 tokens**, and the overflow is returned (sun first, wildcards last).
+  park, or buy gear (or pass).
+- A season ends when every hiker is home — after **whoever holds the camera takes one last photo**,
+  if they want it. Resources carry over; **nobody may end a turn holding more than 12 tokens**. The
+  limit is checked only at the end of a turn, and the player chooses what to hand back.
 
 ### Sites
 
@@ -267,32 +271,33 @@ deliberate differences).
 | Valley | Gain 2 water |
 | Sunlit Basin | Gain 2 sun |
 | Waterfall | Gain 1 water and 1 sun |
-| Camera Point | Take the camera (and a photo for 1 sun) or leave it and take a bottle |
+| Camera Point | Take the camera (and a photo for 1 token) or leave it and take a bottle |
 
 | Advanced site | Action | Joins |
 | --- | --- | --- |
-| Wildlife Hide | Trade 1 resource for a wildcard | one per season, in a random order |
+| Wildlife Hide | Trade 1 resource for a wildcard | one per season, in a random order (season 1 included) |
 | Trading Post | Trade a resource for a different one, up to twice | |
-| Ranger Station | Visit a park, reserve a park, or buy gear — mid-trail | |
+| Ranger Station | Visit a park or reserve one — mid-trail | |
 | Overlook | Pay 1 water to copy the action of any site holding a hiker | |
 
 ### Resources
 
 | Resource | Use |
 | --- | --- |
-| ☀️ Sun | Gear and photos only — no park asks for it |
-| 💧 Water, 🌲 Tree, ⛰️ Mountain | Park costs; water also feeds bottles and the Overlook |
-| 🐾 Wildcard | Pays for any resource, including part of a photo. No park asks for it by name |
+| ☀️ Sun | Buys gear; pays for photos like any token. No park asks for it |
+| 💧 Water, 🌲 Tree, ⛰️ Mountain | Park costs and photos; water also feeds bottles and the Overlook |
+| 🐾 Wildcard | Pays for any resource, parks and photos alike. Never buys gear. No park asks for it by name |
 | 🔥 Campfire token | Spend to share an occupied site. One per season, re-lit when your first hiker finishes |
 
 ### The camera
 
 One camera exists in the game. A hiker at a **Camera Point** either takes it — and may immediately
-shoot for 1 sun — or leaves it and takes a **bottle** card.
+shoot for 1 token — or leaves it and takes a **bottle** card.
 
-- A photo costs **2 sun**, or **1 sun while you hold the camera** (the Tripod gear gives the same
-  price without it). Wildcards can cover part of the price.
+- A photo costs **2 tokens of any kind**, or **1 while you hold the camera** (the Tripod gear gives
+  the same price without it). You pick which tokens; a wildcard covers two with Nightfall.
 - The next hiker to reach a Camera Point takes the camera off whoever is carrying it.
+- **Whoever holds the camera when the season ends may take one more photo.**
 
 ### Bottles
 
@@ -311,12 +316,14 @@ your pack will not do. Each water drawn fills one flask, so a stop paying two wa
   one at 3 or fewer).
 - The **first player to reserve a park each season** takes the **first player token**: they lead
   the next season and score 1 VP at the end of the game.
+- A reserve takes one of the **three face-up parks**, or — with the **Reserve from the deck** house
+  rule, on by default — the unseen top card of the park deck.
 
 ### Scoring
 
 - Park cards cost 2–7 resources (water, trees, mountain) and score 2–5 VP.
 - Photos score 1 VP each, 2 VP with the Photo Album.
-- **Each gear card scores 2 VP**, so building an engine competes with claiming another park.
+- **Gear scores nothing**: it is worth what its effect earns you.
 - The two hidden bonus cards score at game end.
 - The first player token scores 1 VP.
 - Leftover resources score 1 VP per 3.
@@ -328,26 +335,48 @@ Where this build knowingly differs from the published game, and why:
 
 | Published rule | Here | Why |
 | --- | --- | --- |
-| No tokens sit on trail sites | Every site past the first space out of the trailhead holds a sun or water token for the first hiker there | Requested house rule |
-| Vista: draw a canteen **or** take a photo | Camera Point: take the camera (+ optional photo) **or** take a bottle | Requested house rule; the camera moves on a site visit rather than on taking a photo |
-| Photo costs any 2 tokens, 1 with the camera | 2 sun, 1 with the camera, wildcards may substitute | Requested (sun-priced) |
-| Campfire is a token you flip, once per season | Same, as a counted token | Equivalent |
-| First hiker to the Trail End takes the first player marker | First player to **reserve** a park takes it | Requested house rule |
-| Each player drafts 1 of 2 dealt Year cards | Each player keeps **two** bonus cards, both scoring | Requested house rule |
+| The season card's printed weather pattern | Sun and water alternate from a random start, on the same sites (from the second site out of the trailhead) | Simpler, same placement |
+| Vista: draw a canteen **or** take a photo | Camera Point: take the camera (+ optional photo) **or** take a bottle | Requested; the camera moves on a site visit rather than on taking a photo |
+| Each player drafts 1 of 2 dealt Year cards | Each player keeps **two** bonus cards, both scoring | Requested |
 | Leftover resources score nothing | 1 VP per 3 | House rule, kept from the first build |
-| Park costs include sun | Park costs are water, trees and mountain only | Sun had three uses and gear lost every contest; now sun means gear and photos |
-| Gear scores no points | Each gear card scores 2 VP | Without it the CPUs bought 0.6 gear cards a game out of 13 |
-| Three park cards face up | Four when either expansion is on | The expansions add so many park actions that a three-card row churns |
+| Park costs include sun | Park costs are water, trees and mountain only | Sun buys gear; photos take any token |
+| Wildlife: its own site-selection rule | Advanced sites are drawn at random; four of the eight with Wildlife | Matches the base game; **Ranger Station first** is an optional house rule |
+| 1–5 players, with a solo mode | 2–5 seats (you plus CPUs) | The CPUs stand in for opponents; the solo rules are not implemented |
 | 2nd edition: 3 seasons, fixed trail length | 4 seasons, growing trail (1st edition) | Matches the original request |
 
-Scores here run higher than a published game of PARKS (CPUs average 50–55 rather than 30–40),
-because the season tokens add roughly one extra resource per stop. Everything else — claim
-opportunities, the token cap, cost bands — follows the rulebook.
+Matching the published rules (corrected from earlier versions of this table):
+
+- **Weather tokens do sit on trail sites**: the season card's weather pattern puts sun and water on
+  them for the first hiker to arrive. The season card does not put tokens on park cards.
+- **The first player token goes to the first player to reserve a park** each season, which is what
+  this build does. It scores 1 VP here; that point could not be confirmed against the rulebook.
+- **Reserving can take the top card of the park deck**, sight unseen (the **Reserve from the deck**
+  option, on by default).
+- **The Trail End offers parks, reserve or gear only** — no photo, no resting for sun.
+- **The Lookout (Ranger Station here) offers park actions only** — no gear.
+- **Three parks face up**, with or without expansions. **Gear scores nothing.**
+- **Photos cost any 2 tokens, or 1 with the camera**, and the camera holder may take a photo when
+  the season ends.
+- **The token limit is checked at the end of a turn** and the player chooses what to discard.
+
+Ties break on most parks, then most photos; the published tie-break could not be confirmed.
+
+Scores here run higher than a published game of PARKS because of the two bonus cards and the
+leftover-resource points.
+
+### House rules you can switch
+
+Both sit under **Menu → New game** (and on the table-mode setup screen) and apply to the next game.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| Reserve from the deck | On | A reserve may take the unseen top card of the park deck instead of a face-up park |
+| Ranger Station first | Off | Season 1's advanced site is always the Ranger Station instead of a random draw |
 
 ## Expansions
 
-Both published PARKS expansions are implemented and can be switched on or off in the top bar; the
-choice applies to the next new game. Both are on by default.
+Both published PARKS expansions are implemented and can be switched on or off under **Menu → New
+game**; the choice applies to the next new game. Both are on by default.
 
 ### Nightfall
 
@@ -376,8 +405,8 @@ Three of the six are in play each game.
 - A **bison** stands on one park in the row. Visiting that park lets you trade a resource for a
   wildcard, then the bison moves one park right; when it loops back to the left it refreshes a gear
   card.
-- **Four more advanced sites** join the pool. Season 1 always uses the Ranger Station and only
-  three of the remaining seven are drawn per game, so no two games offer the same powers.
+- **Four more advanced sites** join the pool, and only four of the eight are drawn per game, so no
+  two games offer the same powers.
 - Extra season cards — including the **Season of Chance**, which lets a park action claim the unseen
   top card of the park deck — and eight more park cards.
 
@@ -401,9 +430,8 @@ Ferrata, fatigue, the Chalet, Conservation Projects) rather than modules that bo
 Researching the expansions turned up a base-game element that was missing here entirely: one
 **season card** is revealed from that season's own deck at the start of each season, and its effect
 runs all season — weather that pays a bonus resource on top of a site's payout, or a discount on
-parks, photos or gear. It is shown above the trail. The published season card also drops a sun or
-water token onto each available park card; that role is already filled here by the season tokens on
-trail sites, so it is left out.
+parks, photos or gear. It is shown in the trail heading beside the season. Its weather pattern is what puts the sun and
+water tokens on the trail sites (see **Fidelity notes**).
 
 ## The CPU opponents
 
@@ -434,15 +462,30 @@ honest:
   than 20% apart in strength.
 - `selfplay.test.ts` checks the park deck stays deep enough for four seasons.
 
-Current results with both expansions on (40 games each): the CPUs average 64 points against a
-shortest-step baseline that lands around 49–50. They price the campsites against the site they are
-standing on, trade with the bison, and take a Season of Chance park when nothing on the board beats
-it. With expansions off they average 49–51 against the baseline's 39–40.
+Current results with both expansions on (40 games each), under the published-rules changes: in a
+CPU-only table the three styles average 51–55 points with 6–7 parks each, and they still buy 1–2.5
+gear cards a game for the effects alone. Against the shortest-step baseline the CPUs land at 47–50
+to the baseline's 43–50 — close, because a turn-maximizing bot is a strong opponent in PARKS. They
+price the campsites against the site they are standing on, trade with the bison, and take a Season
+of Chance park when nothing on the board beats it.
 
-Scores run high with the expansions in play — around 70 in a CPU-only table, with 10–11 parks each.
-That is the expansions' own doing (a wildcard covering two resources is a large discount, and the
-campsites trade at generous rates), amplified by the house rule that puts a token on every trail
-site.
+Scores run higher than a published game mostly because of the two scoring bonus cards and the
+leftover-resource points (see **Fidelity notes**); a wildcard covering two resources under Nightfall
+adds to it.
+
+## Site and campsite artwork
+
+Every trail site — the trailhead, the six basic sites, all eight advanced sites and the Trail End —
+and every Nightfall campsite has its own small illustration in the same style as the parks: a
+signpost at the trailhead, a falls dropping into its pool, a camera on its tripod at a viewpoint, a
+fire lookout above the forest, a telescope under the Milky Way. On a trail tile the picture fills
+the card and fades into it behind the site's name; on a campsite card it is a band across the top.
+
+**Menu → Options → Site art** chooses **Illustrations** (the default), **Photographs** or
+**None**. Photographs are the lead images of Wikipedia articles picked for each site (`Waterfall`,
+`Fire lookout tower`, `Bird hide`…, listed in `src/art/siteArt.tsx`), fetched only when chosen and
+credited alongside the park photos; a site whose article has no usable image keeps its drawing.
+The scenes live in `src/art/sites.tsx` and appear on `/park-art-preview.html` below the parks.
 
 ## Park artwork
 

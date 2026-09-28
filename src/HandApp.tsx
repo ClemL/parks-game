@@ -8,9 +8,10 @@ import { Panel } from './components/Panel';
 import { useTable, type TableSession } from './hooks/useTable';
 import { useUi } from './hooks/useUi';
 import { api } from './net/client';
-import { canClaim, siteDef, SEASONS } from './game/engine';
+import { canClaim, pendingLabel, SEASONS } from './game/engine';
 import { parkDeckLeft } from './game/view';
 import { useParkArt } from './art/useParkArt';
+import { SiteArtContext, useSiteArt } from './art/siteArt';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const HAND_KEY = 'parks-hand-v1';
@@ -63,6 +64,8 @@ export default function HandApp() {
   const ui = useUi(view?.season ?? 1);
 
   const { art } = useParkArt(ui.parkArt);
+  const sitePhotos = useSiteArt(ui.siteArt);
+  const siteArtValue = { style: ui.siteArt, photos: sitePhotos };
 
   // A seat that has been claimed before rejoins without asking again.
   useEffect(() => {
@@ -141,155 +144,157 @@ export default function HandApp() {
   const waitingOn = table.turnSeat === null ? null : view.players[table.turnSeat];
 
   return (
-    <div className="app hand-app">
-      <header className="hand-bar" style={{ borderColor: me.color }}>
-        <span className="player-dot" style={{ background: me.color }} aria-hidden="true" />
-        <b>{me.name}</b>
-        <span className="hand-season">
-          {SEASON_NAMES[view.season - 1]} {view.season}/{SEASONS}
-        </span>
-      </header>
+    <SiteArtContext.Provider value={siteArtValue}>
+      <div className="app hand-app">
+        <header className="hand-bar" style={{ borderColor: me.color }}>
+          <span className="player-dot" style={{ background: me.color }} aria-hidden="true" />
+          <b>{me.name}</b>
+          <span className="hand-season">
+            {SEASON_NAMES[view.season - 1]} {view.season}/{SEASONS}
+          </span>
+        </header>
 
-      <section className={`hand-turn${mine ? ' hand-turn-mine' : ''}`} role="status">
-        {view.phase === 'game-over'
-          ? 'The year is over — see the table for the scores.'
-          : view.phase === 'season-end'
-            ? 'Season over. The table is tallying up.'
-            : mine
-              ? pending
-                ? `Your decision: ${siteDef(view.trail[pending.siteIndex]).name}`
-                : 'Your turn — move a hiker'
-              : `Waiting on ${waitingOn?.name ?? 'the table'}`}
-      </section>
+        <section className={`hand-turn${mine ? ' hand-turn-mine' : ''}`} role="status">
+          {view.phase === 'game-over'
+            ? 'The year is over — see the table for the scores.'
+            : view.phase === 'season-end'
+              ? 'Season over. The table is tallying up.'
+              : mine
+                ? pending
+                  ? `Your decision: ${pendingLabel(view)}`
+                  : 'Your turn — move a hiker'
+                : `Waiting on ${waitingOn?.name ?? 'the table'}`}
+        </section>
 
-      <KitBar
-        state={view}
-        seat={session.seat}
-        canAct={mine && !pending}
-        onUseBottle={(bottleId) => void table.act({ type: 'use-bottle', bottleId })}
-      />
+        <KitBar
+          state={view}
+          seat={session.seat}
+          canAct={mine && !pending}
+          onUseBottle={(bottleId) => void table.act({ type: 'use-bottle', bottleId })}
+        />
 
-      <section className="hand-board">
-        <Panel
-          title={mine && !pending ? 'Where to?' : 'The trail'}
-          open={ui.isOpen('trail')}
-          onToggle={() => ui.toggle('trail')}
-          badge={
-            <span className="season-badge">
-              {SEASON_NAMES[view.season - 1]}
-              <span className="season-count" aria-hidden="true">
-                {view.season}/{SEASONS}
+        <section className="hand-board">
+          <Panel
+            title={mine && !pending ? 'Where to?' : 'The trail'}
+            open={ui.isOpen('trail')}
+            onToggle={() => ui.toggle('trail')}
+            badge={
+              <span className="season-badge">
+                {SEASON_NAMES[view.season - 1]}
+                <span className="season-count" aria-hidden="true">
+                  {view.season}/{SEASONS}
+                </span>
               </span>
-            </span>
-          }
-        >
-          {mine && !pending && view.phase === 'playing' && (
-            <p className="muted hand-hint">
-              Pick a hiker, then a site — or move it on the table. Either way it is the same board.
-            </p>
-          )}
-          <TrailView
-            state={view}
-            moves={table.moves}
-            selectedHiker={table.selectedHiker}
-            onSelectHiker={table.setSelectedHiker}
-            onMove={(option) =>
-              void table.act({
-                type: 'move',
-                hikerId: option.hikerId,
-                to: option.to,
-                useCampfire: option.useCampfire,
-              })
             }
-            interactive={mine && !pending && view.phase === 'playing' && !table.busy}
-            seat={session.seat}
-          />
-        </Panel>
+          >
+            {mine && !pending && view.phase === 'playing' && (
+              <p className="muted hand-hint">
+                Pick a hiker, then a site — or move it on the table. Either way it is the same board.
+              </p>
+            )}
+            <TrailView
+              state={view}
+              moves={table.moves}
+              selectedHiker={table.selectedHiker}
+              onSelectHiker={table.setSelectedHiker}
+              onMove={(option) =>
+                void table.act({
+                  type: 'move',
+                  hikerId: option.hikerId,
+                  to: option.to,
+                  useCampfire: option.useCampfire,
+                })
+              }
+              interactive={mine && !pending && view.phase === 'playing' && !table.busy}
+              seat={session.seat}
+            />
+          </Panel>
 
-        {/* What is on offer, so a move can be planned without looking up at the
-            table. Folded away on a phone, open where there is room. */}
+          {/* What is on offer, so a move can be planned without looking up at the
+              table. Folded away on a phone, open where there is room. */}
+          <Panel
+            title="On offer"
+            open={boardOpen}
+            onToggle={() => setBoardOpen((open) => !open)}
+            summary={`${view.parkRow.length} parks · ${view.gearRow.length} gear`}
+            meta={<span className="muted">{parkDeckLeft(view)} in the deck</span>}
+          >
+            <div className="card-strip">
+              {view.parkRow.map((park) => (
+                <ParkCardView
+                  key={park.id}
+                  park={park}
+                  art={art}
+                  affordable={canClaim(view, me, park)}
+                  bison={view.bison !== null && view.parkRow[view.bison]?.id === park.id}
+                />
+              ))}
+            </div>
+            <h3 className="hand-subhead">Gear shop</h3>
+            <GearShelf state={view} />
+            {view.campsites.length > 0 && (
+              <>
+                <h3 className="hand-subhead">Campsites</h3>
+                <CampsiteBoard state={view} />
+              </>
+            )}
+          </Panel>
+        </section>
+
+        <section className="hand-private">
+        <PlayerPanel
+          player={me}
+          state={view}
+          art={art}
+          revealBonuses
+          open={handOpen}
+          onToggle={() => setHandOpen((open) => !open)}
+          kitShownAbove
+          mine
+        />
+
         <Panel
-          title="On offer"
-          open={boardOpen}
-          onToggle={() => setBoardOpen((open) => !open)}
-          summary={`${view.parkRow.length} parks · ${view.gearRow.length} gear`}
-          meta={<span className="muted">{parkDeckLeft(view)} in the deck</span>}
-        >
-          <div className="card-strip">
-            {view.parkRow.map((park) => (
-              <ParkCardView
-                key={park.id}
-                park={park}
-                art={art}
-                affordable={canClaim(view, me, park)}
-                bison={view.bison !== null && view.parkRow[view.bison]?.id === park.id}
-              />
-            ))}
-          </div>
-          <h3 className="hand-subhead">Gear shop</h3>
-          <GearShelf state={view} />
-          {view.campsites.length > 0 && (
-            <>
-              <h3 className="hand-subhead">Campsites</h3>
-              <CampsiteBoard state={view} />
-            </>
-          )}
-        </Panel>
-      </section>
-
-      <section className="hand-private">
-      <PlayerPanel
-        player={me}
-        state={view}
-        art={art}
-        revealBonuses
-        open={handOpen}
-        onToggle={() => setHandOpen((open) => !open)}
-        kitShownAbove
-        mine
-      />
-
-      <Panel
-        title="The table"
-        open={tableOpen}
-        onToggle={() => setTableOpen((open) => !open)}
-        summary={view.players
-          .filter((p) => p.index !== session.seat)
-          .map((p) => `${p.name} ${p.parks.length}🏞`)
-          .join(' · ')}
-      >
-        <div className="hand-others">
-          {view.players
+          title="The table"
+          open={tableOpen}
+          onToggle={() => setTableOpen((open) => !open)}
+          summary={view.players
             .filter((p) => p.index !== session.seat)
-            .map((player) => (
-              <PlayerPanel
-                key={player.index}
-                player={player}
-                state={view}
-                art={art}
-                revealBonuses={view.phase === 'game-over'}
-                open={ui.isOpen(`player-${player.index}`)}
-                onToggle={() => ui.toggle(`player-${player.index}`)}
-                mine={false}
-              />
-            ))}
-        </div>
-      </Panel>
-      </section>
+            .map((p) => `${p.name} ${p.parks.length}🏞`)
+            .join(' · ')}
+        >
+          <div className="hand-others">
+            {view.players
+              .filter((p) => p.index !== session.seat)
+              .map((player) => (
+                <PlayerPanel
+                  key={player.index}
+                  player={player}
+                  state={view}
+                  art={art}
+                  revealBonuses={view.phase === 'game-over'}
+                  open={ui.isOpen(`player-${player.index}`)}
+                  onToggle={() => ui.toggle(`player-${player.index}`)}
+                  mine={false}
+                />
+              ))}
+          </div>
+        </Panel>
+        </section>
 
-      {table.error && (
-        <p className="table-error" role="status">
-          {table.error}{' '}
-          <button type="button" className="link" onClick={table.refresh}>
-            retry
-          </button>
-        </p>
-      )}
+        {table.error && (
+          <p className="table-error" role="status">
+            {table.error}{' '}
+            <button type="button" className="link" onClick={table.refresh}>
+              retry
+            </button>
+          </p>
+        )}
 
-      {pending && pending.player === session.seat && (
-        <DecisionModal state={view} art={art} dispatch={(action) => void table.act(action)} />
-      )}
-      {view.phase === 'game-over' && <ScoreboardModal state={view} onNewGame={() => window.location.reload()} />}
-    </div>
+        {pending && pending.player === session.seat && (
+          <DecisionModal state={view} art={art} dispatch={(action) => void table.act(action)} />
+        )}
+        {view.phase === 'game-over' && <ScoreboardModal state={view} onNewGame={() => window.location.reload()} />}
+      </div>
+    </SiteArtContext.Provider>
   );
 }

@@ -6,6 +6,7 @@ import { useInfo } from './InfoSheet';
 import { useDragPawn } from '../hooks/useDragPawn';
 import { RESOURCE_ICON, RESOURCE_LABEL } from './Bits';
 import type { MoveOption } from '../game/engine';
+import { SiteArt } from '../art/siteArt';
 
 interface Props {
   state: GameState;
@@ -120,6 +121,7 @@ export function TrailView({
                 token ? ` A ${token} season token is still here.` : ''
               }${target ? ' Move here.' : ' Tap to read what it does.'}`}
             >
+              <SiteArt id={kind} />
               <span className="site-index">
                 {index === 0 ? 'start' : isEnd ? 'end' : index}
                 {tent && (

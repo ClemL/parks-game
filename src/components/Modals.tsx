@@ -1,13 +1,16 @@
 import type { ArtMap } from '../art/parkArt';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   affordableGear,
   bonusCardById,
   campsiteDef,
   canAffordPhoto,
   canClaimChance,
+  canReserveTop,
   claimableParks,
   copyableSites,
+  defaultDiscard,
+  defaultPhotoPayment,
   effectiveCost,
   gearCost,
   photoCost,
@@ -15,13 +18,18 @@ import {
   SEASONS,
   siteDef,
   tokenCount,
+  tokensOverLimit,
   usableCampsites,
+  validPhotoPayment,
 } from '../game/engine';
-import { GEAR_VP, TOKEN_LIMIT } from '../game/data/sites';
+import { TOKEN_LIMIT } from '../game/data/sites';
 import { parkDeckLeft } from '../game/view';
 import { useInfo } from './InfoSheet';
-import type { GameAction, GameState, Resource } from '../game/types';
-import { COST_RESOURCES } from '../game/types';
+import type { GameAction, GameState, Resource, ResourceBag } from '../game/types';
+import { COST_RESOURCES, RESOURCES } from '../game/types';
+import { TokenPicker } from './TokenPicker';
+import { KitBar } from './KitBar';
+import { SiteArt } from '../art/siteArt';
 import { CostRow, RESOURCE_ICON, RESOURCE_LABEL } from './Bits';
 import { ParkCardView } from './ParkCardView';
 
@@ -86,7 +94,46 @@ export function Modal({
   );
 }
 
-/** The claim / reserve / buy block, shared by the Trail End and Ranger Station. */
+/** "2 ☀️ 1 💧" for a bag of tokens. */
+function tokens(bag: ResourceBag): string {
+  const parts = RESOURCES.filter((r) => (bag[r] ?? 0) > 0).map((r) => `${bag[r]} ${RESOURCE_ICON[r]}`);
+  return parts.length > 0 ? parts.join(' ') : 'nothing';
+}
+
+const bagSize = (bag: ResourceBag) => RESOURCES.reduce((sum, r) => sum + (bag[r] ?? 0), 0);
+
+/** Who holds the first player token and the camera, for the park decisions. */
+function Holders({ state }: { state: GameState }) {
+  const first = state.players[state.firstPlayer];
+  const camera = state.cameraHolder === null ? null : state.players[state.cameraHolder];
+  return (
+    <p className="holders">
+      <span>
+        <span aria-hidden="true">🥇</span> First player token:{' '}
+        <span className="player-dot" style={{ background: first.color }} aria-hidden="true" />
+        <b>{first.isHuman && first.index === state.pending?.player ? 'you' : first.name}</b>
+        {!state.firstPlayerTokenClaimed && <span className="muted"> · up for grabs this season</span>}
+      </span>
+      <span>
+        <span aria-hidden="true">📷</span> Camera:{' '}
+        {camera ? (
+          <>
+            <span className="player-dot" style={{ background: camera.color }} aria-hidden="true" />
+            <b>{camera.index === state.pending?.player ? 'you' : camera.name}</b>
+          </>
+        ) : (
+          <span className="muted">still on the trail</span>
+        )}
+      </span>
+    </p>
+  );
+}
+
+/**
+ * The park and gear block, shared by the Trail End and Ranger Station: your kit
+ * on top, then one row of parks with a toggle between visiting and reserving,
+ * then the gear shop (Trail End only).
+ */
 function ParkAndGearOptions({
   state,
   art,
@@ -100,96 +147,155 @@ function ParkAndGearOptions({
 }) {
   const player = state.players[state.pending!.player];
   const claimable = claimableParks(state, player.index);
+  const claimableIds = new Set(claimable.map((p) => p.id));
   const reservable = reservableParks(state);
   const gear = affordableGear(state, player.index);
+  const [mode, setMode] = useState<'visit' | 'reserve'>(claimable.length > 0 ? 'visit' : 'reserve');
+
+  // Visiting shows your own reservations and the whole row, the ones you can
+  // pay for lit up; the rest explain themselves when tapped.
+  const reservedElsewhere = new Set(
+    state.players.flatMap((p) => (p.index === player.index ? [] : p.reserved.map((r) => r.id))),
+  );
+  const visitable = [...player.reserved, ...state.parkRow.filter((p) => !reservedElsewhere.has(p.id))];
 
   return (
     <>
-      <h3>Visit a park</h3>
-      {claimable.length > 0 ? (
-        <div className="card-strip">
-          {claimable.map((park) => {
-            const paid = effectiveCost(player, park);
-            const discounted = COST_RESOURCES.some((r) => (paid[r] ?? 0) !== (park.cost[r] ?? 0));
-            return (
-              <div key={park.id} className="claim-option">
+      <KitBar state={state} seat={player.index} canAct={false} onUseBottle={() => {}} />
+      <Holders state={state} />
+
+      <div className="mode-toggle" role="tablist" aria-label="Park action">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'visit'}
+          className={mode === 'visit' ? 'active' : ''}
+          onClick={() => setMode('visit')}
+        >
+          Visit a park <span className="mode-count">{claimable.length} in reach</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'reserve'}
+          className={mode === 'reserve' ? 'active' : ''}
+          onClick={() => setMode('reserve')}
+        >
+          Reserve a park
+          {!state.firstPlayerTokenClaimed && <span className="mode-count">takes the first player token</span>}
+        </button>
+      </div>
+
+      {mode === 'visit' ? (
+        <>
+          {visitable.length > 0 ? (
+            <div className="card-strip">
+              {visitable.map((park) => {
+                const can = claimableIds.has(park.id);
+                const paid = effectiveCost(player, park);
+                const discounted = can && COST_RESOURCES.some((r) => (paid[r] ?? 0) !== (park.cost[r] ?? 0));
+                const mine = player.reserved.some((r) => r.id === park.id);
+                return (
+                  <div key={park.id} className="claim-option">
+                    <ParkCardView
+                      park={park}
+                      art={art}
+                      affordable={can}
+                      reservedBy={mine ? 'you' : undefined}
+                      onClick={can ? () => dispatch({ type: actionType, option: 'claim-park', parkId: park.id }) : undefined}
+                    />
+                    {discounted && (
+                      <div className="claim-discount">
+                        pay <CostRow cost={paid} /> with your pass
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="muted">No parks left to visit.</p>
+          )}
+          {claimable.length === 0 && visitable.length > 0 && (
+            <p className="muted">None of these is within reach of your resources yet.</p>
+          )}
+          {canClaimChance(state, player.index) && (
+            <div className="choice-grid">
+              <button type="button" className="choice" onClick={() => dispatch({ type: actionType, option: 'chance-park' })}>
+                <span className="choice-icon" aria-hidden="true">
+                  🎲
+                </span>
+                Take a chance on the top of the deck
+                <span className="choice-sub">
+                  {state.seasonCard?.name} · {parkDeckLeft(state)} cards left
+                </span>
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {canReserveTop(state) && (
+            <div className="choice-grid">
+              <button type="button" className="choice" onClick={() => dispatch({ type: actionType, option: 'reserve-top' })}>
+                <span className="choice-icon" aria-hidden="true">
+                  🂠
+                </span>
+                Reserve the top card of the deck
+                <span className="choice-sub">sight unseen · {parkDeckLeft(state)} cards left</span>
+              </button>
+            </div>
+          )}
+          {reservable.length > 0 ? (
+            <div className="card-strip">
+              {reservable.map((park) => (
                 <ParkCardView
+                  key={park.id}
                   park={park}
                   art={art}
-                  affordable
-                  onClick={() => dispatch({ type: actionType, option: 'claim-park', parkId: park.id })}
+                  onClick={() => dispatch({ type: actionType, option: 'reserve-park', parkId: park.id })}
                 />
-                {discounted && (
-                  <div className="claim-discount">
-                    pay <CostRow cost={paid} /> with your pass
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="muted">No park is within reach of your current resources.</p>
-      )}
-
-      {canClaimChance(state, player.index) && (
-        <>
-          <h3>Take a chance</h3>
-          <p className="modal-note">
-            {state.seasonCard?.name}: claim the unseen top card of the park deck, paying whatever it turns out to cost.
-          </p>
-          <div className="choice-grid">
-            <button type="button" className="choice" onClick={() => dispatch({ type: actionType, option: 'chance-park' })}>
-              <span className="choice-icon" aria-hidden="true">
-                🎲
-              </span>
-              Claim the top of the deck
-              <span className="choice-sub">{parkDeckLeft(state)} cards left</span>
-            </button>
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">Nothing left to reserve.</p>
+          )}
         </>
       )}
 
-      <h3>Reserve a park{!state.firstPlayerTokenClaimed ? ' (takes the first player token)' : ''}</h3>
-      {reservable.length > 0 ? (
-        <div className="card-strip">
-          {reservable.map((park) => (
-            <ParkCardView
-              key={park.id}
-              park={park}
-              art={art}
-              onClick={() => dispatch({ type: actionType, option: 'reserve-park', parkId: park.id })}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="muted">Nothing left to reserve.</p>
-      )}
-
-      <h3>Buy gear{state.gearDiscountsLeft > 0 ? ` (${state.gearDiscountsLeft} early-buyer discount${state.gearDiscountsLeft === 1 ? '' : 's'} left)` : ''}</h3>
-      {gear.length > 0 ? (
-        <div className="card-strip gear-strip">
-          {gear.map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              className="gear-card affordable clickable"
-              onClick={() => dispatch({ type: actionType, option: 'buy-gear', gearId: card.id })}
-            >
-              <span className="gear-icon" aria-hidden="true">
-                {card.icon}
-              </span>
-              <span className="gear-name">{card.name}</span>
-              <span className="gear-cost">
-                {gearCost(state, card)} ☀️
-                {gearCost(state, card) !== card.cost && <s> {card.cost}</s>}
-              </span>
-              <span className="gear-text">{card.text}</span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="muted">No gear in the shop is within your sun.</p>
+      {actionType === 'trail-end' && (
+        <>
+          <h3>
+            Buy gear
+            {state.gearDiscountsLeft > 0
+              ? ` (${state.gearDiscountsLeft} early-buyer discount${state.gearDiscountsLeft === 1 ? '' : 's'} left)`
+              : ''}
+          </h3>
+          {gear.length > 0 ? (
+            <div className="card-strip gear-strip">
+              {gear.map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className="gear-card affordable clickable"
+                  onClick={() => dispatch({ type: 'trail-end', option: 'buy-gear', gearId: card.id })}
+                >
+                  <span className="gear-icon" aria-hidden="true">
+                    {card.icon}
+                  </span>
+                  <span className="gear-name">{card.name}</span>
+                  <span className="gear-cost">
+                    {gearCost(state, card)} ☀️
+                    {gearCost(state, card) !== card.cost && <s> {card.cost}</s>}
+                  </span>
+                  <span className="gear-text">{card.text}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No gear in the shop is within your sun.</p>
+          )}
+        </>
       )}
     </>
   );
@@ -215,27 +321,66 @@ export function DecisionModal({
   // own, so only offer the step back on a fresh arrival.
   const back = pending.copied || pending.kind === 'bison' ? undefined : onBack;
 
+  const pickerKey = `${pending.kind}:${pending.stage ?? ''}:${state.log.length}:${RESOURCES.map((r) => player.resources[r] ?? 0).join(',')}`;
+  const photoPicker = (type: 'camera-photo' | 'season-photo', declineLabel: string) => (
+    <TokenPicker
+      key={pickerKey}
+      held={player.resources}
+      initial={defaultPhotoPayment(state, player.index) ?? {}}
+      valid={(pay) => validPhotoPayment(state, player.index, pay)}
+      confirmLabel={(pay) => `📸 Take the photo for ${tokens(pay)}`}
+      onConfirm={(pay) => dispatch({ type, take: true, pay })}
+    >
+      <button type="button" className="choice" onClick={() => dispatch({ type, take: false })}>
+        <span className="choice-icon" aria-hidden="true">
+          🚶
+        </span>
+        {declineLabel}
+      </button>
+    </TokenPicker>
+  );
+  const photoTerms = `A photo costs ${cost} token${cost === 1 ? '' : 's'} of any kind${
+    state.expansions.nightfall ? ' (a wildcard covers two)' : ''
+  } and scores 1 VP, or 2 VP with the Photo Album.`;
+
+  if (pending.kind === 'discard') {
+    const over = tokensOverLimit(state, player.index);
+    return (
+      <Modal title={`Over the ${TOKEN_LIMIT}-token limit`}>
+        <p className="modal-note">
+          You are holding {tokenCount(player)} tokens and may end your turn with {TOKEN_LIMIT}. Choose {over} to hand
+          back.
+        </p>
+        <TokenPicker
+          key={pickerKey}
+          held={player.resources}
+          initial={defaultDiscard(state, player.index)}
+          valid={(pick) => bagSize(pick) === over && RESOURCES.every((r) => (pick[r] ?? 0) <= (player.resources[r] ?? 0))}
+          confirmLabel={(pick) =>
+            bagSize(pick) === over ? `Hand back ${tokens(pick)}` : `Pick ${over} (${bagSize(pick)} chosen)`
+          }
+          onConfirm={(pick) => dispatch({ type: 'discard', resources: pick })}
+        />
+      </Modal>
+    );
+  }
+
+  if (pending.kind === 'season-photo') {
+    return (
+      <Modal title="The season is over">
+        <p className="modal-note">You hold the camera, so you may take one last photo before the season closes. {photoTerms}</p>
+        {photoPicker('season-photo', 'Put the camera away')}
+      </Modal>
+    );
+  }
+
   if (pending.stage === 'take-photo') {
     return (
       <Modal title="Camera in hand" onBack={back}>
         <p className="modal-note">
-          You are holding the camera, so a photo costs {cost} sun and scores 1 VP (2 VP with the Photo Album). You can
-          take another at the Trail End.
+          You are holding the camera. {photoTerms} Hold it to the end of the season and you may take one more.
         </p>
-        <div className="choice-grid">
-          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera-photo', take: true })}>
-            <span className="choice-icon" aria-hidden="true">
-              📸
-            </span>
-            Take the photo (−{cost} ☀️)
-          </button>
-          <button type="button" className="choice" onClick={() => dispatch({ type: 'camera-photo', take: false })}>
-            <span className="choice-icon" aria-hidden="true">
-              🚶
-            </span>
-            Keep walking
-          </button>
-        </div>
+        {photoPicker('camera-photo', 'Keep walking')}
       </Modal>
     );
   }
@@ -250,7 +395,8 @@ export function DecisionModal({
             : holder === player.index
               ? 'You already hold the camera.'
               : `${state.players[holder].name} is carrying the camera — take it.`}{' '}
-          The camera makes every photo cost 1 sun instead of 2, and the next hiker here takes it from you.
+          The camera makes every photo cost 1 token instead of 2, lets you take a photo when the season ends, and the next
+          hiker here takes it from you.
         </p>
         <div className="choice-grid">
           <button type="button" className="choice" onClick={() => dispatch({ type: 'camera', option: 'take-camera' })}>
@@ -258,7 +404,9 @@ export function DecisionModal({
               📷
             </span>
             Take the camera
-            <span className="choice-sub">{canAffordPhoto(state, player.index) ? 'then shoot for 1 sun if you like' : 'no sun for a photo yet'}</span>
+            <span className="choice-sub">
+              {canAffordPhoto(state, player.index) ? 'then shoot for 1 token if you like' : 'no tokens for a photo yet'}
+            </span>
           </button>
           <button type="button" className="choice" onClick={() => dispatch({ type: 'camera', option: 'take-bottle' })}>
             <span className="choice-icon" aria-hidden="true">
@@ -447,7 +595,7 @@ export function DecisionModal({
     return (
       <Modal title="Ranger Station — one action" wide onBack={back}>
         <p className="modal-note">
-          Visit a park, reserve one for later, or buy gear — without giving up the rest of your trail.
+          Visit a park or reserve one for later — without giving up the rest of your trail.
         </p>
         <ParkAndGearOptions state={state} art={art} dispatch={dispatch} actionType="park-or-gear" />
         <div className="choice-grid">
@@ -466,28 +614,15 @@ export function DecisionModal({
   return (
     <Modal title="Trail End — one action" wide onBack={back}>
       <p className="modal-note">
-        Visit a park, reserve one for later, buy a piece of gear, take a photo, or rest. Wildcards 🐾 pay for any
-        resource. You are holding {tokenCount(player)} of {TOKEN_LIMIT} tokens.
-        {!state.firstPlayerTokenClaimed && ' The first reservation this season also takes the first player token.'}
+        Visit a park, reserve one for later, or buy a piece of gear. Wildcards 🐾 pay for any resource.
       </p>
       <ParkAndGearOptions state={state} art={art} dispatch={dispatch} actionType="trail-end" />
       <div className="choice-grid">
-        <button
-          type="button"
-          className="choice"
-          disabled={!canAffordPhoto(state, player.index)}
-          onClick={() => dispatch({ type: 'trail-end', option: 'photo' })}
-        >
+        <button type="button" className="choice" onClick={() => dispatch({ type: 'trail-end', option: 'skip' })}>
           <span className="choice-icon" aria-hidden="true">
-            📸
+            🚶
           </span>
-          Take a photo (−{cost} ☀️)
-        </button>
-        <button type="button" className="choice" onClick={() => dispatch({ type: 'trail-end', option: 'rest' })}>
-          <span className="choice-icon" aria-hidden="true">
-            ☀️
-          </span>
-          Rest — gain 1 sun
+          Pass
         </button>
       </div>
     </Modal>
@@ -536,7 +671,6 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
             <th>Player</th>
             <th>Parks</th>
             <th>Photos</th>
-            <th>Gear</th>
             <th>Bonus</th>
             <th>1st</th>
             <th>Leftover</th>
@@ -558,9 +692,6 @@ export function ScoreboardModal({ state, onNewGame }: { state: GameState; onNewG
                 </td>
                 <td>
                   {score.photoVp} <span className="muted">({player.photos})</span>
-                </td>
-                <td>
-                  {score.gearVp} <span className="muted">({player.gear.length})</span>
                 </td>
                 <td>
                   {score.bonusVp}
@@ -637,6 +768,7 @@ export function CampsiteBoard({ state }: { state: GameState }) {
               })
             }
           >
+            <SiteArt id={def.id} className="campsite-art" />
             <span className="gear-icon" aria-hidden="true">
               {def.icon}
             </span>
@@ -686,8 +818,8 @@ export function GearShelf({ state }: { state: GameState }) {
               lines: [
                 gear.text,
                 { label: 'Cost', value: `${gearCost(state, gear)} sun` },
-                { label: 'Scores', value: `${GEAR_VP} VP at the end of the game` },
-                'Bought at the Trail End or a Ranger Station.',
+                'Gear scores no points: it is worth what its effect earns you.',
+                'Bought at the Trail End.',
               ],
             })
           }

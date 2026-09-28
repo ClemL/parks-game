@@ -190,7 +190,11 @@ export type DecisionKind =
   /* Nightfall: a tent site offers its own action or a campsite */
   | 'tent'
   /* Wildlife: the bison trade when you visit its park */
-  | 'bison';
+  | 'bison'
+  /* Over the token limit at the end of a turn: choose what goes back */
+  | 'discard'
+  /* The season is over: whoever holds the camera may take one last photo */
+  | 'season-photo';
 
 export interface PendingDecision {
   player: number;
@@ -267,6 +271,14 @@ export interface ExpansionFlags {
   wildlife: boolean;
 }
 
+/** Optional rules, chosen before a game starts. */
+export interface HouseRules {
+  /** A reserve may take the unseen top card of the park deck instead of a face-up park. */
+  blindReserve: boolean;
+  /** Season 1's advanced site is always the Ranger Station rather than a random draw. */
+  rangerFirst: boolean;
+}
+
 export interface LogEntry {
   season: number;
   player: number;
@@ -278,6 +290,7 @@ export type GamePhase = 'playing' | 'season-end' | 'game-over';
 export interface GameState {
   rng: number;
   expansions: ExpansionFlags;
+  houseRules: HouseRules;
   season: number;
   /** The season card in play, and the decks still to be revealed. */
   seasonCard: SeasonCardDef | null;
@@ -301,6 +314,8 @@ export interface GameState {
   /** Wildlife: which park in the row the bison is standing on. */
   bison: number | null;
   firstPlayerTokenClaimed: boolean;
+  /** Set once the camera holder has been offered this season's closing photo. */
+  seasonPhotoOffered: boolean;
   parkRow: ParkCard[];
   parkDeck: ParkCard[];
   gearRow: GearCard[];
@@ -316,7 +331,6 @@ export interface FinalScore {
   player: number;
   parkVp: number;
   photoVp: number;
-  gearVp: number;
   bonusVp: number;
   firstPlayerVp: number;
   leftoverVp: number;
@@ -333,7 +347,12 @@ export type GameAction =
   | { type: 'use-bottle'; bottleId: string }
   /** Camera site: take the camera, or decline it for a bottle card. */
   | { type: 'camera'; option: 'take-camera' | 'take-bottle' }
-  | { type: 'camera-photo'; take: boolean }
+  /** `pay` names the tokens spent; left out, the cheapest mix is chosen. */
+  | { type: 'camera-photo'; take: boolean; pay?: ResourceBag }
+  /** The camera holder's photo when the season ends. */
+  | { type: 'season-photo'; take: boolean; pay?: ResourceBag }
+  /** Tokens handed back to get down to the limit at the end of a turn. */
+  | { type: 'discard'; resources: ResourceBag }
   /** Wildlife Hide and Trading Post trades. */
   | { type: 'swap-give'; resource: Resource }
   | { type: 'swap-get'; resource: Resource }
@@ -341,16 +360,16 @@ export type GameAction =
   /** Overlook: copy the action of an occupied site. */
   | { type: 'copy-site'; siteIndex: number }
   | { type: 'copy-skip' }
-  /** Ranger Station: the park and gear actions without walking to the end. */
+  /** Ranger Station: the park actions without walking to the end. */
   | {
       type: 'park-or-gear';
-      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'chance-park' | 'skip';
+      option: 'claim-park' | 'reserve-park' | 'reserve-top' | 'chance-park' | 'skip';
       parkId?: string;
       gearId?: string;
     }
   | {
       type: 'trail-end';
-      option: 'claim-park' | 'reserve-park' | 'buy-gear' | 'photo' | 'rest' | 'chance-park';
+      option: 'claim-park' | 'reserve-park' | 'reserve-top' | 'buy-gear' | 'chance-park' | 'skip';
       parkId?: string;
       gearId?: string;
     }

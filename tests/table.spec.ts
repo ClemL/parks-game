@@ -151,9 +151,9 @@ test('keeps each hand secret from the table and from the other seats', async ({ 
   const ownBonus = await mine.locator('.bonus').first().innerText();
   expect(ownBonus.length).toBeGreaterThan(3);
 
-  // Not on the table, which shows every hand face down.
+  // Not on the table, which leaves every hand's bonus cards out of sight.
   await expect(page.locator('.bonus')).toHaveCount(0);
-  expect(await page.locator('.bonus-hidden').count()).toBeGreaterThan(0);
+  await expect(page.locator('.bonus-hidden')).toHaveCount(0);
 
   // And not in the state the other seat was sent, either.
   const leaked = await phones[1].evaluate(async () => {
@@ -255,7 +255,7 @@ test('seats a desktop the same as a phone, with room for the board beside it', a
     expect(await seat.locator('.hand-private .bonus').count()).toBeGreaterThan(0);
   }
   await expect(page.locator('.bonus')).toHaveCount(0);
-  expect(await page.locator('.bonus-hidden').count()).toBeGreaterThan(0);
+  await expect(page.locator('.bonus-hidden')).toHaveCount(0);
 
   await desktop.close();
   await phone.close();

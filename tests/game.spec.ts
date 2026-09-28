@@ -27,6 +27,10 @@ test('plays a full game through every decision modal', async ({ page }) => {
 
   const modalsSeen = new Set<string>();
   let clicks = 0;
+  // Consecutive looks at a dialog that offered nothing to press. A dialog can
+  // change under the bot between two queries (a closing photo hands straight
+  // to the end-of-season dialog), so only a dialog that stays empty fails.
+  let empty = 0;
 
   for (let step = 0; step < 4000; step++) {
     if (await page.locator('.scores').count()) break;
@@ -51,7 +55,13 @@ test('plays a full game through every decision modal', async ({ page }) => {
       else if (pick === 1 && (await gear.count())) await gear.first().click({ timeout: 5000 });
       else if ((await choices.count()) > 0) await choices.first().click({ timeout: 5000 });
       else if (await parks.count()) await parks.first().click({ timeout: 5000 });
-      else throw new Error(`modal with no available action: ${[...modalsSeen].join(', ')}`);
+      else {
+        empty += 1;
+        if (empty > 25) throw new Error(`modal with no available action: ${[...modalsSeen].join(', ')}`);
+        await page.waitForTimeout(120);
+        continue;
+      }
+      empty = 0;
       continue;
     }
 
@@ -227,12 +237,6 @@ test('closes the notices with their X, and the dismissal sticks', async ({ page 
   await expect(page.locator('.notice.hint')).toBeVisible();
   await page.locator('.notice.hint .notice-close').click();
   await expect(page.locator('.notice.hint')).toHaveCount(0);
-
-  const seasonCard = page.locator('.notice.season-card');
-  if (await seasonCard.count()) {
-    await seasonCard.locator('.notice-close').click();
-    await expect(page.locator('.notice.season-card')).toHaveCount(0);
-  }
 
   // The dismissal sticks across a reload; the menu is where it comes back from.
   await page.reload();
@@ -798,7 +802,7 @@ test('sends you from the menu down to the film', async ({ page }) => {
   // one copy of the way to it, not a second copy of the film.
   await openMenu(page);
   await expect(page.locator('.menu .film-canvas')).toHaveCount(0);
-  await page.getByRole('button', { name: /Watch the film/ }).click();
+  await page.getByRole('button', { name: /Watch a Video/ }).click();
 
   // The menu gets out of the way, the panel is open, and the film is in view.
   await expect(page.locator('.menu')).toHaveCount(0);
@@ -842,4 +846,65 @@ test('draws every park card, with photographs as an option', async ({ page }) =>
   await style.selectOption('illustrated');
   await page.keyboard.press('Escape');
   await expect(page.locator('.panel', { hasText: 'Park row' })).not.toContainText('photos');
+});
+
+test('offers the house rules with the new-game settings', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
+
+  const deck = page.locator('label', { hasText: 'Reserve from the deck' }).locator('input');
+  const ranger = page.locator('label', { hasText: 'Ranger Station first' }).locator('input');
+  // The published reserve is on; the Ranger Station pin is off.
+  await expect(deck).toBeChecked();
+  await expect(ranger).not.toBeChecked();
+
+  await ranger.check();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await page.waitForSelector('.trail .site');
+  // Season 1 now always holds the Ranger Station.
+  await expect(page.locator('.site', { hasText: 'Ranger Station' })).toHaveCount(1);
+
+  // And the choice is remembered.
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+  await openMenu(page);
+  await expect(ranger).toBeChecked();
+});
+
+test('pictures the trail sites and campsites, or leaves them bare', async ({ page }) => {
+  await page.route('**/en.wikipedia.org/**', (route) => route.abort());
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.trail .site');
+
+  // Illustrations by default, on every tile and campsite card.
+  const tiles = page.locator('.trail .site');
+  await expect(page.locator('.trail .site-art svg')).toHaveCount(await tiles.count());
+  await expect(page.locator('.campsite .campsite-art svg')).toHaveCount(await page.locator('.campsite').count());
+
+  await openMenu(page);
+  const style = page.locator('label', { hasText: 'Site art' }).locator('select');
+  await style.selectOption('none');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.site-art, .campsite-art')).toHaveCount(0);
+
+  // Photographs that cannot be fetched leave the drawings in place.
+  await openMenu(page);
+  await style.selectOption('photos');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.trail .site-art svg')).toHaveCount(await tiles.count());
+});
+
+test('keeps opponents’ bonus cards out of sight entirely', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.trail .site');
+  await expect(page.locator('.bonus-hidden')).toHaveCount(0);
+  // Your own two cards are still there to read.
+  await expect(page.locator('aside .player').first().locator('.bonus')).toHaveCount(2);
 });

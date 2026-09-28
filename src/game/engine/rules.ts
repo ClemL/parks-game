@@ -76,13 +76,64 @@ export function photoCost(state: GameState, playerIndex: number): number {
   return Math.max(1, base - seasonal);
 }
 
-/** Photos are paid in sun, and wildcards may cover the rest. */
-export function canAffordPhoto(state: GameState, playerIndex: number): boolean {
+/**
+ * Photos are paid in tokens of any kind. A wildcard counts for as many
+ * resources as it covers (two with Nightfall).
+ */
+export function photoPaymentValue(state: GameState, pay: ResourceBag): number {
+  const plain = COST_RESOURCES.reduce((sum, r) => sum + (pay[r] ?? 0), 0);
+  return plain + (pay.wild ?? 0) * wildCoverage(state);
+}
+
+/**
+ * Checks a chosen photo payment: tokens the player actually holds, enough to
+ * cover the price, and no token spent that the price did not need.
+ */
+export function validPhotoPayment(state: GameState, playerIndex: number, pay: ResourceBag): boolean {
   const player = state.players[playerIndex];
   const cost = photoCost(state, playerIndex);
-  const sun = Math.min(player.resources.sun ?? 0, cost);
-  const missing = cost - sun;
-  return Math.ceil(missing / wildCoverage(state)) <= (player.resources.wild ?? 0);
+  for (const r of RESOURCES) {
+    const n = pay[r] ?? 0;
+    if (n < 0 || !Number.isInteger(n) || n > (player.resources[r] ?? 0)) return false;
+  }
+  const value = photoPaymentValue(state, pay);
+  if (value < cost) return false;
+  // Any single token taken back must leave the photo unpaid.
+  return RESOURCES.every((r) => (pay[r] ?? 0) === 0 || value - (r === 'wild' ? wildCoverage(state) : 1) < cost);
+}
+
+/**
+ * The payment used when nobody picks one: sun first (it only buys gear), then
+ * whichever park resource is most plentiful, wildcards last.
+ */
+export function defaultPhotoPayment(state: GameState, playerIndex: number): ResourceBag | null {
+  const player = state.players[playerIndex];
+  const cost = photoCost(state, playerIndex);
+  const cover = wildCoverage(state);
+  const plainHeld = COST_RESOURCES.reduce((sum, r) => sum + (player.resources[r] ?? 0), 0);
+  // As few wildcards as will close the gap, and only the plain tokens still
+  // owed after them, so the suggestion never overpays.
+  const wild = plainHeld >= cost ? 0 : Math.ceil((cost - plainHeld) / cover);
+  if (wild > (player.resources.wild ?? 0)) return null;
+  let owed = Math.max(0, cost - wild * cover);
+  const pay: ResourceBag = wild > 0 ? { wild } : {};
+  const left = { ...player.resources };
+  while (owed > 0) {
+    const pick = COST_RESOURCES.filter((r) => (left[r] ?? 0) > 0).sort((a, b) => {
+      if (a === 'sun') return -1;
+      if (b === 'sun') return 1;
+      return (left[b] ?? 0) - (left[a] ?? 0);
+    })[0];
+    if (!pick) return null;
+    left[pick] = (left[pick] ?? 0) - 1;
+    pay[pick] = (pay[pick] ?? 0) + 1;
+    owed -= 1;
+  }
+  return pay;
+}
+
+export function canAffordPhoto(state: GameState, playerIndex: number): boolean {
+  return defaultPhotoPayment(state, playerIndex) !== null;
 }
 
 export function gearCost(state: GameState, card: GearCard): number {

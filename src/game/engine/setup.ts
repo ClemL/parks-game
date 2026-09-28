@@ -2,6 +2,7 @@ import {
   type AiPersonality,
   type ExpansionFlags,
   type GameState,
+  type HouseRules,
   type Player,
   type SeasonCardDef,
   type SiteKind,
@@ -17,7 +18,7 @@ import {
   BOTTLE_POOL,
   CAMPFIRES_PER_SEASON,
   gearDiscountsForPlayers,
-  parkRowSizeFor,
+  PARK_ROW_SIZE,
 } from '../data/sites';
 import { CAMPSITES, CAMPSITES_IN_PLAY } from '../data/campsites';
 import { SEASON_CARDS } from '../data/seasons';
@@ -50,15 +51,20 @@ export interface NewGameOptions {
   seed?: number;
   humanName?: string;
   expansions?: Partial<ExpansionFlags>;
+  houseRules?: Partial<HouseRules>;
   /** Total seats, one human plus CPUs. Two to five. */
   players?: number;
 }
 
 export const DEFAULT_EXPANSIONS: ExpansionFlags = { nightfall: true, wildlife: true };
 
+/** Reserving the deck's top card is the published rule, so it starts on. */
+export const DEFAULT_HOUSE_RULES: HouseRules = { blindReserve: true, rangerFirst: false };
+
 export function createGame(options: NewGameOptions = {}): GameState {
   const seed = options.seed ?? (Date.now() & 0x7fffffff);
   const expansions: ExpansionFlags = { ...DEFAULT_EXPANSIONS, ...options.expansions };
+  const houseRules: HouseRules = { ...DEFAULT_HOUSE_RULES, ...options.houseRules };
   let rng = seed >>> 0;
 
   const [parkDeck, r1] = shuffle(parkDeckFor(expansions), rng);
@@ -69,15 +75,17 @@ export function createGame(options: NewGameOptions = {}): GameState {
   rng = r3;
   const [bottleDeck, r4] = shuffle(BOTTLE_POOL, rng);
   rng = r4;
-  // Season 1 always uses the park/gear advanced site; the rest of the pool is
-  // shuffled and only the next three are used, so a game never shows them all
-  // (the Wildlife expansion's site-selection rule).
-  const pool = ADVANCED_SITES.filter((k) => k !== FIRST_ADVANCED_SITE).concat(
-    expansions.wildlife ? WILDLIFE_SITES : [],
+  // Advanced sites join in a random order, one more each season. With Wildlife
+  // the pool doubles and only four are drawn, so no game shows them all. The
+  // "Ranger Station first" house rule pins season 1's site.
+  const pool = ADVANCED_SITES.concat(expansions.wildlife ? WILDLIFE_SITES : []).filter(
+    (k) => !houseRules.rangerFirst || k !== FIRST_ADVANCED_SITE,
   );
   const [shuffledPool, r5] = shuffle(pool, rng);
   rng = r5;
-  const advancedOrder: SiteKind[] = [FIRST_ADVANCED_SITE, ...shuffledPool.slice(0, SEASONS - 1)];
+  const advancedOrder: SiteKind[] = houseRules.rangerFirst
+    ? [FIRST_ADVANCED_SITE, ...shuffledPool.slice(0, SEASONS - 1)]
+    : shuffledPool.slice(0, SEASONS);
 
   // One season card per season, drawn from that season's own deck.
   const [seasonDeck, r5b] = pickSeasonCards(expansions, rng);
@@ -130,6 +138,7 @@ export function createGame(options: NewGameOptions = {}): GameState {
   return {
     rng,
     expansions,
+    houseRules,
     season: 1,
     seasonCard: seasonDeck.find((c) => c.season === 1) ?? null,
     seasonDeck,
@@ -147,8 +156,9 @@ export function createGame(options: NewGameOptions = {}): GameState {
     cameraHolder: null,
     gearDiscountsLeft: gearDiscountsForPlayers(players.length),
     firstPlayerTokenClaimed: false,
-    parkRow: parkDeck.slice(0, parkRowSizeFor(expansions)),
-    parkDeck: parkDeck.slice(parkRowSizeFor(expansions)),
+    seasonPhotoOffered: false,
+    parkRow: parkDeck.slice(0, PARK_ROW_SIZE),
+    parkDeck: parkDeck.slice(PARK_ROW_SIZE),
     gearRow: gearDeck.slice(0, GEAR_ROW_SIZE),
     gearDeck: gearDeck.slice(GEAR_ROW_SIZE),
     bottleDeck: bottleDeck.slice(players.length),
@@ -203,28 +213,29 @@ export function buildTrail(
   return [['trailhead', ...shuffled, 'trail-end'], next];
 }
 
-/** One sun or water token per site, everywhere but the trailhead and the end. */
 /**
  * Fills in fields added to the state after a game was saved, so a game stored
  * by an older build still runs rather than turning its counters into NaN.
  */
 export function hydrate(state: GameState): GameState {
   for (const player of state.players) player.waterThisTurn ??= 0;
+  state.houseRules ??= { ...DEFAULT_HOUSE_RULES };
+  state.seasonPhotoOffered ??= false;
   return state;
 }
 
+/**
+ * The season's weather: a sun or water token on every site from the second one
+ * out of the trailhead up to the Trail End, alternating, starting with a random
+ * one. (The published season card prints its own pattern; this keeps the same
+ * placement with a simpler one.)
+ */
 export function seedSiteTokens(trail: SiteKind[], rng: number): [SiteToken[], number] {
-  const tokens: SiteToken[] = [];
-  let state = rng;
-  for (let i = 0; i < trail.length; i++) {
+  const [roll, next] = shuffle(['sun', 'water'] as const, rng);
+  const tokens: SiteToken[] = trail.map((_, i) => {
     // The trailhead, the first space out of it and the Trail End stay bare.
-    if (i <= 1 || i === trail.length - 1) {
-      tokens.push(null);
-      continue;
-    }
-    const [roll, next] = shuffle(['sun', 'water'] as const, state);
-    state = next;
-    tokens.push(roll[0]);
-  }
-  return [tokens, state];
+    if (i <= 1 || i === trail.length - 1) return null;
+    return (i % 2 === 0 ? roll[0] : roll[1]) as SiteToken;
+  });
+  return [tokens, next];
 }

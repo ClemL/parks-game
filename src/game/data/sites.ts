@@ -17,7 +17,7 @@ export const SITES: Record<SiteKind, SiteDef> = {
     kind: 'trail-end',
     name: 'Trail End',
     icon: '🏕️',
-    text: 'One action: visit a park, reserve a park, buy gear, take a photo, or rest for 1 sun.',
+    text: 'One action: visit a park, reserve a park, or buy gear.',
     choice: 'trail-end',
     capacity: Infinity,
   },
@@ -46,7 +46,7 @@ export const SITES: Record<SiteKind, SiteDef> = {
     kind: 'camera',
     name: 'Camera Point',
     icon: '📷',
-    text: 'Take the camera (and a photo for 1 sun if you like) or leave it and take a bottle.',
+    text: 'Take the camera (and a photo for 1 token if you like) or leave it and take a bottle.',
     choice: 'camera',
     tier: 'basic',
   },
@@ -72,7 +72,7 @@ export const SITES: Record<SiteKind, SiteDef> = {
     kind: 'adv-park',
     name: 'Ranger Station',
     icon: '🏛️',
-    text: 'Visit a park, reserve a park, or buy gear — without walking to the end.',
+    text: 'Visit a park or reserve one — without walking to the end.',
     choice: 'park-or-gear',
     tier: 'advanced',
   },
@@ -128,14 +128,13 @@ export function basicSitesFor(players: number): SiteKind[] {
 /** Every basic site, for rules text and tests. */
 export const BASIC_SITES: SiteKind[] = [...CORE_BASIC_SITES, CROWDED_BASIC_SITE];
 
-/** Base advanced sites. Season 1 always uses the park/gear site, then the rest
- *  are shuffled in one per season. */
+/** Base advanced sites, drawn in a random order, one more joining each season. */
 export const ADVANCED_SITES: SiteKind[] = ['adv-wildcard', 'adv-swap', 'adv-park', 'adv-copy'];
 
-/** The park/gear site is always the first season's advanced site. */
+/** The site the "Ranger Station first" house rule opens season 1 with. */
 export const FIRST_ADVANCED_SITE: SiteKind = 'adv-park';
 
-/** Wildlife adds four more, and only three of the pool are used per game. */
+/** Wildlife adds four more; only four of the eight are drawn per game. */
 export const WILDLIFE_SITES: SiteKind[] = ['adv-memory', 'adv-bison', 'adv-lookout', 'adv-talk'];
 
 export const BOTTLES: Record<BottleKind, BottleDef> = {
@@ -175,16 +174,10 @@ export function trailLength(season: number, players = 4): number {
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 5;
 
-/**
- * Park cards face up. The published game shows three; the expansions add so
- * many more park actions that the row churns, so a fourth slot is opened when
- * either expansion is on (a house rule).
- */
-export function parkRowSizeFor(expansions: { nightfall: boolean; wildlife: boolean }): number {
-  return expansions.nightfall || expansions.wildlife ? 4 : 3;
-}
+/** Park cards face up, as in the published game. */
+export const PARK_ROW_SIZE = 3;
 
-/** Photos cost this much; the camera (or a Tripod) discounts it. */
+/** Photos cost this many tokens of any kind; the camera (or a Tripod) discounts it. */
 export const PHOTO_COST = 2;
 export const PHOTO_COST_DISCOUNTED = 1;
 /** The first player to buy gear in a season pays this much less sun. */
@@ -193,8 +186,6 @@ export const FIRST_GEAR_DISCOUNT = 1;
 export function gearDiscountsForPlayers(players: number): number {
   return players >= 4 ? 2 : 1;
 }
-/** Each gear card kept to the end of the game scores this. */
-export const GEAR_VP = 2;
 /** The first player token is worth this at the end of the game. */
 export const FIRST_PLAYER_VP = 1;
 /** Campfire tokens each player has alight at the start of a season. */

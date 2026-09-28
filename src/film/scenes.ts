@@ -587,7 +587,7 @@ const scoring: Scene = {
   seconds: 15,
   cues: [
     { at: 0.5, text: 'At the end, everything counts up.' },
-    { at: 4, text: 'Parks, photographs, gear, the first player token…' },
+    { at: 4, text: 'Parks, photographs, the first player token…' },
     { at: 8, text: '…and the two bonus cards you have been hiding all year.' },
   ],
   draw(ctx, { t, clock }) {
