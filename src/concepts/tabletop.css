@@ -1,0 +1,1445 @@
+/* ==========================================================================
+   Concept A: Tabletop. The page is the table: a dark ground, a window onto the
+   season's landscape for the trail, paper cards dealt on it, and a wooden tray
+   for your own pieces along the bottom edge. One committed dark look.
+   ========================================================================== */
+
+.tt {
+  /* the table */
+  --tt-ground: #141b17;
+  --tt-ground-2: #1b2520;
+  --tt-felt: rgba(255, 255, 255, 0.04);
+  --tt-line: rgba(232, 239, 230, 0.12);
+  --tt-text: #ecf1e8;
+  --tt-muted: #a3b3a6;
+  --tt-gold: #e6bb5a;
+  /* the pieces */
+  --tt-paper: #f6f0e0;
+  --tt-paper-2: #e9dfc6;
+  --tt-ink: #22271f;
+  --tt-ink-soft: #6c6550;
+  --tt-wood: #2b231a;
+  --tt-wood-2: #1f1912;
+  /* the season sets the highlight and the landscape */
+  --tt-accent: #9ccf7f;
+  --tt-path: #c8a875;
+
+  min-height: calc(100dvh - var(--cx-bar, 0px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(250px, 1fr) auto auto;
+  gap: 10px;
+  padding-top: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background:
+    radial-gradient(1100px 520px at 50% 30%, var(--tt-ground-2), transparent 70%),
+    var(--tt-ground);
+  color: var(--tt-text);
+  font: 14px/1.45 var(--body);
+}
+
+.tt-season-2 {
+  --tt-accent: #f0c15a;
+  --tt-path: #dcbc84;
+}
+
+.tt-season-3 {
+  --tt-accent: #e8935a;
+  --tt-path: #c99a6a;
+}
+
+.tt-season-4 {
+  --tt-accent: #a9cbe6;
+  --tt-path: #b7a68f;
+}
+
+/* Zero specificity on the scope, so any component class can recolour a button. */
+:where(.tt) button {
+  font: inherit;
+  color: inherit;
+}
+
+.tt :focus-visible {
+  outline: 2px solid var(--tt-accent);
+  outline-offset: 2px;
+}
+
+.tt-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seat, var(--tt-accent));
+  flex: none;
+  display: inline-block;
+}
+
+/* ------------------------------------------------------------------ top rail */
+
+.tt-top {
+  display: flex;
+  align-items: center;
+  gap: 10px 22px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tt-seasons {
+  display: flex;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 600 13px/1 var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tt-seasons li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tt-muted);
+  opacity: 0.6;
+}
+
+.tt-seasons li + li::before {
+  content: '';
+  width: 18px;
+  height: 2px;
+  margin: 0 8px 0 4px;
+  background: var(--tt-line);
+}
+
+.tt-seasons li.done {
+  opacity: 0.85;
+}
+
+.tt-seasons li.now {
+  color: var(--tt-text);
+  opacity: 1;
+}
+
+.tt-season-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.tt-seasons li.done .tt-season-dot {
+  background: currentColor;
+}
+
+.tt-seasons li.now .tt-season-dot {
+  width: 13px;
+  height: 13px;
+  border-color: var(--tt-accent);
+  background: var(--tt-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tt-accent) 25%, transparent);
+}
+
+.tt-season-card {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--tt-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tt-season-card b {
+  color: var(--tt-text);
+  font-weight: 650;
+}
+
+.tt-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.tt-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  min-height: 36px;
+  border-radius: 999px;
+  background: var(--tt-felt);
+  border: 1px solid var(--tt-line);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tt-turn-you {
+  background: var(--tt-accent);
+  border-color: transparent;
+  color: var(--tt-ink);
+}
+
+.tt-turn-cpu {
+  padding-right: 14px;
+}
+
+.tt-turn-cpu .tt-dot {
+  animation: tt-breathe 1.2s ease-in-out infinite;
+}
+
+.tt-hiker-switch {
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.16);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tt-hiker-switch.tt-static {
+  cursor: default;
+}
+
+.tt-ticker {
+  color: var(--tt-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tt-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.tt-actions button {
+  background: transparent;
+  border: 1px solid var(--tt-line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.tt-actions button:hover:not(:disabled) {
+  border-color: var(--tt-accent);
+}
+
+.tt-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tt-actions button.armed {
+  background: #b5523b;
+  border-color: #b5523b;
+}
+
+/* --------------------------------------------------------------------- seats */
+
+.tt-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.tt-seat {
+  display: grid;
+  gap: 5px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--tt-felt);
+  border: 1px solid var(--tt-line);
+  min-width: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.tt-seat-active {
+  border-color: var(--seat);
+  background: color-mix(in srgb, var(--seat) 12%, transparent);
+}
+
+.tt-seat header,
+.tt-seat footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tt-seat header b {
+  font: 600 15px/1.2 var(--display);
+}
+
+.tt-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--tt-gold);
+  color: var(--tt-ink);
+}
+
+.tt-seat-vp {
+  margin-left: auto;
+  font: 700 20px/1 var(--display);
+  color: var(--tt-gold);
+}
+
+.tt-seat-vp::after {
+  content: ' VP';
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--tt-muted);
+}
+
+.tt-seat-res {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tt-seat-res span {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.tt-seat-res .zero {
+  opacity: 0.38;
+}
+
+.tt-seat footer {
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--tt-muted);
+}
+
+.tt-seat-parks {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tt-seat-park {
+  width: 30px;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.tt-seat-park svg,
+.tt-seat-park img,
+.tt-park-art svg,
+.tt-park-art img,
+.tt-stack-card svg,
+.tt-stack-card img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.tt-seat-meta {
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------- trail */
+
+.tt-trail {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  min-height: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.tt-panorama {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tt-sky-top { stop-color: #8fc6e3; }
+.tt-sky-low { stop-color: #e6f2df; }
+.tt-sun { fill: #fff6cf; opacity: 0.85; }
+.tt-ridge-far { fill: #9dbcaf; }
+.tt-ridge-mid { fill: #6f9d78; }
+.tt-ground { fill: #4f7d45; }
+
+.tt-season-2 .tt-sky-top { stop-color: #e9b766; }
+.tt-season-2 .tt-sky-low { stop-color: #fbe8bd; }
+.tt-season-2 .tt-sun { fill: #fff3c4; opacity: 1; }
+.tt-season-2 .tt-ridge-far { fill: #cf9f72; }
+.tt-season-2 .tt-ridge-mid { fill: #a48c56; }
+.tt-season-2 .tt-ground { fill: #7a8a3f; }
+
+.tt-season-3 .tt-sky-top { stop-color: #d98a63; }
+.tt-season-3 .tt-sky-low { stop-color: #f5d2a6; }
+.tt-season-3 .tt-sun { fill: #ffe0b0; opacity: 0.9; }
+.tt-season-3 .tt-ridge-far { fill: #ad7563; }
+.tt-season-3 .tt-ridge-mid { fill: #8b5a3d; }
+.tt-season-3 .tt-ground { fill: #6e4a2b; }
+
+.tt-season-4 .tt-sky-top { stop-color: #8ea7c2; }
+.tt-season-4 .tt-sky-low { stop-color: #e8eef4; }
+.tt-season-4 .tt-sun { fill: #ffffff; opacity: 0.7; }
+.tt-season-4 .tt-ridge-far { fill: #b3c2d1; }
+.tt-season-4 .tt-ridge-mid { fill: #8399ae; }
+.tt-season-4 .tt-ground { fill: #dbe4ec; }
+
+.tt-trail-scroll {
+  position: relative;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.tt-trail-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.tt-path {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tt-path-bed {
+  fill: none;
+  stroke: var(--tt-path);
+  stroke-width: 20;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+.tt-path-line {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 2.5;
+  stroke-dasharray: 1 10;
+  stroke-linecap: round;
+}
+
+.tt-stops {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(92px, 150px));
+  gap: 12px;
+  margin: 0;
+  padding: 40px 22px 70px;
+  list-style: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.tt-stop {
+  position: relative;
+  transform: translateY(var(--dy));
+  transition: transform 0.25s ease;
+}
+
+.tt-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  aspect-ratio: 0.8;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.18),
+    0 8px 18px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.tt-art {
+  position: absolute;
+  inset: 0 0 40% 0;
+  display: block;
+}
+
+.tt-art svg,
+.tt-art img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.tt-num {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(20, 27, 23, 0.72);
+  color: #f3efe2;
+  font: 700 11px/1.5 var(--body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tt-token {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: #fff7dc;
+  box-shadow:
+    0 0 0 2px #c4b489,
+    0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.tt-tent {
+  position: absolute;
+  top: 38px;
+  right: 8px;
+  font-size: 16px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.tt-name {
+  position: relative;
+  padding: 7px 10px 0;
+  font: 600 15px/1.15 var(--display);
+  background: var(--tt-paper);
+}
+
+.tt-pay {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 2px 10px 9px;
+  background: var(--tt-paper);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.tt-gain {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.tt-verb {
+  font: 600 12px/1.2 var(--body);
+  color: var(--tt-ink-soft);
+}
+
+.tt-adv .tt-name::before {
+  content: 'Advanced';
+  display: block;
+  font: 700 9.5px/1.4 var(--body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a5a12;
+}
+
+/* The two ends of the trail are landmarks rather than stops. */
+.tt-start .tt-tile,
+.tt-end .tt-tile {
+  background: var(--tt-wood);
+  color: #f3e7c8;
+}
+
+.tt-start .tt-name,
+.tt-start .tt-pay,
+.tt-end .tt-name,
+.tt-end .tt-pay {
+  background: var(--tt-wood);
+}
+
+.tt-end .tt-verb,
+.tt-start .tt-verb {
+  color: var(--tt-gold);
+}
+
+/* Your turn: the reachable stops lift, the rest settle back. */
+.tt-picking .tt-stop:not(.tt-target) .tt-tile {
+  filter: saturate(0.7) brightness(0.86);
+}
+
+.tt-target .tt-tile {
+  transform: translateY(-8px);
+  box-shadow:
+    0 0 0 3px var(--tt-accent),
+    0 0 26px color-mix(in srgb, var(--tt-accent) 55%, transparent),
+    0 14px 24px rgba(0, 0, 0, 0.35);
+}
+
+.tt-target .tt-tile:hover {
+  transform: translateY(-12px) scale(1.03);
+}
+
+.tt-target-fire .tt-tile {
+  box-shadow:
+    0 0 0 3px #e8743b,
+    0 0 22px rgba(232, 116, 59, 0.5),
+    0 14px 24px rgba(0, 0, 0, 0.35);
+}
+
+.tt-go {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--tt-accent);
+  color: var(--tt-ink);
+  font: 700 13px/1.3 var(--body);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+
+.tt-target-fire .tt-go {
+  background: #e8743b;
+  color: #fff;
+}
+
+.tt-just .tt-tile {
+  animation: tt-just 1.6s ease-out;
+}
+
+/* Pawns stand on the path in front of their stop. */
+.tt-pawns {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: calc(100% + 8px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 0;
+  pointer-events: none;
+}
+
+.tt-pawn {
+  pointer-events: auto;
+  width: 30px;
+  height: 30px;
+  margin: 0 -4px;
+  border-radius: 50%;
+  border: 2.5px solid #fbf6e9;
+  background: var(--seat);
+  color: #11170f;
+  font: 800 13px/1 var(--body);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  cursor: default;
+  position: relative;
+}
+
+.tt-pawn:not(:disabled) {
+  cursor: pointer;
+}
+
+.tt-pawn:not(:disabled):hover {
+  transform: translateY(-3px);
+}
+
+.tt-pawn-on {
+  z-index: 2;
+  transform: translateY(-4px) scale(1.15);
+  box-shadow:
+    0 0 0 3px var(--tt-accent),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Every hiker starts and ends at the two ends of the trail: crowd them closer. */
+.tt-start .tt-pawn,
+.tt-end .tt-pawn {
+  margin: 0 -8px;
+}
+
+.tt-pawn-home {
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------------- market */
+
+.tt-market {
+  display: grid;
+  grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+.tt-parks,
+.tt-side {
+  min-width: 0;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background: var(--tt-felt);
+  border: 1px solid var(--tt-line);
+}
+
+.tt-parks h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tt-muted);
+}
+
+.tt-parks h2 span {
+  font: 400 12px var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tt-park-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 64px;
+  gap: 12px;
+  align-items: start;
+}
+
+.tt-park {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 10px;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  animation: tt-deal 0.45s ease-out both;
+}
+
+.tt-park-ready {
+  box-shadow:
+    0 0 0 3px var(--tt-accent),
+    0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.tt-park-held {
+  opacity: 0.6;
+}
+
+.tt-park-art {
+  position: relative;
+  display: block;
+  height: 104px;
+  margin-bottom: 6px;
+}
+
+.tt-park-vp {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--tt-gold);
+  color: var(--tt-ink);
+  font: 700 17px/1 var(--display);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.tt-park-bison {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 20px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.tt-park-ribbon {
+  position: absolute;
+  left: 0;
+  bottom: 8px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 0 999px 999px 0;
+  background: var(--tt-accent);
+  color: var(--tt-ink);
+  font: 700 11px/1.3 var(--body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tt-park-name {
+  padding: 0 10px;
+  font: 600 16px/1.15 var(--display);
+}
+
+.tt-park-state {
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tt-ink-soft);
+}
+
+.tt-park-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.tt-pip {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px #8a7d58;
+}
+
+.tt-pip-wild {
+  box-shadow: 0 0 0 1.5px #7a56a8;
+  background: #efe6fb;
+  position: relative;
+}
+
+.tt-pip-wild::after {
+  content: '🐾';
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  font-size: 10px;
+}
+
+.tt-pip-short {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #c9bf9f;
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
+.tt-park-tag {
+  margin: 6px 10px 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: #8a5a12;
+}
+
+.tt-deck {
+  position: relative;
+  height: 150px;
+  align-self: center;
+}
+
+.tt-deck-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 6px, transparent 6px 12px),
+    #2f4a3a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.tt-deck-card:nth-child(2) {
+  transform: translate(4px, -4px);
+}
+
+.tt-deck-count {
+  position: absolute;
+  inset: 0;
+  transform: translate(4px, -4px);
+  display: grid;
+  place-items: center;
+  font: 700 22px/1 var(--display);
+  color: var(--tt-paper);
+}
+
+/* --------------------------------------------------------------- side board */
+
+.tt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 290px;
+}
+
+.tt-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.tt-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--tt-muted);
+  font-weight: 650;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tt-tabs button.on {
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+}
+
+.tt-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.tt-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--tt-line);
+}
+
+.tt-list b {
+  display: block;
+  font-weight: 650;
+}
+
+.tt-list small {
+  display: block;
+  color: var(--tt-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tt-list-icon {
+  font-size: 18px;
+}
+
+.tt-price {
+  font-weight: 700;
+  color: var(--tt-gold);
+  white-space: nowrap;
+}
+
+.tt-price s {
+  margin-left: 4px;
+  color: var(--tt-muted);
+  font-weight: 400;
+}
+
+.tt-list li.tt-list-note {
+  display: block;
+  border: 0;
+  color: var(--tt-muted);
+  font-size: 12px;
+}
+
+.tt-tents {
+  display: flex;
+  gap: 3px;
+}
+
+.tt-log li {
+  grid-template-columns: auto minmax(0, 1fr);
+  font-size: 13px;
+  align-items: baseline;
+}
+
+/* ------------------------------------------------------------------ the tray */
+
+.tt-tray {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow-x: auto;
+  background: linear-gradient(180deg, var(--tt-wood), var(--tt-wood-2));
+  border-top: 1px solid rgba(255, 220, 160, 0.14);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  scrollbar-width: thin;
+}
+
+.tt-tray-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.tt-tray-group + .tt-tray-group {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 220, 160, 0.12);
+}
+
+.tt-disc {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: radial-gradient(circle at 35% 30%, var(--disc-hi), var(--disc-lo));
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    0 3px 6px rgba(0, 0, 0, 0.45);
+}
+
+.tt-disc b {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+  font: 700 13px/1 var(--body);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.tt-disc i {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 800 13px/1 var(--body);
+  font-style: normal;
+  color: var(--tt-accent);
+  animation: tt-float 1s ease-out both;
+}
+
+.tt-disc-down i {
+  color: #f0a08a;
+}
+
+.tt-disc.zero {
+  opacity: 0.4;
+}
+
+.tt-disc-up,
+.tt-disc-down {
+  animation: tt-pop 0.45s ease-out;
+}
+
+.tt-disc-sun { --disc-hi: #ffe39a; --disc-lo: #d79a2b; }
+.tt-disc-water { --disc-hi: #a9dcf7; --disc-lo: #3a7fb6; }
+.tt-disc-forest { --disc-hi: #a7d59a; --disc-lo: #3f7a43; }
+.tt-disc-mountain { --disc-hi: #d6d2c8; --disc-lo: #7c766a; }
+.tt-disc-wild { --disc-hi: #dcc7f2; --disc-lo: #7a56a8; }
+
+.tt-bag {
+  position: relative;
+  width: 64px;
+  height: 22px;
+  margin-left: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 160, 0.2);
+}
+
+.tt-bag-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--tt-accent) 70%, transparent);
+  transition: width 0.3s ease;
+}
+
+.tt-bag.full .tt-bag-fill {
+  background: #d9634a;
+}
+
+.tt-bag-text {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font: 700 12px/1 var(--body);
+  color: var(--tt-text);
+}
+
+.tt-kit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 15px;
+}
+
+.tt-kit b {
+  font-size: 14px;
+}
+
+.tt-kit-on {
+  background: var(--tt-gold);
+  color: var(--tt-ink);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tt-bottle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 220, 160, 0.25);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tt-bottle.ready {
+  background: var(--tt-accent);
+  color: var(--tt-ink);
+  border-color: transparent;
+  animation: tt-breathe 1.4s ease-in-out infinite;
+}
+
+.tt-bottle.used {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.tt-mini-card {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+  font-size: 12.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tt-bonus-card {
+  width: 168px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--tt-paper);
+  color: var(--tt-ink);
+  text-align: left;
+  cursor: pointer;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.tt-bonus-card + .tt-bonus-card {
+  transform: rotate(1.5deg);
+}
+
+.tt-bonus-card b {
+  display: block;
+  font: 600 13px/1.2 var(--display);
+}
+
+.tt-bonus-card small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--tt-ink-soft);
+}
+
+.tt-mine {
+  margin-left: auto;
+}
+
+.tt-stack {
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+}
+
+.tt-stack-empty {
+  color: var(--tt-muted);
+  font-size: 12.5px;
+}
+
+.tt-stack-card {
+  width: 50px;
+  height: 34px;
+  margin-left: -14px;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px var(--tt-paper),
+    0 3px 6px rgba(0, 0, 0, 0.45);
+  transform: rotate(calc(var(--i, 0) * 3deg - 4deg));
+  animation: tt-deal 0.45s ease-out both;
+}
+
+.tt-stack-reserved {
+  opacity: 0.55;
+  box-shadow: 0 0 0 2px var(--tt-gold);
+}
+
+.tt-score {
+  display: grid;
+  justify-items: end;
+  line-height: 1;
+}
+
+.tt-score b {
+  font: 700 28px/1 var(--display);
+  color: var(--tt-gold);
+}
+
+.tt-score small {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tt-muted);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@keyframes tt-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes tt-just {
+  0% {
+    box-shadow:
+      0 0 0 4px var(--just),
+      0 0 30px var(--just);
+  }
+}
+
+@keyframes tt-pop {
+  40% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes tt-float {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -14px);
+  }
+}
+
+@keyframes tt-deal {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt *,
+  .tt *::before,
+  .tt *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* -------------------------------------------------------- laptop heights */
+
+@media (max-height: 820px) and (min-width: 721px) {
+  .tt-stops {
+    padding-top: 32px;
+    padding-bottom: 56px;
+  }
+
+  .tt-tile {
+    aspect-ratio: 0.92;
+  }
+
+  .tt-park-art {
+    height: 84px;
+  }
+}
+
+/* ------------------------------------------------------------------ phone */
+
+@media (max-width: 720px) {
+  .tt {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    font-size: 13.5px;
+  }
+
+  .tt-top {
+    gap: 8px 12px;
+  }
+
+  .tt-seasons li:not(.now) {
+    font-size: 0;
+    gap: 0;
+  }
+
+  .tt-seasons li + li::before {
+    width: 10px;
+    margin: 0 4px;
+  }
+
+  .tt-season-card {
+    order: 5;
+    flex-basis: 100%;
+    max-width: none;
+    -webkit-line-clamp: 1;
+  }
+
+  .tt-actions {
+    margin-left: auto;
+  }
+
+  .tt-actions button {
+    padding: 5px 9px;
+    font-size: 13px;
+  }
+
+  .tt-status {
+    order: 4;
+    flex-basis: 100%;
+  }
+
+  .tt-seats {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 78%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 2px;
+  }
+
+  .tt-seat {
+    scroll-snap-align: start;
+  }
+
+  .tt-trail {
+    margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+    border-radius: 0;
+  }
+
+  .tt-trail-scroll {
+    scroll-snap-type: x proximity;
+  }
+
+  .tt-stops {
+    grid-template-columns: repeat(var(--n), 112px);
+    justify-content: start;
+    padding: 36px 16px 84px;
+  }
+
+  .tt-stop {
+    scroll-snap-align: center;
+  }
+
+  .tt-market {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tt-park-row {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(170px, 62%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+  }
+
+  .tt-park {
+    scroll-snap-align: start;
+  }
+
+  .tt-deck {
+    display: none;
+  }
+
+  .tt-side {
+    max-height: none;
+  }
+
+  .tt-disc {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+
+  .tt-tray {
+    gap: 10px;
+  }
+
+  .tt-tray-group + .tt-tray-group {
+    padding-left: 10px;
+  }
+
+  .tt-bonus-card {
+    width: 150px;
+  }
+}

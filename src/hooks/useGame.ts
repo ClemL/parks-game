@@ -51,6 +51,9 @@ function clearSave(): void {
   }
 }
 
+/** One running game and everything that drives it, as `useGame` returns it. */
+export type Game = ReturnType<typeof useGame>;
+
 export function useGame(initialSeed?: number) {
   const saved = useMemo(() => (initialSeed === undefined ? loadSave() : null), [initialSeed]);
 

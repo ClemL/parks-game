@@ -514,6 +514,29 @@ Nothing is fetched while illustrations are chosen. With photographs on, the arti
 every photograph shown is listed under **Credits** in the app. Many are works of the U.S. National
 Park Service and in the public domain; others are Creative Commons.
 
+## Redesign concepts
+
+Two alternative layouts for the single-device board live at `#/concepts`, beside the current one.
+All three draw the same running game and the same save, so the switcher at the top moves between
+them mid-turn and shows one position three ways. **Design notes** on the switcher explains each.
+
+- **A · Tabletop** — the screen is the board. The trail winds across a seasonal panorama (tiles
+  have 2.2 times the current area in spring, and all twelve winter stops fit without scrolling),
+  opponents sit across the top, the parks are dealt below the trail with each cost pip lit as you
+  collect it, and your backpack is a tray along the bottom edge. Gear, campsites and the log share
+  one tabbed side board. At 1440×900 it fits one screen with no scrolling.
+- **B · Field Guide** — every move shows its consequences. The trail becomes a list of your legal
+  moves, each saying what it pays and which parks it puts within reach; pointing at one previews
+  the pack and the park goals as they would stand after it. Parks are goals sorted closest first,
+  with a warning when a rival can already take one, and your bonus cards show what they would
+  score now. On a phone a tab bar splits Move, Goals and Table.
+
+The previews are the real reducer run on a copy of the game (`src/concepts/insight.ts`), so they
+include season tokens, the season card and gear. The decision dialogs, rules and info sheet are the
+current ones, unchanged. The concepts load as their own chunk, so the board at `/` does not carry
+them. `node scripts/build-artifact.mjs --concepts` bundles them into `dist/concepts.html`, one
+self-contained page that opens on the concepts.
+
 ## Project layout
 
 ```
@@ -546,10 +569,12 @@ src/film/scenes.ts          the thirteen scenes and every caption
 src/film/player.ts          the timeline: which scene, the dissolve, the grain
 src/film/Film.tsx           the player people actually use
 film-preview.html           a dev harness for the film; ?t=64 draws one second
-src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone
+src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone, #/concepts
+src/concepts/               the two redesign concepts, the switcher, and move previews
 api/                        five Vercel functions, one line each over routes.ts
 tests/game.spec.ts          browser tests, single device (Playwright)
 tests/table.spec.ts         browser tests, a tablet and phones together
+tests/concepts.spec.ts      browser tests, the redesign concepts
 scripts/fetch-park-art.mjs  downloads park photographs for self-hosting
 scripts/build-artifact.mjs  bundles the build into one self-contained page
 scripts/start-redis.mjs     provisions the table-mode database in one command

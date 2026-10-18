@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useGame } from './hooks/useGame';
+import { useGame, type Game } from './hooks/useGame';
 import { TrailView } from './components/TrailView';
 import { PlayerPanel } from './components/PlayerPanel';
 import { ParkCardView } from './components/ParkCardView';
@@ -84,7 +84,14 @@ function TurnPill({
 }
 
 export default function App({ onTableMode }: { onTableMode?: () => void }) {
-  const game = useGame();
+  return <SoloBoard game={useGame()} onTableMode={onTableMode} />;
+}
+
+/**
+ * The single-device board, around a game it is handed. The redesign concepts
+ * render the same game through their own layouts, so it lives outside.
+ */
+export function SoloBoard({ game, onTableMode }: { game: Game; onTableMode?: () => void }) {
   const { state, moves, isHumanTurn, selectedHiker, dispatch } = game;
   const [showRules, setShowRules] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
