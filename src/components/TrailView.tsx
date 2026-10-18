@@ -186,7 +186,12 @@ const WALK_MS = 520;
  * against the strip's scrolled content, so scrolling the trail never registers
  * as a move.
  */
-function useWalkingPawns(strip: RefObject<HTMLDivElement>, state: GameState): void {
+export function useWalkingPawns(
+  strip: RefObject<HTMLElement>,
+  state: GameState,
+  /** What a pawn is: anything carrying `data-hiker` that matches this. */
+  selector = '.hiker',
+): void {
   const seen = useRef(new Map<string, { x: number; y: number }>());
 
   useLayoutEffect(() => {
@@ -196,7 +201,7 @@ function useWalkingPawns(strip: RefObject<HTMLDivElement>, state: GameState): vo
     const base = root.getBoundingClientRect();
     const next = new Map<string, { x: number; y: number }>();
 
-    for (const pawn of root.querySelectorAll<HTMLElement>('.hiker')) {
+    for (const pawn of root.querySelectorAll<HTMLElement>(selector)) {
       const id = pawn.dataset.hiker;
       if (!id) continue;
       const box = pawn.getBoundingClientRect();
@@ -233,5 +238,5 @@ function useWalkingPawns(strip: RefObject<HTMLDivElement>, state: GameState): vo
     }
 
     seen.current = next;
-  }, [state, strip]);
+  }, [state, strip, selector]);
 }

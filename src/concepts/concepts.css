@@ -1,0 +1,152 @@
+/* The switcher above the concepts: a neutral strip that belongs to none of
+   them, so it reads as the review harness rather than part of a design. */
+
+.cx {
+  --cx-bar: 48px;
+  --cx-ink: #f1efe8;
+  --cx-muted: #b9b5a8;
+  --cx-ground: #101311;
+  --cx-line: rgba(241, 239, 232, 0.16);
+  --cx-on: #f1efe8;
+  --cx-on-ink: #101311;
+}
+
+.cx-bar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--cx-bar);
+  padding-block: 6px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--cx-ground);
+  color: var(--cx-ink);
+  border-bottom: 1px solid var(--cx-line);
+  font: 600 13px/1.2 var(--body);
+}
+
+.cx-bar-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cx-muted);
+  white-space: nowrap;
+}
+
+.cx-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.cx-switch button,
+.cx-notes-toggle {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--cx-muted);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cx-switch button:hover,
+.cx-notes-toggle:hover {
+  color: var(--cx-ink);
+}
+
+.cx-switch button.on {
+  background: var(--cx-on);
+  color: var(--cx-on-ink);
+}
+
+.cx-notes-toggle {
+  margin-left: auto;
+  border: 1px solid var(--cx-line);
+}
+
+.cx-notes-toggle.on {
+  color: var(--cx-ink);
+  border-color: var(--cx-ink);
+}
+
+.cx-bar :focus-visible {
+  outline: 2px solid var(--cx-ink);
+  outline-offset: 2px;
+}
+
+.cx-notes {
+  background: var(--cx-ground);
+  color: var(--cx-ink);
+  border-bottom: 1px solid var(--cx-line);
+  padding-block: 14px 18px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.cx-notes-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 28px;
+  font: 14px/1.5 var(--body);
+}
+
+.cx-notes h2 {
+  margin: 0 0 6px;
+  font: 600 20px/1.2 var(--display);
+}
+
+.cx-notes h3 {
+  margin: 0 0 6px;
+  font: 700 11px/1.4 var(--body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cx-muted);
+}
+
+.cx-notes p {
+  margin: 0 0 8px;
+  max-width: 60ch;
+}
+
+.cx-notes ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+}
+
+.cx-notes-same {
+  color: var(--cx-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .cx-bar-label {
+    display: none;
+  }
+
+  .cx-bar {
+    gap: 8px;
+  }
+
+  .cx-switch button,
+  .cx-notes-toggle {
+    padding: 6px 9px;
+  }
+
+  .cx-notes-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}

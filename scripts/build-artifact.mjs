@@ -4,15 +4,19 @@
 //
 // It runs its own build, because the deployed bundle splits the table and hand
 // surfaces into separate chunks that a single inline <script> cannot resolve.
+//
+// `--concepts` builds the redesign concepts page instead: the same bundle,
+// opening on the concepts rather than the board.
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+const concepts = process.argv.includes('--concepts');
 const root = new URL('../', import.meta.url).pathname;
 const out = 'dist-artifact';
 execFileSync('npx', ['vite', 'build', '--outDir', out, '--emptyOutDir'], {
   cwd: root,
-  env: { ...process.env, ARTIFACT: '1' },
+  env: { ...process.env, ARTIFACT: '1', ...(concepts ? { VITE_START_SURFACE: 'concepts' } : {}) },
   stdio: 'inherit',
 });
 
@@ -32,7 +36,7 @@ const fonts =
   'https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700' +
   '&family=Source+Sans+3:wght@400;600;700&display=swap';
 
-const page = `<title>Trailside Seasons</title>
+const page = `<title>${concepts ? 'Trailside Redesigns' : 'Trailside Seasons'}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="${fonts}" />
@@ -45,7 +49,8 @@ ${js}
 </script>
 `;
 
-const file = join(root, 'dist', 'artifact.html');
+const file = join(root, 'dist', concepts ? 'concepts.html' : 'artifact.html');
+mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(file, page);
 rmSync(dist, { recursive: true, force: true });
 console.log(`${file} — ${(page.length / 1024).toFixed(0)} kB`);

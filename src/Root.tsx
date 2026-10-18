@@ -6,8 +6,12 @@ import { useMultiplayer } from './hooks/useMultiplayer';
 // device play stays a small download.
 const TableApp = lazy(() => import('./TableApp'));
 const HandApp = lazy(() => import('./HandApp'));
+const Concepts = lazy(() => import('./concepts/Concepts'));
 
-export type Surface = 'solo' | 'table' | 'hand';
+export type Surface = 'solo' | 'table' | 'hand' | 'concepts';
+
+/** Where an empty hash lands. The concepts artifact build opens on them. */
+const START: Surface = import.meta.env.VITE_START_SURFACE === 'concepts' ? 'concepts' : 'solo';
 
 /**
  * Hash routing on purpose: `#/table` and `#/hand` need no server rewrites, so a
@@ -18,7 +22,8 @@ export function surfaceFromHash(hash: string): Surface {
   const path = hash.replace(/^#/, '').split('?')[0];
   if (path === '/table') return 'table';
   if (path === '/hand') return 'hand';
-  return 'solo';
+  if (path === '/concepts' || path.startsWith('/concepts/')) return 'concepts';
+  return path === '' || path === '/' ? START : 'solo';
 }
 
 export default function Root() {
@@ -39,6 +44,15 @@ export default function Root() {
           multiplayer.state === 'on' ? () => (window.location.hash = '#/table') : undefined
         }
       />
+    );
+  }
+
+  // The redesign concepts are single-device play in other clothes.
+  if (surface === 'concepts') {
+    return (
+      <Suspense fallback={<p className="muted loading-surface">Loading…</p>}>
+        <Concepts />
+      </Suspense>
     );
   }
 
