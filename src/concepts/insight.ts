@@ -166,3 +166,28 @@ export function bonusStanding(state: GameState, player: Player) {
 export function siteName(state: GameState, index: number): string {
   return siteDef(state.trail[index]).name;
 }
+
+/**
+ * Who could visit a park on their next park action: anyone who can pay for it,
+ * unless it is reserved, in which case only the player holding it.
+ */
+export function contenders(state: GameState, park: ParkCard): Player[] {
+  const holder = state.players.find((p) => p.reserved.some((r) => r.id === park.id));
+  return (holder ? [holder] : state.players).filter((p) => canClaim(state, p, park));
+}
+
+/** Park points a player banked in one season, from the season each park was visited in. */
+export function seasonHaul(player: Player, season: number): number {
+  return player.parks.reduce((sum, park, i) => sum + (player.claimedInSeason[i] === season ? park.vp : 0), 0);
+}
+
+/**
+ * Where the log stood when a player last acted: entries after it happened
+ * while they waited. -1 when they have not acted yet.
+ */
+export function lastOwnEntry(state: GameState, playerIndex: number): number {
+  for (let i = state.log.length - 1; i >= 0; i--) {
+    if (state.log[i].player === playerIndex) return i;
+  }
+  return -1;
+}

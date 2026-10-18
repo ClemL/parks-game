@@ -1,0 +1,1081 @@
+/* ==========================================================================
+   Concept C: Trail Map. A park brochure map held in one hand: a black title
+   band, a sand-coloured map with the trail running down it, and a black dock
+   along the bottom edge holding everything the thumb touches. One committed
+   light look, set in the brochure's plain grotesque.
+   ========================================================================== */
+
+.tm {
+  --tm-band: #121212;
+  --tm-band-2: #242424;
+  --tm-band-line: #4a4a4a;
+  --tm-band-ink: #ffffff;
+  --tm-band-muted: #bdbdbd;
+  --tm-ground: #ece6d6;
+  --tm-hatch: rgba(120, 104, 70, 0.07);
+  --tm-card: #fffdf7;
+  --tm-ink: #191919;
+  --tm-muted: #5c584f;
+  --tm-line: #d2c9b2;
+  --tm-red: #b3261e;
+  --tm-red-ink: #ffffff;
+  --tm-red-soft: rgba(179, 38, 30, 0.14);
+  --tm-green: #2c6a45;
+  --tm-green-soft: #dcefe2;
+  --tm-wild: #6d4fa0;
+  --tm-row: 74px;
+  --tm-dock-h: 168px;
+  --tm-font: 'Helvetica Neue', Helvetica, Arial, 'Source Sans 3', system-ui, sans-serif;
+
+  min-height: calc(100dvh - var(--cx-bar, 0px));
+  background-color: var(--tm-ground);
+  background-image: repeating-linear-gradient(135deg, var(--tm-hatch) 0 1px, transparent 1px 9px);
+  color: var(--tm-ink);
+  font: 15px/1.4 var(--tm-font);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.tm) button {
+  font: inherit;
+  color: inherit;
+}
+
+.tm :focus-visible {
+  outline: 3px solid var(--tm-red);
+  outline-offset: 2px;
+}
+
+.tm-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seat, var(--tm-red));
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+}
+
+/* ---------------------------------------------------------------------- band */
+
+.tm-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--tm-band);
+  color: var(--tm-band-ink);
+  border-bottom: 3px solid var(--tm-band-ink);
+  box-shadow: 0 3px 0 var(--tm-band);
+}
+
+.tm-band-title small {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tm-band-muted);
+}
+
+.tm-band h1 {
+  margin: 2px 0 0;
+  font: 700 30px/1.05 var(--tm-font);
+  letter-spacing: -0.015em;
+}
+
+.tm-band h1 span {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--tm-band-muted);
+}
+
+.tm-band-actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.tm-band-actions button {
+  padding: 7px 11px;
+  border: 1px solid var(--tm-band-line);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tm-band-actions button:hover:not(:disabled) {
+  border-color: var(--tm-band-ink);
+}
+
+.tm-band-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tm-band-actions button.armed {
+  background: var(--tm-red);
+  border-color: var(--tm-red);
+}
+
+.tm-band-status {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 8px 0 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.tm-dot-you {
+  background: var(--tm-red);
+}
+
+.tm-band-card {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--tm-band-muted);
+}
+
+.tm-band-card b {
+  color: var(--tm-band-ink);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------- rivals */
+
+.tm-rivals {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 8px max(16px, env(safe-area-inset-left, 0px));
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--tm-card);
+  border-bottom: 1px solid var(--tm-line);
+}
+
+.tm-rivals li {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid var(--tm-line);
+  border-radius: 999px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tm-rivals li.on {
+  border-color: var(--tm-ink);
+  box-shadow: inset 0 0 0 1px var(--tm-ink);
+}
+
+.tm-rival-vp {
+  font-weight: 800;
+}
+
+.tm-rivals small {
+  color: var(--tm-muted);
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------------- body */
+
+.tm-body {
+  padding: 0 max(12px, env(safe-area-inset-right, 0px)) calc(var(--tm-dock-h) + 24px) max(12px, env(safe-area-inset-left, 0px));
+}
+
+.tm-col {
+  min-width: 0;
+}
+
+/* ----------------------------------------------------------------------- map */
+
+.tm-map {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+
+.tm-path {
+  position: absolute;
+  inset: 10px 0;
+  width: 100%;
+  height: calc(100% - 20px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tm-path-bed {
+  fill: none;
+  stroke: rgba(255, 253, 247, 0.9);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.tm-path-line {
+  fill: none;
+  stroke: var(--tm-red);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1 8;
+}
+
+.tm-stops {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-stop {
+  position: relative;
+  height: var(--tm-row);
+}
+
+.tm-hit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.tm-hit:hover {
+  background: rgba(255, 253, 247, 0.45);
+}
+
+.tm-marker {
+  position: absolute;
+  left: var(--x);
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2.5px solid var(--tm-ink);
+  border-radius: 50%;
+  background: var(--tm-card);
+  transform: translate(-50%, -50%);
+  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+
+.tm-adv .tm-marker {
+  border-style: double;
+  border-width: 5px;
+}
+
+.tm-stop:first-child .tm-marker,
+.tm-stop:last-child .tm-marker {
+  border-radius: 10px;
+  background: var(--tm-ink);
+  color: var(--tm-band-ink);
+}
+
+.tm-marker-icon {
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: -0.2em;
+}
+
+.tm-marker-num {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--tm-ink);
+  color: var(--tm-band-ink);
+  font: 700 11px/19px var(--tm-font);
+  text-align: center;
+}
+
+.tm-label {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  gap: 1px;
+  transform: translateY(-50%);
+}
+
+.tm-right .tm-label {
+  left: calc(var(--x) + 34px);
+  right: 6px;
+  justify-items: start;
+}
+
+.tm-left .tm-label {
+  left: 6px;
+  right: calc(100% - var(--x) + 34px);
+  justify-items: end;
+  text-align: right;
+}
+
+.tm-label b {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.tm-pay {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--tm-muted);
+}
+
+.tm-token {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #6b5200;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tm-token-water {
+  background: #dbeefe;
+  color: #1d4f7a;
+}
+
+.tm-cue {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tm-red);
+}
+
+/* The pawns stand on the open side of the marker and wrap into a second row
+   when the trailhead or the Trail End gets crowded. */
+.tm-pawns {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  transform: translateY(-50%);
+}
+
+.tm-right .tm-pawns {
+  right: calc(100% - var(--x) + 28px);
+  max-width: calc(var(--x) - 36px);
+  flex-direction: row-reverse;
+}
+
+.tm-left .tm-pawns {
+  left: calc(var(--x) + 28px);
+  max-width: calc(100% - var(--x) - 36px);
+}
+
+.tm-pawn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--seat);
+  color: #fff;
+  font: 800 12px/1 var(--tm-font);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.tm-pawn + .tm-pawn {
+  margin-inline: -8px 0;
+}
+
+.tm-right .tm-pawn + .tm-pawn {
+  margin-inline: 0 -8px;
+}
+
+.tm-pawn-on {
+  outline: 3px solid var(--tm-red);
+  outline-offset: 1px;
+}
+
+.tm-pawn-home {
+  opacity: 0.6;
+}
+
+/* While you pick, the stops you cannot reach step back and the ones you can light up. */
+.tm-picking .tm-stop:not(.tm-open) .tm-marker {
+  opacity: 0.45;
+}
+
+.tm-picking .tm-stop:not(.tm-open) .tm-label {
+  opacity: 0.6;
+}
+
+.tm-open .tm-marker {
+  border-color: var(--tm-red);
+  box-shadow: 0 0 0 5px var(--tm-red-soft);
+  animation: tm-beckon 1.8s ease-in-out infinite;
+}
+
+.tm-fire .tm-marker {
+  border-style: dashed;
+}
+
+.tm-aimed .tm-hit {
+  background: linear-gradient(90deg, transparent, var(--tm-red-soft) 30%, var(--tm-red-soft) 70%, transparent);
+}
+
+.tm-aimed .tm-marker {
+  background: var(--tm-red);
+  color: var(--tm-red-ink);
+  transform: translate(-50%, -50%) scale(1.14);
+  animation: none;
+}
+
+.tm-just .tm-marker {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--just) 45%, transparent);
+}
+
+@keyframes tm-beckon {
+  50% {
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------- dock */
+
+.tm-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  display: grid;
+  gap: 8px;
+  padding: 10px max(12px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  background: var(--tm-band);
+  color: var(--tm-band-ink);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.tm-dock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tm-dock-top {
+  justify-content: space-between;
+}
+
+.tm-dock-wait {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tm-band-muted);
+}
+
+.tm-hikers {
+  display: flex;
+  gap: 4px;
+}
+
+.tm-hikers button,
+.tm-drawer-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid var(--tm-band-line);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tm-hikers button small {
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--tm-band-muted);
+}
+
+.tm-hikers button.on,
+.tm-drawer-tabs button.on {
+  background: var(--tm-band-ink);
+  border-color: var(--tm-band-ink);
+  color: var(--tm-band);
+}
+
+.tm-hikers button.on small {
+  color: #555;
+}
+
+.tm-hikers button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tm-drawer-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tm-drawer-tabs button {
+  padding-inline: 9px;
+}
+
+.tm-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--tm-green);
+  color: #fff;
+  font-size: 11px;
+}
+
+.tm-route {
+  min-height: 56px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 10px;
+  background: var(--tm-band-2);
+}
+
+.tm-route-hint {
+  font-size: 13px;
+  color: var(--tm-band-muted);
+}
+
+.tm-route-body {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.tm-route-body b {
+  font-size: 15px;
+}
+
+.tm-route-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tm-gain,
+.tm-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tm-tag {
+  font-weight: 500;
+}
+
+.tm-tag-fire {
+  background: rgba(240, 120, 60, 0.28);
+}
+
+.tm-tag-quiet {
+  color: var(--tm-band-muted);
+}
+
+.tm-tag-unlock {
+  background: var(--tm-green);
+  font-weight: 700;
+}
+
+.tm-go {
+  flex: none;
+  min-width: 92px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--tm-red);
+  color: var(--tm-red-ink);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.tm-go:active {
+  transform: translateY(1px);
+}
+
+.tm-pack {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tm-res {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tm-res.zero {
+  opacity: 0.4;
+}
+
+.tm-meter {
+  position: relative;
+  flex: 1;
+  min-width: 70px;
+  max-width: 160px;
+  height: 20px;
+  overflow: hidden;
+  border: 1px solid var(--tm-band-line);
+  border-radius: 999px;
+}
+
+.tm-meter > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.tm-meter.full > span {
+  background: var(--tm-red);
+}
+
+.tm-meter b {
+  position: relative;
+  display: block;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.tm-flask {
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: #3b6fa0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------------- drawer */
+
+.tm-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 14;
+  max-height: 74dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  border-radius: 16px 16px 0 0;
+  background: var(--tm-card);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.25);
+  transform: translateY(105%);
+  transition: transform 220ms ease;
+  visibility: hidden;
+}
+
+.tm:not([data-drawer='none']) .tm-drawer {
+  transform: none;
+  visibility: visible;
+}
+
+/* On a phone the drawer holds one section at a time. */
+@media (max-width: 959px) {
+  .tm[data-drawer='parks'] .tm-sec:not([data-sec='parks']),
+  .tm[data-drawer='kit'] .tm-sec:not([data-sec='kit']),
+  .tm[data-drawer='shop'] .tm-sec:not([data-sec='shop']),
+  .tm[data-drawer='log'] .tm-sec:not([data-sec='log']) {
+    display: none;
+  }
+}
+
+.tm-drawer-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 -4px;
+  padding: 12px 4px 0;
+  background: var(--tm-card);
+}
+
+.tm-drawer-head::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tm-line);
+  transform: translateX(-50%);
+}
+
+.tm-drawer-head button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--tm-line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.tm-sec h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 3px solid var(--tm-ink);
+  font: 700 17px/1.2 var(--tm-font);
+}
+
+.tm-sec h2 span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tm-muted);
+}
+
+.tm-sec h3 {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tm-muted);
+}
+
+.tm-parks {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-park {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--tm-line);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tm-park.ready {
+  border-color: var(--tm-green);
+  box-shadow: inset 0 0 0 1px var(--tm-green);
+  background: var(--tm-green-soft);
+}
+
+.tm-park-art {
+  display: block;
+  width: 64px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.tm-park-art > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tm-park-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tm-park-body b {
+  font-size: 14px;
+}
+
+.tm-park-body b small {
+  font-weight: 500;
+  color: var(--tm-muted);
+}
+
+.tm-park-body > small {
+  font-size: 12px;
+  color: var(--tm-muted);
+}
+
+.tm-park.ready .tm-park-body > small {
+  color: var(--tm-green);
+  font-weight: 700;
+}
+
+.tm-park-vp {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--tm-ink);
+  color: #fff;
+  font-weight: 800;
+}
+
+.tm-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.tm-pip {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.tm-pip-held {
+  background: var(--tm-green-soft);
+  box-shadow: inset 0 0 0 1px var(--tm-green);
+}
+
+.tm-pip-wild {
+  background: #efe8fa;
+  box-shadow: inset 0 0 0 1px var(--tm-wild);
+}
+
+.tm-pip-short {
+  opacity: 0.4;
+  box-shadow: inset 0 0 0 1px var(--tm-line);
+  filter: grayscale(1);
+}
+
+.tm-kit {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-kit li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--tm-line);
+  font-size: 14px;
+}
+
+.tm-kit li small {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--tm-muted);
+}
+
+.tm-kit li.used {
+  opacity: 0.55;
+}
+
+.tm-kit li.afford .tm-price {
+  color: var(--tm-green);
+}
+
+.tm-kit li button {
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tm-red);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tm-price {
+  margin-left: auto;
+}
+
+.tm-price s {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--tm-muted);
+}
+
+.tm-tents {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.tm-visited {
+  margin: 0;
+  font-size: 14px;
+}
+
+.tm-log {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.tm-log li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+/* ------------------------------------------------------- desktop and tablet */
+
+@media (min-width: 960px) {
+  .tm {
+    --tm-row: 66px;
+  }
+
+  .tm-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    gap: 20px;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-bottom: 24px;
+  }
+
+  .tm-dock {
+    position: sticky;
+    bottom: 12px;
+    max-width: 620px;
+    margin: 0 auto;
+    border-radius: 14px;
+  }
+
+  .tm-drawer-tabs,
+  .tm-drawer-head,
+  .tm-scrim {
+    display: none;
+  }
+
+  .tm-drawer,
+  .tm:not([data-drawer='none']) .tm-drawer {
+    position: sticky;
+    top: calc(var(--cx-bar, 0px) + 12px);
+    z-index: auto;
+    align-self: start;
+    max-height: calc(100dvh - var(--cx-bar, 0px) - 24px);
+    margin-top: 12px;
+    padding: 6px 16px 16px;
+    border: 1px solid var(--tm-line);
+    border-radius: 14px;
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+  }
+
+  .tm-sec + .tm-sec {
+    margin-top: 18px;
+  }
+}
+
+/* A phone keeps the band to a few lines, so the trail starts high on the screen. */
+@media (max-width: 559px) {
+  .tm-band {
+    padding-top: 10px;
+  }
+
+  .tm-band-title small {
+    display: none;
+  }
+
+  .tm-band h1 {
+    font-size: 26px;
+  }
+
+  .tm-band h1 span {
+    display: block;
+    margin: 3px 0 0;
+    font-size: 12px;
+  }
+
+  .tm-band-actions {
+    gap: 4px;
+  }
+
+  .tm-band-actions button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .tm-band-status {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+
+  .tm-band-card {
+    font-size: 12px;
+  }
+
+  .tm-drawer-tabs button {
+    padding-inline: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-open .tm-marker {
+    animation: none;
+  }
+
+  .tm-marker,
+  .tm-drawer {
+    transition: none;
+  }
+}
