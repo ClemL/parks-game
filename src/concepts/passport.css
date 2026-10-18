@@ -1,0 +1,1151 @@
+/* ==========================================================================
+   Concept D: Passport. An open passport on its navy cover: cream pages with a
+   faint security print, inked stamps for the parks visited, pencilled ones
+   for reservations, perforated stamps for the parks on offer, and typed
+   entries in Courier. One committed look, light pages on a dark cover.
+   ========================================================================== */
+
+.pp {
+  --pp-cover: #1b2848;
+  --pp-cover-2: #24345d;
+  --pp-gold: #dcbc74;
+  --pp-gold-soft: rgba(220, 188, 116, 0.35);
+  --pp-page: #f7f0de;
+  --pp-page-2: #efe5cb;
+  --pp-ink: #2a2620;
+  --pp-muted: #6c6350;
+  --pp-line: #d9ccae;
+  --pp-print: rgba(31, 78, 140, 0.05);
+  --pp-blue: #1f4e8c;
+  --pp-red: #a8322a;
+  --pp-ready: #2d6a4f;
+  --pp-ready-soft: #dcefe3;
+  --pp-wild: #5b3f8c;
+  --pp-typed: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+
+  min-height: calc(100dvh - var(--cx-bar, 0px));
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px));
+  background:
+    radial-gradient(900px 500px at 50% 0%, var(--pp-cover-2), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 6px),
+    var(--pp-cover);
+  color: var(--pp-ink);
+  font: 14px/1.45 var(--body);
+}
+
+:where(.pp) button {
+  font: inherit;
+  color: inherit;
+}
+
+.pp :focus-visible {
+  outline: 2px solid var(--pp-blue);
+  outline-offset: 2px;
+}
+
+.pp-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seat, var(--pp-blue));
+}
+
+.pp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------- cover */
+
+.pp-cover {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 14px 0;
+  color: var(--pp-gold);
+}
+
+.pp-cover-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pp-emblem {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--pp-gold);
+  border-radius: 50%;
+  font-size: 18px;
+  box-shadow: inset 0 0 0 4px var(--pp-cover), inset 0 0 0 5px var(--pp-gold-soft);
+}
+
+.pp-cover-title b {
+  display: block;
+  font: 700 24px/1 var(--display);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.pp-cover-title small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: rgba(220, 188, 116, 0.8);
+}
+
+.pp-cover-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pp-cover-actions button {
+  padding: 7px 12px;
+  white-space: nowrap;
+  border: 1px solid var(--pp-gold-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pp-gold);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pp-cover-actions button:hover:not(:disabled) {
+  border-color: var(--pp-gold);
+}
+
+.pp-cover-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pp-cover-actions button.armed {
+  background: var(--pp-gold);
+  color: var(--pp-cover);
+}
+
+/* ---------------------------------------------------------------------- year */
+
+.pp-year {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 0.8fr);
+  max-width: 1360px;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--pp-page-2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.pp-season {
+  padding: 10px 14px 12px;
+  border-right: 1px dashed var(--pp-line);
+}
+
+.pp-season:last-child {
+  border-right: 0;
+}
+
+.pp-season h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 0 6px;
+  font: 700 16px/1.2 var(--display);
+}
+
+.pp-season h2 span {
+  overflow: hidden;
+  font: 400 11px/1.2 var(--pp-typed);
+  color: var(--pp-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-season-now {
+  background: var(--pp-page);
+  box-shadow: inset 0 3px 0 var(--pp-blue);
+}
+
+.pp-season-later {
+  opacity: 0.6;
+}
+
+.pp-season-total {
+  background: var(--pp-page);
+}
+
+.pp-season-blank {
+  margin: 14px 0 0;
+  font: 12px/1.4 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-season ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-season li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 64px) minmax(0, 1fr) 22px;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.pp-season-total li {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+}
+
+.pp-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(42, 38, 32, 0.08);
+}
+
+.pp-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--seat);
+}
+
+.pp-season li b {
+  font: 700 12px/1 var(--pp-typed);
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------- book */
+
+.pp-book {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  max-width: 1360px;
+  margin: 0 auto;
+  border-radius: 6px 6px 10px 10px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), 0 0 0 6px var(--pp-cover-2);
+}
+
+.pp-page {
+  min-width: 0;
+  padding: 18px 22px 22px;
+  background-color: var(--pp-page);
+  background-image:
+    repeating-radial-gradient(circle at 0 100%, transparent 0 14px, var(--pp-print) 14px 15px),
+    repeating-radial-gradient(circle at 100% 0, transparent 0 18px, var(--pp-print) 18px 19px);
+}
+
+.pp-left {
+  border-radius: 6px 0 0 10px;
+  box-shadow: inset -26px 0 30px -24px rgba(60, 40, 10, 0.35);
+}
+
+.pp-right {
+  border-radius: 0 6px 10px 0;
+  box-shadow: inset 26px 0 30px -24px rgba(60, 40, 10, 0.35);
+}
+
+.pp-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--pp-ink);
+  font: 700 22px/1.2 var(--display);
+}
+
+.pp-page-head > span {
+  font: 400 13px/1.3 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-status-you {
+  color: var(--pp-red);
+  font-weight: 700;
+}
+
+.pp-switch {
+  padding: 2px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  font: 700 12px/1.4 var(--pp-typed);
+  cursor: pointer;
+}
+
+.pp-static {
+  cursor: default;
+}
+
+.pp-card-line {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--pp-muted);
+}
+
+.pp-card-line b {
+  color: var(--pp-ink);
+}
+
+.pp h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+  margin: 18px 0 8px;
+  font: 700 12px/1.3 var(--body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pp h3 span {
+  font: 400 12px/1.3 var(--pp-typed);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pp-muted);
+}
+
+/* ------------------------------------------------------------------ itinerary */
+
+.pp-route {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: stop;
+}
+
+.pp-stop {
+  display: grid;
+  grid-template-rows: auto minmax(26px, auto);
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pp-stop-face {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  min-height: 104px;
+  padding: 7px 8px 8px;
+  border: 1.5px dashed var(--pp-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.55);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pp-adv .pp-stop-face {
+  border-style: solid;
+  border-color: #c8b78f;
+}
+
+.pp-terminus .pp-stop-face {
+  border: 3px double var(--pp-muted);
+}
+
+.pp-stop-num {
+  font: 700 11px/1.2 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-stop-icon {
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.15em;
+}
+
+.pp-stop-name {
+  font: 700 13px/1.15 var(--display);
+}
+
+.pp-stop-verb {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--pp-muted);
+}
+
+.pp-stop-go {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pp-red);
+  color: #fff;
+  font: 700 11px/1.5 var(--body);
+}
+
+.pp-open .pp-stop-face {
+  border: 2px solid var(--pp-red);
+  background: #fff;
+  box-shadow: 0 2px 0 rgba(168, 50, 42, 0.25);
+}
+
+.pp-open .pp-stop-face:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(168, 50, 42, 0.2);
+}
+
+.pp-fire .pp-stop-face {
+  border-style: dashed;
+}
+
+.pp-just .pp-stop-face {
+  box-shadow: 0 0 0 3px var(--just);
+}
+
+.pp-stop-pawns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  min-height: 26px;
+  padding-left: 6px;
+}
+
+.pp-stop-pawns > * {
+  margin-left: -6px;
+}
+
+.pp-pawn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--seat);
+  color: #fff;
+  font: 800 11px/1 var(--body);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.pp-pawn:not(:disabled) {
+  cursor: pointer;
+}
+
+.pp-pawn-on {
+  outline: 2.5px solid var(--pp-red);
+  outline-offset: 1px;
+}
+
+.pp-pawn-home {
+  opacity: 0.55;
+}
+
+/* --------------------------------------------------------------------- ledger */
+
+.pp-lines {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 18px;
+  margin: 0;
+  font: 14px/1.6 var(--pp-typed);
+}
+
+.pp-lines > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pp-lines > div::after {
+  content: '';
+  order: 1;
+  flex: 1;
+  border-bottom: 1.5px dotted var(--pp-line);
+  transform: translateY(-4px);
+}
+
+.pp-lines dt {
+  order: 0;
+  white-space: nowrap;
+}
+
+.pp-lines dd {
+  order: 2;
+  margin: 0;
+  font-weight: 700;
+}
+
+.pp-lines .zero {
+  color: var(--pp-muted);
+}
+
+.pp-lines .pp-full dd {
+  color: var(--pp-red);
+}
+
+.pp-kit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-kit li {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--pp-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.pp-kit li.pp-kit-on {
+  border-color: var(--pp-blue);
+  color: var(--pp-blue);
+  font-weight: 700;
+}
+
+.pp-kit li.used {
+  opacity: 0.5;
+}
+
+.pp-kit button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pp-kit button.pp-use {
+  color: var(--pp-red);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ travellers */
+
+.pp-travellers ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-travellers li {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--pp-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.pp-travellers li.on {
+  border-color: var(--seat);
+  box-shadow: inset 3px 0 0 var(--seat);
+}
+
+.pp-photo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 46px;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  background: var(--seat);
+  color: #fff;
+  font: 700 18px/1 var(--display);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.pp-traveller {
+  display: grid;
+  min-width: 0;
+}
+
+.pp-traveller small {
+  font: 12px/1.3 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-mini-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+  max-width: 170px;
+}
+
+.pp-mini-stamps small {
+  font: 11px/1 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-mini {
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  border: 1.5px solid var(--seat);
+  border-radius: 50%;
+}
+
+.pp-mini > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------------------- stamps */
+
+.pp-stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 14px 16px;
+}
+
+.pp-stamp-slot {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.pp-blank {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 18%;
+  border: 1.5px dashed var(--pp-line);
+  border-radius: 50%;
+  font: 12px/1.3 var(--pp-typed);
+  color: var(--pp-muted);
+  text-align: center;
+  cursor: default;
+}
+
+.pp-stamp {
+  position: relative;
+  margin: 0;
+  aspect-ratio: 1;
+  color: var(--ink);
+  transform: rotate(var(--tilt));
+}
+
+.pp-stamp-art {
+  position: absolute;
+  inset: 19.5%;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.pp-stamp-art > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-stamp-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.pp-stamp-ring circle {
+  fill: none;
+  stroke: currentColor;
+}
+
+.pp-ring-outer {
+  stroke-width: 2.6;
+}
+
+.pp-ring-thin {
+  stroke-width: 0.8;
+}
+
+.pp-ring-inner {
+  stroke-width: 1.6;
+}
+
+.pp-stamp-ring text {
+  fill: currentColor;
+  font-family: var(--pp-typed);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.pp-stamp-ring .pp-ring-small {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+}
+
+.pp-stamp-inked {
+  opacity: 0.9;
+}
+
+.pp-stamp-inked .pp-stamp-art {
+  filter: sepia(0.3) saturate(0.85) contrast(1.05);
+}
+
+/* A pencilled stamp: drawn in, not yet inked. */
+.pp-stamp-pencil {
+  color: #8a8172;
+}
+
+.pp-stamp-pencil circle {
+  stroke-dasharray: 2.5 2.5;
+}
+
+.pp-stamp-pencil .pp-stamp-art {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.pp-slot-note {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--pp-page);
+  border: 1px solid var(--pp-line);
+  font: 700 11px/1.4 var(--pp-typed);
+  color: var(--pp-muted);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.pp-slot-ready .pp-slot-note {
+  border-color: var(--pp-ready);
+  color: var(--pp-ready);
+}
+
+/* -------------------------------------------------------------------- postage */
+
+.pp-postage-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* The perforation is a field of holes in the page colour; the face covers
+   all of it but the edge, so only half-holes show, the way a stamp tears. */
+.pp-postage {
+  display: block;
+  padding: 7px;
+  border: 0;
+  background: radial-gradient(circle, var(--pp-page) 3.6px, #ffffff 4px) -6px -6px / 12px 12px round;
+  filter: drop-shadow(0 1px 1.5px rgba(60, 40, 10, 0.35));
+  text-align: left;
+  cursor: pointer;
+}
+
+.pp-postage-face {
+  display: grid;
+  gap: 4px;
+  height: 100%;
+  padding: 6px;
+  border: 1px solid var(--pp-line);
+  background: #ffffff;
+}
+
+.pp-postage-ready .pp-postage-face {
+  border-color: var(--pp-ready);
+  box-shadow: inset 0 0 0 1px var(--pp-ready);
+}
+
+.pp-postage-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.pp-postage-art > :first-child {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-denom {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 28px;
+  padding: 2px 4px;
+  background: #fffdf6;
+  font: 700 18px/1 var(--display);
+  text-align: center;
+}
+
+.pp-bison {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  font-size: 18px;
+}
+
+.pp-postage-name {
+  font: 700 14px/1.2 var(--display);
+}
+
+.pp-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.pp-pip {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.pp-pip-held {
+  background: var(--pp-ready-soft);
+  box-shadow: inset 0 0 0 1px var(--pp-ready);
+}
+
+.pp-pip-wild {
+  background: #ece5f7;
+  box-shadow: inset 0 0 0 1px var(--pp-wild);
+}
+
+.pp-pip-short {
+  opacity: 0.4;
+  box-shadow: inset 0 0 0 1px var(--pp-line);
+  filter: grayscale(1);
+}
+
+.pp-postage-note {
+  font: 700 11px/1.3 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-postage-ready .pp-postage-note {
+  color: var(--pp-ready);
+}
+
+/* --------------------------------------------------------------- endorsements */
+
+.pp-endorse ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-endorse li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--pp-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.pp-endorse li > span:nth-child(2) {
+  display: grid;
+}
+
+.pp-endorse small {
+  font-size: 12px;
+  color: var(--pp-muted);
+}
+
+.pp-seal {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pp-red);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--pp-red);
+}
+
+.pp-endorse-vp {
+  display: grid;
+  justify-items: end;
+  font: 700 20px/1 var(--pp-typed);
+  color: var(--pp-muted);
+}
+
+.pp-endorse-vp.on {
+  color: var(--pp-ready);
+}
+
+.pp-endorse-vp small {
+  font-size: 10px;
+}
+
+/* ----------------------------------------------------------------- back pages */
+
+.pp-back {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1360px;
+  margin: 18px auto 0;
+}
+
+.pp-back-page {
+  min-width: 0;
+  padding: 4px 16px 14px;
+  border-radius: 8px;
+  background: var(--pp-page-2);
+}
+
+.pp-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-list li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--pp-line);
+}
+
+.pp-list li > span:nth-child(2) {
+  display: grid;
+}
+
+.pp-list small {
+  font-size: 12px;
+  color: var(--pp-muted);
+}
+
+.pp-list li.afford .pp-price {
+  color: var(--pp-ready);
+}
+
+.pp-price {
+  font: 700 13px/1.4 var(--pp-typed);
+}
+
+.pp-price s {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--pp-muted);
+}
+
+.pp-tents {
+  display: inline-flex;
+  gap: 3px;
+  padding-top: 4px;
+}
+
+.pp-notes ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 12.5px/1.4 var(--pp-typed);
+}
+
+.pp-notes li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.pp-note-season {
+  color: var(--pp-muted);
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------- narrow */
+
+@media (max-width: 1100px) {
+  .pp-year {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-season {
+    border-bottom: 1px dashed var(--pp-line);
+  }
+
+  .pp-season-total {
+    grid-column: 1 / -1;
+  }
+
+  .pp-back {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .pp-book {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-left,
+  .pp-right {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .pp-left {
+    border-radius: 6px 6px 0 0;
+    border-bottom: 2px dashed var(--pp-line);
+  }
+
+  .pp-right {
+    border-radius: 0 0 10px 10px;
+  }
+}
+
+@media (max-width: 560px) {
+  /* The year becomes a strip of pages to swipe, so the itinerary starts higher. */
+  .pp-year {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .pp-season {
+    flex: none;
+    width: 74%;
+    border-bottom: 0;
+    scroll-snap-align: start;
+  }
+
+  .pp-cover-title small {
+    display: none;
+  }
+
+  .pp-cover-title b {
+    font-size: 19px;
+    letter-spacing: 0.22em;
+  }
+
+  .pp-emblem {
+    width: 32px;
+    height: 32px;
+  }
+
+  .pp-cover-actions button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .pp-page {
+    padding: 14px 14px 18px;
+  }
+
+  .pp-route {
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+  }
+
+  .pp-stop-face {
+    min-height: 96px;
+  }
+
+  .pp-lines {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-stamp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pp-postage-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .pp-postage {
+    padding: 5px;
+  }
+
+  .pp-postage-name {
+    font-size: 12px;
+  }
+
+  .pp-pip {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+
+  .pp-travellers li {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .pp-mini-stamps {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-open .pp-stop-face:hover {
+    transform: none;
+  }
+}

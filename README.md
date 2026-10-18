@@ -516,9 +516,10 @@ Park Service and in the public domain; others are Creative Commons.
 
 ## Redesign concepts
 
-Two alternative layouts for the single-device board live at `#/concepts`, beside the current one.
-All three draw the same running game and the same save, so the switcher at the top moves between
-them mid-turn and shows one position three ways. **Design notes** on the switcher explains each.
+Five alternative layouts for the single-device board live at `#/concepts`, beside the current one.
+All of them draw the same running game and the same save, so the switcher at the top moves between
+them mid-turn and shows one position six ways. **Design notes** on the switcher explains each, with
+what it costs.
 
 - **A · Tabletop** — the screen is the board. The trail winds across a seasonal panorama (tiles
   have 2.2 times the current area in spring, and all twelve winter stops fit without scrolling),
@@ -530,6 +531,19 @@ them mid-turn and shows one position three ways. **Design notes** on the switche
   the pack and the park goals as they would stand after it. Parks are goals sorted closest first,
   with a warning when a rival can already take one, and your bonus cards show what they would
   score now. On a phone a tab bar splits Move, Goals and Table.
+- **C · Trail Map** — built for a phone in one hand. The trail runs down the screen as a
+  switchback map, each stop a full-width row (366×74px on a 390px phone, 2.9 times the area of a
+  current trail tile), and everything the thumb touches sits in a dock on the bottom edge. A tap
+  aims and a second tap walks, with the dock saying what the aimed stop pays and which parks it
+  puts in reach. Parks, kit, shop and log open as a drawer; on a desktop they stand beside the map.
+- **D · Passport** — the year is the story. Parks you visit are inked as stamps dated by season,
+  reservations are pencilled in, the parks on offer are perforated stamps with their points as the
+  denomination, and bonus cards are endorsements with what they would score now. Four pages across
+  the top show the park points every player banked in each season.
+- **E · Broadcast** — the other players' turns are worth watching. The trail is a race grid with
+  one lane per player and taken sites hatched; a scorebug shows the turn order and a CPU speed
+  switch; the play-by-play marks your last move and recaps what changed hands while you waited;
+  and every park lists who can already pay for it. At 1440×900 it fits one screen mid-game.
 
 The previews are the real reducer run on a copy of the game (`src/concepts/insight.ts`), so they
 include season tokens, the season card and gear. The decision dialogs, rules and info sheet are the
@@ -570,7 +584,7 @@ src/film/player.ts          the timeline: which scene, the dissolve, the grain
 src/film/Film.tsx           the player people actually use
 film-preview.html           a dev harness for the film; ?t=64 draws one second
 src/Root.tsx                #/ solo, #/table the shared board, #/hand a phone, #/concepts
-src/concepts/               the two redesign concepts, the switcher, and move previews
+src/concepts/               the five redesign concepts, the switcher, and move previews
 api/                        five Vercel functions, one line each over routes.ts
 tests/game.spec.ts          browser tests, single device (Playwright)
 tests/table.spec.ts         browser tests, a tablet and phones together

@@ -31,7 +31,7 @@ export function GameOverlays({ game, rulesOpen, onCloseRules }: { game: Game; ru
  * Paints the skin the shared dialogs should wear under this concept. The
  * current board repaints the player's own choice when it comes back.
  */
-export function usePageSkin(skin: 'trailside' | 'parchment' | 'auto', season: number) {
+export function usePageSkin(skin: 'trailside' | 'parchment' | 'nightfall' | 'auto', season: number) {
   const [deviceLight, setDeviceLight] = useState(() => window.matchMedia?.('(prefers-color-scheme: light)').matches ?? false);
   useEffect(() => {
     const query = window.matchMedia?.('(prefers-color-scheme: light)');
